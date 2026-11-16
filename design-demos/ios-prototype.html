@@ -801,7 +801,6 @@ a { color: inherit; }
 .heatmap {
   --heat-size: 14px;
   margin-block-end: var(--section-gap);
-  padding: 10px 0 6px;
   border-radius: var(--r);
   background: var(--layer);
 }
@@ -817,14 +816,13 @@ a { color: inherit; }
 .heat-calendar {
   display: grid;
   grid-template-columns: 13px repeat(12, minmax(0, 1fr));
-  gap: 3px;
-  max-width: 225px;
-  margin: 8px auto 2px;
+  gap: 1px;
+  max-width: 193px;
+  margin: 5px auto 2px;
 }
 .heat-week {
   display: grid;
-  grid-template-rows: 16px repeat(7, var(--heat-size));
-  gap: 3px;
+  grid-template-rows: 14px repeat(7, var(--heat-size));
   justify-items: center;
   align-items: center;
   min-width: 0;
@@ -844,18 +842,22 @@ a { color: inherit; }
   border: 0;
   border-radius: 3px;
 }
-.heat-0 { background: #f7f7f7; }
-.heat-1 { background: #e9e9e9; }
-.heat-2 { background: #d7d7d7; }
-.heat-3 { background: #bcbcbc; }
+.heat-cell {
+  padding: 1px;
+  background-clip: content-box;
+}
+.heat-0 { background-color: #f7f7f7; }
+.heat-1 { background-color: #e9e9e9; }
+.heat-2 { background-color: #d7d7d7; }
+.heat-3 { background-color: #bcbcbc; }
 .heat-future { visibility: hidden; }
 button.heat-cell:hover { filter: brightness(.9); }
 button.heat-cell[aria-pressed="true"] { background-image: radial-gradient(circle, var(--ink) 1.6px, transparent 2px); }
 button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.heatmap-footer { min-height: 36px; }
-.heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding-inline: 4px; }
+.heatmap-footer { min-height: 32px; }
+.heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding: 4px; }
 .heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
-.heat-legend i { --heat-size: 10px; }
+.heat-legend i { --heat-size: 8px; }
 
 @media (min-width: 731px) {
   [data-glass] .device[data-phone="week"] .ios-screen { height: 734px !important; }
@@ -2127,7 +2129,7 @@ function createPhone(initial) {
     const pet = current();
     const todayPlan = now[0];
     const stage = todayPlan && status(state, todayPlan);
-    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span>，<span class="duration-value">加油💪🏻！</span></span>` : '今天';
+    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span></span>` : '今天';
     const intro = head(title, dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
     const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
       : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;

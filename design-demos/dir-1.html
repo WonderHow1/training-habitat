@@ -1551,7 +1551,7 @@ function createPhone(initial) {
     const pet = current();
     const todayPlan = now[0];
     const stage = todayPlan && status(state, todayPlan);
-    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span>，<span class="duration-value">加油💪🏻！</span></span>` : '今天';
+    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span></span>` : '今天';
     const intro = head(title, dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
     const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
       : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;

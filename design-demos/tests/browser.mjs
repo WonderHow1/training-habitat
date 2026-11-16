@@ -103,6 +103,7 @@ async function click(selector, verticalPosition = .5) {
 const lead = selector => '[data-phone="home"] ' + selector;
 const act = (action, value) => `[data-action="${action}"]${value ? `[data-value="${value}"]` : ''}`;
 const clickLead = (action, value) => click(lead(act(action, value)));
+const todayHeadline = () => evaluate(`document.querySelector(${JSON.stringify(lead('.app-head h2'))}).textContent`);
 const submit = () => click(lead('.sheet button[type="submit"]'));
 const enterToday = () => click(lead('.habitat-continue'));
 const inHabitat = () => evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.habitat-entry[data-active]'))}))`);
@@ -173,7 +174,7 @@ async function demoDirection(index, glass = false) {
     })()`));
     await enterToday();
     await includes(lead('.today-task'), '今日训练');
-    await includes(lead('.app-head h2'), '今天已经锻炼0小时，加油💪🏻！');
+    assert.equal(await todayHeadline(), '今天已经锻炼0小时');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
     assert.equal(await workoutOpen('today'), false);
@@ -201,7 +202,7 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.today-task'), '已完成');
   await includes(lead('.habitat'), '成长 2 次');
   if (glass) {
-    await includes(lead('.app-head h2'), '今天已经锻炼0.33小时，加油💪🏻！');
+    assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
     await clickLead('habitat');
     assert.equal(await inHabitat(), true);
     await includes(habitatGrowth, '成长 2 次');
@@ -356,11 +357,20 @@ async function verifyHeatmapAfterSaving() {
   const allRows = await countRows();
   assert.ok(allRows > 4, 'The heatmap has a populated sample history');
   await includes(lead('.heatmap-head strong'), String(allRows));
+  const heatmapSize = () => evaluate(`(() => {
+    const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
+    const calendar = heatmap.querySelector('.heat-calendar');
+    return { height: heatmap.offsetHeight, width: calendar.offsetWidth };
+  })()`);
+  const size = await heatmapSize();
+  assert.ok(size.height <= 172 && size.width <= 193, 'The heatmap takes less room above the record list');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).offsetWidth`), 14);
   const months = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.heat-month'))})].map(label => label.textContent).filter(Boolean)`);
   assert.deepEqual(months, ['9月', '10月', '11月']);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).title`), '11月16日 · 1 次训练');
   assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead('.heatmap'))}).nextElementSibling.classList.contains('record-actions')`));
   await click(cell);
+  assert.deepEqual(await heatmapSize(), size, 'The clear-date action keeps the layout steady');
   assert.equal(await countRows(), 1, 'Selecting a date filters the history to that day');
   await includes(feed, '校园夜跑');
   await click(lead('.heatmap-footer [data-action="log-day"]'));
@@ -599,7 +609,7 @@ async function verifyCustomProjects() {
   await submit();
   await includes(lead('.record-feed'), '自由泳');
   await clickLead('tab', 'home');
-  await includes(lead('.app-head h2'), '今天已经锻炼0.42小时，加油💪🏻！');
+  assert.equal(await todayHeadline(), '今天已经锻炼0.42小时');
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '0 / 3');
   await includes(lead('.week-summary > div:nth-child(2) dd'), '25 分钟');
@@ -682,7 +692,7 @@ async function verifyNarrowTrainingSummary() {
   await navigate('ios-prototype.html', 320, 700);
   await enterToday();
   await settleHabitatAnimation();
-  await includes(lead('.app-head h2'), '今天已经锻炼0小时，加油💪🏻！');
+  assert.equal(await todayHeadline(), '今天已经锻炼0小时');
   assert.ok(await evaluate(`(() => {
     const headline = document.querySelector(${JSON.stringify(lead('.today-duration'))});
     const reminder = document.querySelector(${JSON.stringify(lead(act('settings')))});
