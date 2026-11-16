@@ -654,12 +654,7 @@ a { color: inherit; }
   overscroll-behavior-y: contain;
 }
 .ios-screen:has(.habitat-entry) .app-head h2[tabindex="-1"]:focus { outline: none; }
-.ios-screen:not([data-habitat-tabs]):has(.habitat-entry) .tabbar {
-  opacity: calc(1 - var(--habitat-progress));
-  transition: opacity 280ms var(--glass-ease);
-}
-[data-glass] .ios-screen[data-habitat-tabs] .tabbar { z-index: 11; }
-.ios-screen[data-habitat-tabs] .habitat-entry { touch-action: auto; }
+[data-glass] .ios-screen:has(.habitat-entry) .tabbar { z-index: 11; }
 
 .habitat-entry {
   position: absolute;
@@ -672,7 +667,6 @@ a { color: inherit; }
   opacity: var(--habitat-progress);
   border-radius: calc(30px * (1 - var(--habitat-progress)));
   transition: transform 340ms var(--glass-ease), opacity 300ms var(--glass-ease), border-radius 340ms var(--glass-ease);
-  touch-action: none;
   user-select: none;
 }
 .habitat-entry:not([data-active]) { pointer-events: none; }
@@ -684,6 +678,7 @@ a { color: inherit; }
   height: 100%;
   object-fit: cover;
   image-rendering: pixelated;
+  touch-action: none;
 }
 .habitat-entry-header {
   position: absolute;
@@ -701,16 +696,8 @@ a { color: inherit; }
 }
 .habitat-entry-status { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 680; }
 [data-glass] .growth-bar i { background: #a8a8a8; }
-.habitat-entry-header .growth {
-  width: 180px;
-  margin-top: 11px;
-  padding-inline: 0;
-}
 .experience strong { font-size: 12px; white-space: nowrap; }
 .experience span { font-variant-numeric: tabular-nums; }
-.habitat-entry-header .growth.experience { width: 212px; }
-.habitat-entry-header .growth-bar { background: #5e5e5e3e; }
-.habitat-entry-header .growth span { color: inherit; font-weight: 650; }
 .habitat-entry-header .pet-born {
   margin-top: 8px;
   color: var(--muted);
@@ -740,14 +727,15 @@ a { color: inherit; }
   position: absolute;
   inset: auto 12px 106px;
   max-height: min(37%, 252px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 12px 13px 8px;
   border-radius: 24px;
   background: #ffffffed;
   box-shadow: var(--glass-shadow);
 }
+.pet-scene-details { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .pet-scene-panel {
     background: #ffffffdf;
@@ -783,26 +771,22 @@ a { color: inherit; }
 .species-choice .avatar { display: block; width: 44px; max-width: 100%; }
 .habitat-choice-preview { overflow: hidden; border-radius: 13px; margin-bottom: 12px; }
 .habitat-continue {
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
   display: inline-flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  min-height: 46px;
-  white-space: nowrap;
+  flex: none;
+  align-self: center;
+  gap: 5px;
+  padding: 4px 10px;
+  min-height: 36px;
   border: 0;
-  border-radius: 999px;
-  background: #f8f8f8f5;
-  color: var(--ink);
-  box-shadow: var(--glass-shadow);
-  font-size: 14px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 700;
-  -webkit-backdrop-filter: blur(14px) saturate(125%);
-  backdrop-filter: blur(14px) saturate(125%);
 }
+.habitat-continue:hover { color: var(--ink); }
 .habitat-continue svg { transform: rotate(-90deg); }
 .habitat.habitat-link {
   position: relative;
@@ -810,12 +794,13 @@ a { color: inherit; }
 }
 .habitat-link .habitat-art { border-radius: var(--r) var(--r) 0 0; }
 .habitat-link .pixel-scene {
-  aspect-ratio: 144 / 77;
-  /* Measure the original 8.4- and 18.9-row fade stops from the new bottom edge. */
-  --preview-fade: linear-gradient(to top, transparent, #000b calc(100% * 8.4 / 77), #000 calc(100% * 18.9 / 77));
+  aspect-ratio: auto;
+  /* Keep the original fade distances within the 102-row artwork. */
+  --preview-fade: linear-gradient(to top, transparent, #000b calc(100% * 8.4 / 102), #000 calc(100% * 18.9 / 102));
   -webkit-mask-image: var(--preview-fade);
   mask-image: var(--preview-fade);
 }
+.habitat-link .scene-label { inset: 13px auto auto 16px; padding: 0; background: none; }
 .habitat-link .pet-meta { padding-top: 3px; }
 .habitat-link .pet-attributes { margin: 0 6px 8px; }
 .habitat-open {
@@ -1032,7 +1017,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 /* Use the same material on the controls inside each screen and sheet. */
 [data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
-  .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select)) {
+  .picker-day, .text-button, .segments, .switch, .species-choice, .field :is(input, select)) {
   border: 0;
   background-color: var(--control-tint);
   background-image: var(--control-glint);
@@ -1159,13 +1144,13 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   [data-glass] { --control-glint: none; --control-tint: #f4f4f4; --control-selected: #eaeaea; --control-shadow: none; }
-  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel) {
+  [data-glass] :is(.tabbar, .round, .sheet, .pet-scene-panel) {
     background: var(--layer);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
   [data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
-    .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select),
+    .picker-day, .text-button, .segments, .switch, .species-choice, .field :is(input, select),
     .list-row, .choice, .switch-row) {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -1697,7 +1682,8 @@ function drawScene(canvas) {
     paintPet(ctx, 4, 5, 1, level, faded, species);
     return;
   }
-  box(0, 0, 144, 83, p.sky);
+  const { height } = canvas;
+  box(0, 0, 144, height, p.sky);
   box(0, 18, 144, 46, p.haze);
   const night = canvas.dataset.palette === 'track';
   if (night) {
@@ -1706,7 +1692,8 @@ function drawScene(canvas) {
     box(111, 7, 6, 7, p.sky);
     for (const [x, y] of [[10, 10], [27, 15], [37, 4], [69, 8], [90, 13], [132, 8]]) box(x, y, 1, 1, '#efe2b9');
   } else {
-    for (const [x, y, w] of [[7, 11, 27], [63, 5, 21], [104, 14, 32]]) {
+    const leftCloudX = height > 83 ? 28 : 7;
+    for (const [x, y, w] of [[leftCloudX, 11, 27], [63, 5, 21], [104, 14, 32]]) {
       box(x, y, w, 3, p.cloud);
       box(x + 5, y - 3, w - 10, 4, p.cloud);
       box(x + 10, y - 5, 9, 3, p.cloud);
@@ -1725,14 +1712,14 @@ function drawScene(canvas) {
     box(x, y + size * 4, size, 3, p.turf);
   };
   [[4, 24, 4], [15, 28, 3], [25, 31, 2], [137, 24, 4], [126, 30, 3], [116, 34, 2]].forEach(([x, y, s]) => tree(x, y, s));
-  box(0, 44, 144, 39, p.land);
-  for (let y = 48; y < 87; y += 3) {
+  box(0, 44, 144, height - 44, p.land);
+  for (let y = 48; y < height; y += 3) {
     const left = 109 - Math.round((y - 47) * 1.72) + (y % 8);
     box(left, y, 144 - left, 3, p.shore);
     box(left + 3, y, 144 - left, 3, p.water);
   }
-  for (const [x, y, w] of [[115, 53, 13], [127, 61, 8], [106, 65, 9], [92, 72, 17], [77, 80, 14], [124, 77, 13], [139, 70, 5]]) box(x, y, w, 1, p.wave);
-  for (const [x, y] of [[6, 53], [11, 69], [22, 50], [25, 76], [38, 63], [45, 51], [55, 69], [16, 80], [84, 51], [102, 44], [1, 76], [67, 76]]) {
+  for (const [x, y, w] of [[115, 53, 13], [127, 61, 8], [106, 65, 9], [92, 72, 17], [77, 80, 14], [124, 77, 13], [139, 70, 5], [105, 89, 13], [54, 96, 15]]) box(x, y, w, 1, p.wave);
+  for (const [x, y] of [[6, 53], [11, 69], [22, 50], [25, 76], [38, 63], [45, 51], [55, 69], [16, 80], [84, 51], [102, 44], [1, 76], [67, 76], [29, 87], [12, 94]]) {
     box(x, y, 4, 1, p.turf);
     box(x + 2, y - 2, 1, 2, p.turf);
     box(x + 1, y - 2, 1, 1, p.lit);
@@ -1766,7 +1753,8 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
   };
   box(0, 0, width, horizon, '#cae5fb');
   box(0, horizon - 13, width, 13, '#e5f0f5');
-  for (const [left, top] of [[.09, .10], [.62, .17], [.39, .27]]) {
+  const leftCloud = !portrait && height > 83 ? .23 : .09;
+  for (const [left, top] of [[leftCloud, .10], [.62, .17], [.39, .27]]) {
     const x = width * left;
     const y = height * top;
     box(x, y, 20, 3, '#f9fcff');
@@ -1925,8 +1913,8 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
   box(petX + 30, petY + 3, 5, 1, p.flower);
 }
 
-function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false } = {}) {
-  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false, height = avatar ? 33 : 83 } = {}) {
+  return `<canvas width="${avatar ? 33 : 144}" height="${height}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
 }
 
 // Precompiled from huashu-design assets/ios_frame.jsx using the frameNode JSX factory.
@@ -2162,6 +2150,7 @@ function bindHabitatGesture({ screen, habitatEntry, scrollArea, getMode, setHabi
     const fromHabitat = getMode();
     const surface = fromHabitat ? habitatEntry : scrollArea;
     if (fromHabitat === null || !surface.contains(event.target)) return;
+    if (fromHabitat && event.target.closest('.pet-scene-details')) return;
     const { clientX, clientY } = event.touches[0];
     drag = { fromHabitat, x: clientX, y: clientY, lastY: clientY, distance: 0, captured: false };
   }, { passive: true });
@@ -2200,6 +2189,7 @@ function bindHabitatGesture({ screen, habitatEntry, scrollArea, getMode, setHabi
     if (drag || fromHabitat === null || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
     const surface = fromHabitat ? habitatEntry : scrollArea;
     if (!surface.contains(event.target) || (!fromHabitat && scrollArea.scrollTop > 1)) return;
+    if (fromHabitat && event.target.closest('.pet-scene-details')) return;
     const direction = fromHabitat ? 1 : -1;
     const pixelsPerUnit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? screen.clientHeight : 1;
     const step = direction * event.deltaY * pixelsPerUnit;
@@ -2383,9 +2373,9 @@ function createPhone(container) {
     habitatEntry.setAttribute('aria-label', '栖息地');
     phoneScreen.append(habitatEntry);
   }
-  let showHabitat = Boolean(habitatEntry) && initial === 'home';
+  let showHabitat = Boolean(habitatEntry) && (initial === 'home' || initial === 'pet');
   let state = demoState('standard');
-  let tab = initial;
+  let tab = showHabitat ? 'home' : initial;
   let overlay = null;
   let scenario = 'standard';
   let week = monday(dateAt(state.now));
@@ -2421,7 +2411,6 @@ function createPhone(container) {
   const getRecord = id => state.records.find(record => record.id === id);
   const today = () => dateAt(state.now);
   const weekday = date => '周' + '日一二三四五六'[new Date(date + 'T00:00:00Z').getUTCDay()];
-  const isPetHabitat = () => Boolean(habitatEntry) && tab === 'pet';
 
   function head(title, sub, action = '', afterTitle = '') {
     return `<header class="app-head"><div>${sub ? `<p class="kicker">${sub}</p>` : ''}<h2>${title}</h2>${afterTitle}</div>${action}</header>`;
@@ -2454,8 +2443,9 @@ function createPhone(container) {
     const { level, hp, name, stage, lives, species, habitat } = details;
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
+    const art = petCanvas(habitatPalette, level, !hp, false, species, habitat, openScene ? { height: 102, centered: true } : undefined);
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
-      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp, false, species, habitat)}<span class="scene-label">${label}</span></div>
+      <div class="habitat-art">${art}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       ${openScene && pet ? petAttributes(pet, species) : ''}
       ${petGrowth(details)}
@@ -2474,44 +2464,42 @@ function createPhone(container) {
 
   function renderHabitat(preserve) {
     if (!habitatEntry) return;
-    const petTab = isPetHabitat();
-    const active = showHabitat || petTab;
-    phoneScreen.toggleAttribute('data-habitat', active);
-    phoneScreen.toggleAttribute('data-habitat-tabs', petTab);
-    habitatEntry.toggleAttribute('data-active', active);
-    habitatEntry.inert = !active || Boolean(overlay) || Boolean(onboarding?.active);
-    if (tab !== 'home' && !petTab) return;
+    phoneScreen.toggleAttribute('data-habitat', showHabitat);
+    habitatEntry.toggleAttribute('data-active', showHabitat);
+    habitatEntry.inert = !showHabitat || Boolean(overlay) || Boolean(onboarding?.active);
+    if (tab !== 'home') return;
     const pet = current();
     const details = petDetails(pet);
     const { name, stage, lives, hp, level, species, habitat, awards } = details;
-    const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
-    habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
+    const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-details')?.scrollTop ?? 0 : 0;
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="pet" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
-        <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
+        <p>我的宠物</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
-        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
-        ${!petTab && pet ? petGrowth(details) : ''}
+        ${pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
         ${pet ? petAttributes(pet, species) : ''}
       </header>
-      ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">
-        <header class="pet-panel-header"><h3>经验与血量</h3>
-          ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
-        ${petGrowth(details)}
-        ${petOptions(pet)}
-        ${petTimeline(pet, awards)}
-      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
+      <section class="pet-scene-panel" aria-label="经验与血量">
+        <div class="pet-scene-details">
+          <header class="pet-panel-header"><h3>经验与血量</h3>
+            ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
+          ${petGrowth(details)}
+          ${petOptions(pet)}
+          ${petTimeline(pet, awards)}
+        </div>
+        <button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>
+      </section>`;
     drawScene(habitatEntry.querySelector('canvas'));
-    const panel = habitatEntry.querySelector('.pet-scene-panel');
-    if (panel) panel.scrollTop = panelOffset;
+    habitatEntry.querySelector('.pet-scene-details').scrollTop = panelOffset;
   }
 
   function setHabitat(visible) {
-    if (showHabitat === visible) return;
+    if (tab === 'home' && showHabitat === visible) return;
+    tab = 'home';
     showHabitat = visible;
     render();
-    const target = visible ? habitatEntry.querySelector('button') : scrollArea.querySelector('.app-head h2');
+    const target = visible ? habitatEntry.querySelector('.habitat-continue') : scrollArea.querySelector('.app-head h2');
     if (!visible) target.tabIndex = -1;
     target.focus({ preventScroll: true });
   }
@@ -2867,11 +2855,11 @@ function createPhone(container) {
     const offset = preserve ? scrollArea.scrollTop : 0;
     const heatmapOffset = preserve ? scrollArea.querySelector('.heat-weeks')?.scrollLeft : undefined;
     app.dataset.screen = tab;
-    scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
+    scrollArea.innerHTML = screens[tab]();
     positionHeatmap(heatmapOffset);
-    scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay) || Boolean(onboarding?.active);
-    tabbar.inert = Boolean(overlay) || showHabitat || Boolean(onboarding?.active);
-    const index = tabButtons.findIndex(button => button.dataset.value === tab);
+    scrollArea.inert = showHabitat || Boolean(overlay) || Boolean(onboarding?.active);
+    tabbar.inert = Boolean(overlay) || Boolean(onboarding?.active);
+    const index = tabButtons.findIndex(button => button.dataset.value === (showHabitat ? 'pet' : tab));
     tabButtons.forEach((button, i) => {
       if (i === index) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
@@ -2918,7 +2906,8 @@ function createPhone(container) {
     restoreFocus = null;
     render({ preserve: true });
     if (focus) {
-      const target = [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
+      const focusArea = showHabitat ? habitatEntry : outlet;
+      const target = [...focusArea.querySelectorAll('[data-action]')].find(button =>
         button.dataset.action === focus.action && button.dataset.value === focus.value
       );
       const accessibleTarget = target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target ?? scrollArea.querySelector('.app-head h2');
@@ -2950,8 +2939,9 @@ function createPhone(container) {
     selectedDay = null;
     logFilter = 'all';
     logDay = null;
-    tab = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
-    showHabitat = Boolean(habitatEntry) && nextScenario === 'standard' && tab === 'home';
+    const destination = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
+    showHabitat = Boolean(habitatEntry) && (destination === 'pet' || (nextScenario === 'standard' && destination === 'home'));
+    tab = showHabitat ? 'home' : destination;
     overlay = null;
     restoreFocus = null;
     notice = '';
@@ -2977,10 +2967,13 @@ function createPhone(container) {
 
   const handle = {
     tab(value) {
-      if (tab !== value) showHabitat = false;
-      tab = value;
       notice = '';
-      render();
+      if (habitatEntry && value === 'pet') setHabitat(true);
+      else {
+        tab = value;
+        showHabitat = false;
+        render();
+      }
       tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
     },
     habitat() { setHabitat(true); },

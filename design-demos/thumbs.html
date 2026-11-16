@@ -205,7 +205,8 @@ function drawScene(canvas) {
     paintPet(ctx, 4, 5, 1, level, faded, species);
     return;
   }
-  box(0, 0, 144, 83, p.sky);
+  const { height } = canvas;
+  box(0, 0, 144, height, p.sky);
   box(0, 18, 144, 46, p.haze);
   const night = canvas.dataset.palette === 'track';
   if (night) {
@@ -214,7 +215,8 @@ function drawScene(canvas) {
     box(111, 7, 6, 7, p.sky);
     for (const [x, y] of [[10, 10], [27, 15], [37, 4], [69, 8], [90, 13], [132, 8]]) box(x, y, 1, 1, '#efe2b9');
   } else {
-    for (const [x, y, w] of [[7, 11, 27], [63, 5, 21], [104, 14, 32]]) {
+    const leftCloudX = height > 83 ? 28 : 7;
+    for (const [x, y, w] of [[leftCloudX, 11, 27], [63, 5, 21], [104, 14, 32]]) {
       box(x, y, w, 3, p.cloud);
       box(x + 5, y - 3, w - 10, 4, p.cloud);
       box(x + 10, y - 5, 9, 3, p.cloud);
@@ -233,14 +235,14 @@ function drawScene(canvas) {
     box(x, y + size * 4, size, 3, p.turf);
   };
   [[4, 24, 4], [15, 28, 3], [25, 31, 2], [137, 24, 4], [126, 30, 3], [116, 34, 2]].forEach(([x, y, s]) => tree(x, y, s));
-  box(0, 44, 144, 39, p.land);
-  for (let y = 48; y < 87; y += 3) {
+  box(0, 44, 144, height - 44, p.land);
+  for (let y = 48; y < height; y += 3) {
     const left = 109 - Math.round((y - 47) * 1.72) + (y % 8);
     box(left, y, 144 - left, 3, p.shore);
     box(left + 3, y, 144 - left, 3, p.water);
   }
-  for (const [x, y, w] of [[115, 53, 13], [127, 61, 8], [106, 65, 9], [92, 72, 17], [77, 80, 14], [124, 77, 13], [139, 70, 5]]) box(x, y, w, 1, p.wave);
-  for (const [x, y] of [[6, 53], [11, 69], [22, 50], [25, 76], [38, 63], [45, 51], [55, 69], [16, 80], [84, 51], [102, 44], [1, 76], [67, 76]]) {
+  for (const [x, y, w] of [[115, 53, 13], [127, 61, 8], [106, 65, 9], [92, 72, 17], [77, 80, 14], [124, 77, 13], [139, 70, 5], [105, 89, 13], [54, 96, 15]]) box(x, y, w, 1, p.wave);
+  for (const [x, y] of [[6, 53], [11, 69], [22, 50], [25, 76], [38, 63], [45, 51], [55, 69], [16, 80], [84, 51], [102, 44], [1, 76], [67, 76], [29, 87], [12, 94]]) {
     box(x, y, 4, 1, p.turf);
     box(x + 2, y - 2, 1, 2, p.turf);
     box(x + 1, y - 2, 1, 1, p.lit);
@@ -274,7 +276,8 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
   };
   box(0, 0, width, horizon, '#cae5fb');
   box(0, horizon - 13, width, 13, '#e5f0f5');
-  for (const [left, top] of [[.09, .10], [.62, .17], [.39, .27]]) {
+  const leftCloud = !portrait && height > 83 ? .23 : .09;
+  for (const [left, top] of [[leftCloud, .10], [.62, .17], [.39, .27]]) {
     const x = width * left;
     const y = height * top;
     box(x, y, 20, 3, '#f9fcff');
@@ -433,8 +436,8 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
   box(petX + 30, petY + 3, 5, 1, p.flower);
 }
 
-function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false } = {}) {
-  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false, height = avatar ? 33 : 83 } = {}) {
+  return `<canvas width="${avatar ? 33 : 144}" height="${height}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
 }
 
 document.querySelectorAll('canvas').forEach(drawScene);</script></body></html>

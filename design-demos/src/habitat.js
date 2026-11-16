@@ -39,6 +39,7 @@ function bindHabitatGesture({ screen, habitatEntry, scrollArea, getMode, setHabi
     const fromHabitat = getMode();
     const surface = fromHabitat ? habitatEntry : scrollArea;
     if (fromHabitat === null || !surface.contains(event.target)) return;
+    if (fromHabitat && event.target.closest('.pet-scene-details')) return;
     const { clientX, clientY } = event.touches[0];
     drag = { fromHabitat, x: clientX, y: clientY, lastY: clientY, distance: 0, captured: false };
   }, { passive: true });
@@ -77,6 +78,7 @@ function bindHabitatGesture({ screen, habitatEntry, scrollArea, getMode, setHabi
     if (drag || fromHabitat === null || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
     const surface = fromHabitat ? habitatEntry : scrollArea;
     if (!surface.contains(event.target) || (!fromHabitat && scrollArea.scrollTop > 1)) return;
+    if (fromHabitat && event.target.closest('.pet-scene-details')) return;
     const direction = fromHabitat ? 1 : -1;
     const pixelsPerUnit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? screen.clientHeight : 1;
     const step = direction * event.deltaY * pixelsPerUnit;

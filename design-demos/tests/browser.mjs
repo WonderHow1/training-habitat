@@ -154,7 +154,7 @@ async function swipeWorkout(id, direction = 'left', touch = false) {
 
 async function demoDirection(index, glass = false) {
   const name = glass ? 'ios-prototype' : `dir-${index}`;
-  const habitatGrowth = lead('.habitat-entry-header .growth');
+  const habitatGrowth = lead('.pet-scene-panel .growth');
   await navigate(name + '.html', 1440, 1100);
   assert.equal(await evaluate('document.querySelectorAll(".phone-app").length'), 4);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
@@ -317,8 +317,8 @@ async function demoDirection(index, glass = false) {
       const portrait = JSON.stringify(lead('.habitat-landscape'));
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.species`), 'dog');
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'gym');
-      await includes(lead('.pet-attributes'), '0 天');
-      await includes(lead('.pet-attributes'), '6 公斤');
+      await includes(lead('.habitat-entry .pet-attributes'), '0 天');
+      await includes(lead('.habitat-entry .pet-attributes'), '6 公斤');
       await clickLead('habitat-settings');
       await verifyCenteredHabitatChoices(lead('.sheet .habitat-choice-preview canvas'), lead('.sheet select[name="habitat"]'));
       await submit();
@@ -761,32 +761,44 @@ async function verifyGlass() {
     return testNav === updated && updated.querySelector('[aria-current]').dataset.value === 'pet' &&
       updated.style.getPropertyValue('--tab-index') === '3';
   })()`));
-  assert.ok(await evaluate(`testNav.getAnimations({ subtree: true }).some(a => a.transitionProperty === 'transform')`));
+  assert.ok(await evaluate(`(() => {
+    const indicator = getComputedStyle(testNav, '::before');
+    return indicator.transitionProperty === 'transform' && parseFloat(indicator.transitionDuration) > 0;
+  })()`));
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
   await includes(lead('.habitat-entry-header'), '我的宠物');
   await includes(lead('.habitat-entry-header'), '领养于 11月9日');
   await assertPetCentered(lead('.habitat-landscape'));
-  await includes(lead('.pet-attributes > div:first-child'), '年龄7 天');
-  await includes(lead('.pet-attributes > div:last-child'), '体重3.2 公斤');
+  await includes(lead('.habitat-entry .pet-attributes > div:first-child'), '年龄7 天');
+  await includes(lead('.habitat-entry .pet-attributes > div:last-child'), '体重3.2 公斤');
   await includes(lead('.pet-scene-panel'), '经验与血量');
   assert.ok(await evaluate(`(() => {
     const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
     const scroll = document.querySelector(${JSON.stringify(lead('.app-scroll'))});
-    return !scene.querySelector('.habitat-continue') && !scroll.firstElementChild && !testNav.inert;
+    return scene.querySelector('.habitat-continue') && scroll.querySelector('.today-task') && scroll.inert && !testNav.inert;
   })()`), 'The full-screen scene contains the pet controls and leaves the tabs accessible');
   await settleHabitatAnimation();
   await screenshot('ios-prototype-pet');
+  const historyPoint = await evaluate(`(() => {
+    const box = document.querySelector(${JSON.stringify(lead('.pet-scene-details'))}).getBoundingClientRect();
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+  })()`);
+  await cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', ...historyPoint, deltaY: 95, deltaX: 0 });
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.ios-screen[data-habitat-dragging]'))})`), null);
   await clickLead('detail', 'old');
   await includes(lead('.sheet h3'), '校园夜跑');
   await clickLead('close');
   assert.ok(await evaluate('document.activeElement.closest(".pet-scene-panel") && document.activeElement.dataset.value === "old"'));
   assert.equal(await inHabitat(), true, 'Closing an event detail stays in the full-screen pet scene');
+  const activeScene = JSON.stringify(lead('.habitat-entry[data-active]'));
+  const petScene = await evaluate(`document.querySelector(${activeScene}).innerHTML`);
   await clickLead('tab', 'week');
   await clickLead('tab', 'pet');
   await clickLead('tab', 'home');
   assert.equal(await inHabitat(), false, 'Returning to the Today tab keeps the training view');
   await click(lead('.habitat-open'), .88);
   assert.equal(await inHabitat(), true, 'The bottom of the pet card opens the full-screen view');
+  assert.equal(await evaluate(`document.querySelector(${activeScene}).innerHTML`), petScene, 'Today and Pet open the same scene and controls');
   await enterToday();
   await click(lead('.habitat-open'), .3);
   assert.equal(await inHabitat(), true, 'The pet image opens the full-screen view');
@@ -816,8 +828,8 @@ async function verifyGlass() {
   await clickLead('tab', 'pet');
   await change('#demo-time', '2026-11-17T00:00');
   await click('#advance');
-  await includes(lead('.pet-attributes'), '8 天');
-  await includes(lead('.pet-attributes'), '3.2 公斤');
+  await includes(lead('.habitat-entry .pet-attributes'), '8 天');
+  await includes(lead('.habitat-entry .pet-attributes'), '3.2 公斤');
   await clickLead('tab', 'home');
   await includes(lead('.habitat-link .pet-attributes'), '年龄8 天');
   await clickLead('habitat');
@@ -1045,6 +1057,7 @@ async function verifyOpenSurfaces() {
       '.round', '.board-controls button', '.record-actions .secondary', '.heat-cell'
     ];
     const preview = document.querySelector('.habitat-link .pixel-scene');
+    const label = getComputedStyle(document.querySelector('.habitat-link .scene-label'));
     const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
     const blockDividers = ['.board-header', '.board-footer p', '.week-summary', '.plan-list .list-row', '.record-feed .list-row', '.pet-scene-panel .list-row'];
     const hasOpenSpacing = blockDividers.every(selector => {
@@ -1064,11 +1077,19 @@ async function verifyOpenSurfaces() {
       .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
     const cardFade = getComputedStyle(preview).maskImage;
     const [midpoint, start] = [...cardFade.matchAll(/([0-9.]+)%/g)].map(match => Number(match[1]));
-    const fadeMovesWithArtwork = Math.abs(preview.clientHeight - preview.clientWidth * 77 / 144) < 1 &&
+    const fadeMovesWithArtwork = preview.height === 102 && Math.abs(preview.clientHeight - preview.clientWidth * 102 / 144) < 1 &&
       Math.abs(preview.clientHeight * midpoint / 100 - preview.clientWidth * 8.4 / 144) < 1 &&
       Math.abs(preview.clientHeight * start / 100 - preview.clientWidth * 18.9 / 144) < 1;
+    const ctx = preview.getContext('2d');
+    const ground = [...ctx.getImageData(0, 101, 1, 1).data];
+    const water = [...ctx.getImageData(143, 101, 1, 1).data];
+    const paintedBottom = ground[1] > ground[0] && ground[1] > ground[2] && water[2] > water[1] && water[3] === 255;
+    const sky = ctx.getImageData(0, 0, 1, 1).data;
+    const skyBehindLabel = ctx.getImageData(20, 11, 1, 1).data.every((channel, index) => channel === sky[index]);
+    const plainLabel = label.backgroundColor === 'rgba(0, 0, 0, 0)' && label.backgroundImage === 'none' &&
+      label.boxShadow === 'none' && label.backdropFilter === 'none' && label.padding === '0px';
     return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
-      cardFade.includes('linear-gradient(to top') && fadeMovesWithArtwork &&
+      cardFade.includes('linear-gradient(to top') && fadeMovesWithArtwork && paintedBottom && skyBehindLabel && plainLabel &&
       portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap && compactWeek;
   })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
 }

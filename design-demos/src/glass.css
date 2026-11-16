@@ -265,12 +265,7 @@
   overscroll-behavior-y: contain;
 }
 .ios-screen:has(.habitat-entry) .app-head h2[tabindex="-1"]:focus { outline: none; }
-.ios-screen:not([data-habitat-tabs]):has(.habitat-entry) .tabbar {
-  opacity: calc(1 - var(--habitat-progress));
-  transition: opacity 280ms var(--glass-ease);
-}
-[data-glass] .ios-screen[data-habitat-tabs] .tabbar { z-index: 11; }
-.ios-screen[data-habitat-tabs] .habitat-entry { touch-action: auto; }
+[data-glass] .ios-screen:has(.habitat-entry) .tabbar { z-index: 11; }
 
 .habitat-entry {
   position: absolute;
@@ -283,7 +278,6 @@
   opacity: var(--habitat-progress);
   border-radius: calc(30px * (1 - var(--habitat-progress)));
   transition: transform 340ms var(--glass-ease), opacity 300ms var(--glass-ease), border-radius 340ms var(--glass-ease);
-  touch-action: none;
   user-select: none;
 }
 .habitat-entry:not([data-active]) { pointer-events: none; }
@@ -295,6 +289,7 @@
   height: 100%;
   object-fit: cover;
   image-rendering: pixelated;
+  touch-action: none;
 }
 .habitat-entry-header {
   position: absolute;
@@ -312,16 +307,8 @@
 }
 .habitat-entry-status { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 680; }
 [data-glass] .growth-bar i { background: #a8a8a8; }
-.habitat-entry-header .growth {
-  width: 180px;
-  margin-top: 11px;
-  padding-inline: 0;
-}
 .experience strong { font-size: 12px; white-space: nowrap; }
 .experience span { font-variant-numeric: tabular-nums; }
-.habitat-entry-header .growth.experience { width: 212px; }
-.habitat-entry-header .growth-bar { background: #5e5e5e3e; }
-.habitat-entry-header .growth span { color: inherit; font-weight: 650; }
 .habitat-entry-header .pet-born {
   margin-top: 8px;
   color: var(--muted);
@@ -351,14 +338,15 @@
   position: absolute;
   inset: auto 12px 106px;
   max-height: min(37%, 252px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 12px 13px 8px;
   border-radius: 24px;
   background: #ffffffed;
   box-shadow: var(--glass-shadow);
 }
+.pet-scene-details { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .pet-scene-panel {
     background: #ffffffdf;
@@ -394,26 +382,22 @@
 .species-choice .avatar { display: block; width: 44px; max-width: 100%; }
 .habitat-choice-preview { overflow: hidden; border-radius: 13px; margin-bottom: 12px; }
 .habitat-continue {
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
   display: inline-flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  min-height: 46px;
-  white-space: nowrap;
+  flex: none;
+  align-self: center;
+  gap: 5px;
+  padding: 4px 10px;
+  min-height: 36px;
   border: 0;
-  border-radius: 999px;
-  background: #f8f8f8f5;
-  color: var(--ink);
-  box-shadow: var(--glass-shadow);
-  font-size: 14px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 700;
-  -webkit-backdrop-filter: blur(14px) saturate(125%);
-  backdrop-filter: blur(14px) saturate(125%);
 }
+.habitat-continue:hover { color: var(--ink); }
 .habitat-continue svg { transform: rotate(-90deg); }
 .habitat.habitat-link {
   position: relative;
@@ -421,12 +405,13 @@
 }
 .habitat-link .habitat-art { border-radius: var(--r) var(--r) 0 0; }
 .habitat-link .pixel-scene {
-  aspect-ratio: 144 / 77;
-  /* Measure the original 8.4- and 18.9-row fade stops from the new bottom edge. */
-  --preview-fade: linear-gradient(to top, transparent, #000b calc(100% * 8.4 / 77), #000 calc(100% * 18.9 / 77));
+  aspect-ratio: auto;
+  /* Keep the original fade distances within the 102-row artwork. */
+  --preview-fade: linear-gradient(to top, transparent, #000b calc(100% * 8.4 / 102), #000 calc(100% * 18.9 / 102));
   -webkit-mask-image: var(--preview-fade);
   mask-image: var(--preview-fade);
 }
+.habitat-link .scene-label { inset: 13px auto auto 16px; padding: 0; background: none; }
 .habitat-link .pet-meta { padding-top: 3px; }
 .habitat-link .pet-attributes { margin: 0 6px 8px; }
 .habitat-open {
@@ -643,7 +628,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 /* Use the same material on the controls inside each screen and sheet. */
 [data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
-  .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select)) {
+  .picker-day, .text-button, .segments, .switch, .species-choice, .field :is(input, select)) {
   border: 0;
   background-color: var(--control-tint);
   background-image: var(--control-glint);
@@ -770,13 +755,13 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   [data-glass] { --control-glint: none; --control-tint: #f4f4f4; --control-selected: #eaeaea; --control-shadow: none; }
-  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel) {
+  [data-glass] :is(.tabbar, .round, .sheet, .pet-scene-panel) {
     background: var(--layer);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
   [data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
-    .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select),
+    .picker-day, .text-button, .segments, .switch, .species-choice, .field :is(input, select),
     .list-row, .choice, .switch-row) {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
