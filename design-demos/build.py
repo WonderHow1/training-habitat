@@ -69,7 +69,8 @@ def build_direction(index, direction, *, glass=False):
 </div>
 <main id="board">{phones}</main>
 <footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。{footer}</p></footer>
-<script>{JS}</script></body></html>
+<script>{(SRC / "heatmap.js").read_text() if glass else ""}
+{JS}</script></body></html>
 """
 
 

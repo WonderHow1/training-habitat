@@ -585,7 +585,76 @@ a { color: inherit; }
   backdrop-filter: blur(14px) saturate(125%);
 }
 .habitat-continue svg { transform: rotate(-90deg); }
-[data-glass] button.scene-label { border: solid 1px #526d5f47; min-height: 34px; padding-inline: 10px; }
+.habitat-link { position: relative; }
+.habitat-open {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+.habitat-open:hover { box-shadow: inset 0 0 0 1px #63947970; }
+.habitat-open:active { background: #285a4615; }
+
+.heatmap {
+  --heat-size: 14px;
+  margin-bottom: 14px;
+  padding: 13px 12px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--layer);
+}
+.heatmap-head, .heatmap-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 5px;
+}
+.heatmap-head h3 { font-size: 16px; line-height: 1.3; letter-spacing: -.035em; }
+.heatmap-head p, .heatmap-footer p { color: var(--muted); font-size: 12px; }
+.heatmap-head strong { color: var(--ink); font-weight: 750; }
+.heat-calendar {
+  display: grid;
+  grid-template-columns: 13px repeat(12, minmax(0, 1fr));
+  gap: 3px;
+  max-width: 225px;
+  margin: 8px auto 2px;
+}
+.heat-week {
+  display: grid;
+  grid-template-rows: 16px repeat(7, var(--heat-size));
+  gap: 3px;
+  justify-items: center;
+  align-items: center;
+  min-width: 0;
+}
+.heat-month {
+  justify-self: start;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+.heat-weekdays { color: var(--muted); font-size: 10px; justify-items: start; }
+.heat-cell, .heat-legend i {
+  width: var(--heat-size);
+  height: var(--heat-size);
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid #233f2910;
+  border-radius: 3px;
+}
+.heat-0 { background: #e9efe7; }
+.heat-1 { background: #b3d6ac; }
+.heat-2 { background: #649a70; }
+.heat-3 { background: #2c6549; }
+.heat-future { visibility: hidden; }
+button.heat-cell:hover, button.heat-cell[aria-pressed="true"] { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+button.heat-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.heatmap-footer { min-height: 36px; }
+.heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding-inline: 4px; }
+.heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
+.heat-legend i { --heat-size: 10px; }
 
 @media (max-width: 730px) {
   body[data-glass] { display: flex; flex-direction: column; }
@@ -645,7 +714,71 @@ a { color: inherit; }
 </div>
 <main id="board"><section class="device" id="view-home" data-phone="home"><h2>今天</h2></section><section class="device" id="view-week" data-phone="week"><h2>一周计划</h2></section><section class="device" id="view-log" data-phone="log"><h2>训练记录</h2></section><section class="device" id="view-pet" data-phone="pet"><h2>宠物与成长</h2></section></main>
 <footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。</p></footer>
-<script>const DAY = 86_400_000;
+<script>const HEATMAP_WEEKS = 12;
+
+function sampleTrainingHistory() {
+  const anchor = DEMO_AT.split('T')[0];
+  const sampleDays = [
+    [-74, 1], [-72, 1], [-69, 2], [-64, 1], [-60, 2], [-56, 1], [-51, 3],
+    [-45, 1], [-42, 2], [-39, 1], [-35, 1], [-32, 2], [-29, 1], [-26, 1],
+    [-23, 1], [-21, 2], [-19, 1], [-18, 3], [-16, 1], [-13, 2], [-10, 1], [-8, 1]
+  ];
+  return sampleDays.flatMap(([offset, count], index) => Array.from({ length: count }, (_, session) => ({
+    id: 'history-' + index + '-' + session,
+    date: dayPlus(anchor, offset),
+    start: ['17:50', '19:15', '21:00'][session],
+    minutes: [20, 25, 15][(index + session) % 3],
+    title: sports[(index + session) % 4],
+    source: (index + session) % 3 === 0 ? 'device' : 'manual'
+  })));
+}
+
+function heatmapStart(today) {
+  return dayPlus(monday(today), (1 - HEATMAP_WEEKS) * 7);
+}
+
+function trainingHeatmap(records, today, selection, id) {
+  const start = heatmapStart(today);
+  const counts = new Map();
+  let total = 0;
+  for (const { date } of records) {
+    if (date < start || date > today) continue;
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+    total++;
+  }
+
+  const weeks = Array.from({ length: HEATMAP_WEEKS }, (_, week) => {
+    const weekStart = dayPlus(start, week * 7);
+    const month = dayPlus(weekStart, 3).slice(5, 7);
+    const showMonth = week === 0 || month !== dayPlus(weekStart, -4).slice(5, 7);
+    const cells = Array.from({ length: 7 }, (_, weekday) => {
+      const date = dayPlus(weekStart, weekday);
+      if (date > today) return '<span class="heat-cell heat-future" aria-hidden="true"></span>';
+      const count = counts.get(date) ?? 0;
+      const label = dateLabel(date) + ' · ' + count + ' 次训练';
+      if (!count) return `<span class="heat-cell heat-0" title="${label}" aria-hidden="true"></span>`;
+      return `<button type="button" class="heat-cell heat-${Math.min(3, count)}" data-action="log-day" data-value="${date}"
+        title="${label}" aria-label="${label}" aria-pressed="${selection === date}"></button>`;
+    }).join('');
+    return `<div class="heat-week"><span class="heat-month">${showMonth ? Number(month) + '月' : ''}</span>${cells}</div>`;
+  }).join('');
+
+  const titleId = id + '-heatmap-title';
+  return `<section class="heatmap" aria-labelledby="${titleId}">
+    <header class="heatmap-head"><h3 id="${titleId}">训练热力图</h3><p>近 ${HEATMAP_WEEKS} 周 <span>·</span> <strong>${total}</strong> 次</p></header>
+    <div class="heat-calendar">
+      <div class="heat-week heat-weekdays" aria-hidden="true"><span></span><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span></span></div>
+      ${weeks}
+    </div>
+    <footer class="heatmap-footer">
+      <p>${selection ? dateLabel(selection) + ' · ' + counts.get(selection) + ' 次' : '点击有训练的日期'}</p>
+      ${selection ? button('查看全部日期', 'log-day', 'text-button') :
+        '<div class="heat-legend" aria-label="颜色由浅到深表示训练次数由少到多"><span>少</span><i class="heat-0"></i><i class="heat-1"></i><i class="heat-2"></i><i class="heat-3"></i><span>多</span></div>'}
+    </footer>
+  </section>`;
+}
+
+const DAY = 86_400_000;
 const DEMO_AT = '2026-11-16T20:00';
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const sports = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸', '户外跑步', '其他训练'];
@@ -1324,6 +1457,12 @@ const heart = filled => `<svg width="19" height="17" viewBox="0 0 11 10" aria-hi
 const orderByDate = (a, b) => a.date.localeCompare(b.date);
 const clocks = date => date.split('T');
 
+function demoState(scenario) {
+  const state = seed(scenario);
+  if (usesGlass && scenario !== 'onboarding') state.records.push(...sampleTrainingHistory());
+  return state;
+}
+
 function createPhone(initial) {
   const phone = iosFrame();
   const outlet = phone.querySelector('.ios-content');
@@ -1343,13 +1482,14 @@ function createPhone(initial) {
     phoneScreen.append(habitatEntry);
   }
   let showHabitat = Boolean(habitatEntry) && (initial === 'home' || initial === 'pet');
-  let state = seed();
+  let state = demoState('standard');
   let tab = initial;
   let overlay = null;
   let scenario = 'standard';
   let week = monday(dateAt(state.now));
   let selectedDay = null;
   let logFilter = 'all';
+  let logDay = null;
   let notice = '';
   let restoreFocus = null;
   let clickTrigger = null;
@@ -1378,11 +1518,12 @@ function createPhone(initial) {
   function profile(pet, full = false) {
     const { count, level, hp, name, stage, lives } = petDetails(pet);
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
-    const sceneLabel = habitatEntry && tab === 'home' ? button(label, 'habitat', 'scene-label') : `<span class="scene-label">${label}</span>`;
-    return `<section class="habitat ${full ? 'expanded' : ''}">
-      <div class="habitat-art">${petCanvas(theme, level, !hp)}${sceneLabel}</div>
+    const openScene = habitatEntry && tab === 'home';
+    return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
+      <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       <div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>
+      ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
     </section>`;
   }
 
@@ -1471,7 +1612,8 @@ function createPhone(initial) {
 
   function logged() {
     const options = [['all', '全部'], ['manual', '手动'], ['device', '设备']];
-    const entries = state.records.filter(record => logFilter === 'all' || logFilter === record.source)
+    const records = state.records.filter(record => logFilter === 'all' || logFilter === record.source);
+    const entries = records.filter(record => !logDay || logDay === record.date)
       .sort((a, b) => bj(b.date, b.start) - bj(a.date, a.start));
     const sourceLabel = source => source === 'device' ? '设备' : '手动';
     const rows = entries.map((record, index) => {
@@ -1482,6 +1624,7 @@ function createPhone(initial) {
       <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span></button>`;
     }).join('');
     return head('训练记录', '训练历史', round('plus', '手动记录', 'manual')) +
+      (usesGlass ? trainingHeatmap(records, today(), logDay, initial) : '') +
       `<div class="record-actions">${button(icon('plus', 20) + '手动记录', 'manual', 'secondary')}${button(icon('watch', 20) + '导入设备', 'import', 'primary')}</div>
       <div class="segments" aria-label="按来源筛选">${options.map(([value, label]) => `<button type="button" data-action="filter" data-value="${value}" aria-pressed="${value === logFilter}">${label}</button>`).join('')}</div>
       <section class="record-feed">${rows || '<p class="empty-copy">暂无此来源的训练记录</p>'}</section>`;
@@ -1687,7 +1830,7 @@ function createPhone(initial) {
 
   function load(nextScenario) {
     scenario = nextScenario;
-    state = seed(nextScenario === 'no-plan' ? 'standard' : nextScenario);
+    state = demoState(nextScenario === 'no-plan' ? 'standard' : nextScenario);
     if (nextScenario === 'no-plan') {
       state.now = bj('2026-11-17', '20:00');
       refresh(state);
@@ -1695,6 +1838,7 @@ function createPhone(initial) {
     week = monday(today());
     selectedDay = null;
     logFilter = 'all';
+    logDay = null;
     tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
     showHabitat = Boolean(habitatEntry) && (nextScenario === 'death' ||
       (nextScenario === 'standard' && (tab === 'home' || tab === 'pet')));
@@ -1739,7 +1883,18 @@ function createPhone(initial) {
     previous() { week = dayPlus(week, -7); selectedDay = null; render(); outlet.querySelector('[data-action="previous"]').focus(); },
     next() { week = dayPlus(week, 7); selectedDay = null; render(); outlet.querySelector('[data-action="next"]').focus(); },
     day(value) { selectedDay = value === selectedDay ? null : (value || null); render({ preserve: true }); },
-    filter(value) { logFilter = value; render({ preserve: true }); outlet.querySelector('[aria-pressed="true"]').focus(); },
+    filter(value) {
+      logFilter = value;
+      logDay = null;
+      render({ preserve: true });
+      outlet.querySelector('[data-action="filter"][aria-pressed="true"]').focus({ preventScroll: true });
+    },
+    'log-day'(value) {
+      const previous = value || logDay;
+      logDay = value && logDay !== value ? value : null;
+      render({ preserve: true });
+      outlet.querySelector(`[data-action="log-day"][data-value="${previous}"]`)?.focus({ preventScroll: true });
+    },
     reminders() {
       state.reminders = !state.reminders;
       const control = layers.querySelector('[role="switch"]');
@@ -1847,6 +2002,7 @@ function createPhone(initial) {
     const time = bj(...clocks(date));
     if (!Number.isFinite(time) || time < state.now) return false;
     state.now = time;
+    if (logDay && logDay < heatmapStart(today())) logDay = null;
     refresh(state);
     overlay = null;
     restoreFocus = null;

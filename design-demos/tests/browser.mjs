@@ -80,7 +80,7 @@ async function screenshot(name) {
   const { data } = await cmd('Page.captureScreenshot', { format: 'png', fromSurface: true });
   writeFileSync(join(output, name + '.png'), Buffer.from(data, 'base64'));
 }
-async function click(selector) {
+async function click(selector, verticalPosition = .5) {
   // CDP dispatches a real mouse click at the control. Center the control inside the viewport first.
   const [{ x, y }, ...rest] = await evaluate(`(async () => {
     const el = document.querySelector(${JSON.stringify(selector)});
@@ -90,7 +90,7 @@ async function click(selector) {
     el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
-    const y = r.top + r.height / 2;
+    const y = r.top + r.height * ${verticalPosition};
     return [{ x, y }, el.contains(document.elementFromPoint(x, y))];
   })()`).then(answer => {
     assert.ok(answer.length, 'Missing control: ' + selector);
@@ -159,6 +159,7 @@ async function demoDirection(index, glass = false) {
   assert.equal(await evaluate('document.querySelector(\'[data-phone="week"] .week-total strong\').textContent.trim()'), '0 / 3');
   await clickLead('tab', 'log');
   await includes(lead('.record-feed'), '校园夜跑');
+  if (glass) await verifyHeatmapAfterSaving();
   await clickLead('import');
   await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
   await submit();
@@ -235,6 +236,32 @@ async function habitatPoint() {
     const rect = document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getBoundingClientRect();
     return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height * 0.62) };
   })()`);
+}
+
+async function verifyHeatmapAfterSaving() {
+  const cell = lead(act('log-day', '2026-11-16'));
+  const feed = lead('.record-feed .list-row');
+  const countRows = () => evaluate(`document.querySelectorAll(${JSON.stringify(feed)}).length`);
+  const allRows = await countRows();
+  assert.ok(allRows > 4, 'The heatmap has a populated sample history');
+  await includes(lead('.heatmap-head strong'), String(allRows));
+  const months = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.heat-month'))})].map(label => label.textContent).filter(Boolean)`);
+  assert.deepEqual(months, ['9月', '10月', '11月']);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).title`), '11月16日 · 1 次训练');
+  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead('.heatmap'))}).nextElementSibling.classList.contains('record-actions')`));
+  await click(cell);
+  assert.equal(await countRows(), 1, 'Selecting a date filters the history to that day');
+  await includes(feed, '校园夜跑');
+  await click(lead('.heatmap-footer [data-action="log-day"]'));
+  assert.equal(await countRows(), allRows);
+  await clickLead('filter', 'device');
+  assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(cell)}))`), false);
+  await clickLead('log-day', '2026-11-14');
+  assert.equal(await countRows(), 1);
+  await includes(feed, '设备');
+  await clickLead('filter', 'all');
+  assert.equal(await countRows(), allRows);
+  await screenshot('ios-prototype-heatmap');
 }
 
 async function verifySwipe() {
@@ -334,8 +361,11 @@ async function verifyGlass() {
   await clickLead('tab', 'pet');
   await clickLead('tab', 'home');
   assert.equal(await inHabitat(), false, 'Returning to the Today tab keeps the training view');
-  await clickLead('habitat');
-  assert.equal(await inHabitat(), true, 'The habitat label reopens the full-screen view');
+  await click(lead('.habitat-open'), .88);
+  assert.equal(await inHabitat(), true, 'The bottom of the pet card opens the full-screen view');
+  await enterToday();
+  await click(lead('.habitat-open'), .3);
+  assert.equal(await inHabitat(), true, 'The pet image opens the full-screen view');
   await enterToday();
   await clickLead('settings');
   const toggle = lead('[role="switch"]');

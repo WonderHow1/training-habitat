@@ -201,7 +201,76 @@
   backdrop-filter: blur(14px) saturate(125%);
 }
 .habitat-continue svg { transform: rotate(-90deg); }
-[data-glass] button.scene-label { border: solid 1px #526d5f47; min-height: 34px; padding-inline: 10px; }
+.habitat-link { position: relative; }
+.habitat-open {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+.habitat-open:hover { box-shadow: inset 0 0 0 1px #63947970; }
+.habitat-open:active { background: #285a4615; }
+
+.heatmap {
+  --heat-size: 14px;
+  margin-bottom: 14px;
+  padding: 13px 12px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--layer);
+}
+.heatmap-head, .heatmap-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 5px;
+}
+.heatmap-head h3 { font-size: 16px; line-height: 1.3; letter-spacing: -.035em; }
+.heatmap-head p, .heatmap-footer p { color: var(--muted); font-size: 12px; }
+.heatmap-head strong { color: var(--ink); font-weight: 750; }
+.heat-calendar {
+  display: grid;
+  grid-template-columns: 13px repeat(12, minmax(0, 1fr));
+  gap: 3px;
+  max-width: 225px;
+  margin: 8px auto 2px;
+}
+.heat-week {
+  display: grid;
+  grid-template-rows: 16px repeat(7, var(--heat-size));
+  gap: 3px;
+  justify-items: center;
+  align-items: center;
+  min-width: 0;
+}
+.heat-month {
+  justify-self: start;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+.heat-weekdays { color: var(--muted); font-size: 10px; justify-items: start; }
+.heat-cell, .heat-legend i {
+  width: var(--heat-size);
+  height: var(--heat-size);
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid #233f2910;
+  border-radius: 3px;
+}
+.heat-0 { background: #e9efe7; }
+.heat-1 { background: #b3d6ac; }
+.heat-2 { background: #649a70; }
+.heat-3 { background: #2c6549; }
+.heat-future { visibility: hidden; }
+button.heat-cell:hover, button.heat-cell[aria-pressed="true"] { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+button.heat-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.heatmap-footer { min-height: 36px; }
+.heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding-inline: 4px; }
+.heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
+.heat-legend i { --heat-size: 10px; }
 
 @media (max-width: 730px) {
   body[data-glass] { display: flex; flex-direction: column; }

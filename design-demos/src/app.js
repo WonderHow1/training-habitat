@@ -24,6 +24,12 @@ const heart = filled => `<svg width="19" height="17" viewBox="0 0 11 10" aria-hi
 const orderByDate = (a, b) => a.date.localeCompare(b.date);
 const clocks = date => date.split('T');
 
+function demoState(scenario) {
+  const state = seed(scenario);
+  if (usesGlass && scenario !== 'onboarding') state.records.push(...sampleTrainingHistory());
+  return state;
+}
+
 function createPhone(initial) {
   const phone = iosFrame();
   const outlet = phone.querySelector('.ios-content');
@@ -43,13 +49,14 @@ function createPhone(initial) {
     phoneScreen.append(habitatEntry);
   }
   let showHabitat = Boolean(habitatEntry) && (initial === 'home' || initial === 'pet');
-  let state = seed();
+  let state = demoState('standard');
   let tab = initial;
   let overlay = null;
   let scenario = 'standard';
   let week = monday(dateAt(state.now));
   let selectedDay = null;
   let logFilter = 'all';
+  let logDay = null;
   let notice = '';
   let restoreFocus = null;
   let clickTrigger = null;
@@ -78,11 +85,12 @@ function createPhone(initial) {
   function profile(pet, full = false) {
     const { count, level, hp, name, stage, lives } = petDetails(pet);
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
-    const sceneLabel = habitatEntry && tab === 'home' ? button(label, 'habitat', 'scene-label') : `<span class="scene-label">${label}</span>`;
-    return `<section class="habitat ${full ? 'expanded' : ''}">
-      <div class="habitat-art">${petCanvas(theme, level, !hp)}${sceneLabel}</div>
+    const openScene = habitatEntry && tab === 'home';
+    return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
+      <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       <div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>
+      ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
     </section>`;
   }
 
@@ -171,7 +179,8 @@ function createPhone(initial) {
 
   function logged() {
     const options = [['all', '全部'], ['manual', '手动'], ['device', '设备']];
-    const entries = state.records.filter(record => logFilter === 'all' || logFilter === record.source)
+    const records = state.records.filter(record => logFilter === 'all' || logFilter === record.source);
+    const entries = records.filter(record => !logDay || logDay === record.date)
       .sort((a, b) => bj(b.date, b.start) - bj(a.date, a.start));
     const sourceLabel = source => source === 'device' ? '设备' : '手动';
     const rows = entries.map((record, index) => {
@@ -182,6 +191,7 @@ function createPhone(initial) {
       <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span></button>`;
     }).join('');
     return head('训练记录', '训练历史', round('plus', '手动记录', 'manual')) +
+      (usesGlass ? trainingHeatmap(records, today(), logDay, initial) : '') +
       `<div class="record-actions">${button(icon('plus', 20) + '手动记录', 'manual', 'secondary')}${button(icon('watch', 20) + '导入设备', 'import', 'primary')}</div>
       <div class="segments" aria-label="按来源筛选">${options.map(([value, label]) => `<button type="button" data-action="filter" data-value="${value}" aria-pressed="${value === logFilter}">${label}</button>`).join('')}</div>
       <section class="record-feed">${rows || '<p class="empty-copy">暂无此来源的训练记录</p>'}</section>`;
@@ -387,7 +397,7 @@ function createPhone(initial) {
 
   function load(nextScenario) {
     scenario = nextScenario;
-    state = seed(nextScenario === 'no-plan' ? 'standard' : nextScenario);
+    state = demoState(nextScenario === 'no-plan' ? 'standard' : nextScenario);
     if (nextScenario === 'no-plan') {
       state.now = bj('2026-11-17', '20:00');
       refresh(state);
@@ -395,6 +405,7 @@ function createPhone(initial) {
     week = monday(today());
     selectedDay = null;
     logFilter = 'all';
+    logDay = null;
     tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
     showHabitat = Boolean(habitatEntry) && (nextScenario === 'death' ||
       (nextScenario === 'standard' && (tab === 'home' || tab === 'pet')));
@@ -439,7 +450,18 @@ function createPhone(initial) {
     previous() { week = dayPlus(week, -7); selectedDay = null; render(); outlet.querySelector('[data-action="previous"]').focus(); },
     next() { week = dayPlus(week, 7); selectedDay = null; render(); outlet.querySelector('[data-action="next"]').focus(); },
     day(value) { selectedDay = value === selectedDay ? null : (value || null); render({ preserve: true }); },
-    filter(value) { logFilter = value; render({ preserve: true }); outlet.querySelector('[aria-pressed="true"]').focus(); },
+    filter(value) {
+      logFilter = value;
+      logDay = null;
+      render({ preserve: true });
+      outlet.querySelector('[data-action="filter"][aria-pressed="true"]').focus({ preventScroll: true });
+    },
+    'log-day'(value) {
+      const previous = value || logDay;
+      logDay = value && logDay !== value ? value : null;
+      render({ preserve: true });
+      outlet.querySelector(`[data-action="log-day"][data-value="${previous}"]`)?.focus({ preventScroll: true });
+    },
     reminders() {
       state.reminders = !state.reminders;
       const control = layers.querySelector('[role="switch"]');
@@ -547,6 +569,7 @@ function createPhone(initial) {
     const time = bj(...clocks(date));
     if (!Number.isFinite(time) || time < state.now) return false;
     state.now = time;
+    if (logDay && logDay < heatmapStart(today())) logDay = null;
     refresh(state);
     overlay = null;
     restoreFocus = null;
