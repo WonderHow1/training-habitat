@@ -6,7 +6,7 @@ scratch=$(mktemp -d "${TMPDIR:-/tmp}/training-habitat-check.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT HUP INT TERM
 
 swiftc -swift-version 6 -module-cache-path "$scratch/modules" -o "$scratch/checks" \
-  "$root"/TrainingCore/*.swift "$root"/Tests/TrainingStateTests.swift
+  "$root"/TrainingCore/*.swift "$root"/TrainingHabitat/HabitatZoom.swift "$root"/Tests/TrainingStateTests.swift
 "$scratch/checks"
 
 plutil -convert xml1 -o "$scratch/project.xml" "$root/TrainingHabitat.xcodeproj/project.pbxproj"

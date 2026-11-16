@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 private let day = ISO8601DateFormatter().date(from: "2026-11-16T00:00:00+08:00")!
@@ -149,6 +150,39 @@ private func terrainRejectsWallsAndShoreAndKeepsRouteInView() throws {
     }
 }
 
+private func habitatZoomMovesBetweenCardAndFullViewport() throws {
+    let card = CGRect(x: 16, y: 203, width: 370, height: 260)
+    let screen = CGRect(x: 0, y: 0, width: 402, height: 874)
+    let zoom = HabitatZoomGeometry(card: card, viewport: screen)
+    try check(zoom.frame(at: 0) == card)
+    try check(zoom.frame(at: 0.5) == CGRect(x: 8, y: 101.5, width: 386, height: 567))
+    try check(zoom.frame(at: 1) == screen)
+    try check(zoom.cornerRadius(at: 0) == 22 && zoom.cornerRadius(at: 1) == 0)
+    try check(HabitatZoomGeometry(card: .zero, viewport: screen).frame(at: 1) == screen)
+}
+
+private func habitatPullConsumesScrollBeforeZoomAndReverses() throws {
+    var pull = HabitatZoomDrag()
+    try check(pull.distance(translation: CGSize(width: 2, height: 25), expanded: false, scrollOffset: 60) == nil)
+    try check(pull.distance(translation: CGSize(width: 2, height: 86), expanded: false, scrollOffset: 0) == 0)
+    try check(pull.distance(translation: CGSize(width: 2, height: 125), expanded: false, scrollOffset: -18) == 39)
+    try check(!HabitatZoomDrag.completes(distance: 39))
+    try check(pull.distance(translation: CGSize(width: 2, height: 155), expanded: false, scrollOffset: -30) == 69)
+    try check(HabitatZoomDrag.completes(distance: 69))
+    try check(pull.distance(translation: CGSize(width: 2, height: 70), expanded: false, scrollOffset: 15) == 0)
+
+    var atTop = HabitatZoomDrag()
+    try check(atTop.distance(translation: CGSize(width: 2, height: 28), expanded: false, scrollOffset: -8) == 28)
+    var close = HabitatZoomDrag()
+    try check(close.distance(translation: CGSize(width: 4, height: -63), expanded: true, scrollOffset: 0) == 63)
+    try check(close.distance(translation: CGSize(width: 4, height: 16), expanded: true, scrollOffset: 0) == 0)
+    try check(HabitatZoomDrag.progress(distance: 240, viewportHeight: 750, expanded: true) == 0)
+    try check(HabitatZoomDrag.progress(distance: 120, viewportHeight: 750, expanded: false) == 0.5)
+    var horizontal = HabitatZoomDrag()
+    try check(horizontal.distance(translation: CGSize(width: 40, height: 10), expanded: false, scrollOffset: 0) == nil)
+    try check(horizontal.distance(translation: CGSize(width: 40, height: 80), expanded: false, scrollOffset: 0) == nil)
+}
+
 private struct Failure: Error, CustomStringConvertible {
     let description: String
 }
@@ -177,7 +211,9 @@ struct TrainingChecks {
             ("rescheduling keeps identity", reschedulingRetainsIdentityAndRejectsCrossWeek),
             ("midnight, grace and device correction", midnightGraceDeviceCorrectionAndDuplicate),
             ("delayed settlement and pet recovery", delayedSettlementAndRecoveryLeaveNewPetUntouched),
-            ("walkable terrain", terrainRejectsWallsAndShoreAndKeepsRouteInView)
+            ("walkable terrain", terrainRejectsWallsAndShoreAndKeepsRouteInView),
+            ("habitat zoom follows the card and screen edges", habitatZoomMovesBetweenCardAndFullViewport),
+            ("habitat pull respects scroll, axis and reversal", habitatPullConsumesScrollBeforeZoomAndReverses)
         ]
         var failures: [String] = []
         for (name, run) in tests {

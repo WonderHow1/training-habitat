@@ -26,8 +26,13 @@ struct TodayView: View {
     @Binding var expanded: Bool
     let open: (SheetRoute) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @GestureState private var displacement: CGFloat = 0
-    @State private var atTop = true
+    @GestureState private var isDragging = false
+    @State private var drag = HabitatZoomDrag()
+    @State private var dragDistance: CGFloat = 0
+    @State private var dragProgress: CGFloat?
+    @State private var scrollOffset: CGFloat = 0
+    @State private var cardFrame: CGRect = .zero
+    @State private var transitionSource: CGRect?
     @State private var recordOptions: UUID?
     @State private var timerPlan: TrainingPlan?
 
@@ -37,37 +42,34 @@ struct TodayView: View {
     }
 
     var body: some View {
-        GeometryReader { frame in
-            let shift = displacement / max(320, frame.size.height * 0.5)
-            let progress = min(1, max(0, (expanded ? 1 : 0) + shift))
+        GeometryReader { safeArea in
+            let settledProgress: CGFloat = expanded ? 1 : 0
+            let progress = reduceMotion ? settledProgress : dragProgress ?? settledProgress
             ZStack {
                 dailyList
-                    .scaleEffect(reduceMotion ? 1 : 1 - progress * 0.035)
                     .accessibilityHidden(expanded)
                     .allowsHitTesting(!expanded)
-                if expanded || displacement > 0 {
-                    fullHabitat
-                        .opacity(progress)
-                        .scaleEffect(reduceMotion ? 1 : 0.76 + 0.24 * progress)
-                        .clipShape(.rect(cornerRadius: (1 - progress) * 28))
-                        .allowsHitTesting(expanded)
-                        .accessibilityHidden(!expanded)
+                GeometryReader { screen in
+                    TodayHabitatZoom(
+                        model: model,
+                        geometry: .init(card: transitionSource ?? cardFrame, viewport: screen.frame(in: .global)),
+                        insets: safeArea.safeAreaInsets,
+                        progress: progress,
+                        expanded: expanded,
+                        close: { setExpanded(false) }
+                    )
+                    .allowsHitTesting(expanded)
+                    .accessibilityHidden(!expanded)
                 }
+                .ignoresSafeArea(.container)
             }
             .background(.white)
-            .simultaneousGesture(DragGesture(minimumDistance: 16)
-                .updating($displacement) { value, state, _ in
-                    let delta = value.translation
-                    guard abs(delta.height) > abs(delta.width), !reduceMotion else { return }
-                    if expanded { state = min(0, delta.height) }
-                    else if atTop { state = max(0, delta.height) }
-                }
-                .onEnded { value in
-                    let delta = value.translation
-                    guard abs(delta.height) > abs(delta.width) else { return }
-                    if expanded, delta.height < -56 { setExpanded(false) }
-                    else if !expanded, atTop, delta.height > 65 { setExpanded(true) }
-                })
+            .simultaneousGesture(habitatGesture(viewportHeight: safeArea.size.height))
+        }
+        .onChange(of: isDragging) { _, active in
+            guard !active else { return }
+            if dragProgress != nil { setExpanded(expanded) }
+            resetDrag()
         }
         .sheet(item: $timerPlan) { plan in
             NavigationStack { TimerView(model: model, plan: plan) }
@@ -83,29 +85,15 @@ struct TodayView: View {
                     .listRowSeparator(.hidden)
             }
             if let pet = model.state.displayedPet {
-                Button { setExpanded(true) } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ZStack {
-                            PixelImage(art: PixelArtwork.shared.habitat(pet.habitat))
-                                .scaledToFill().frame(height: 148).clipped()
-                            PetPortrait(species: pet.species, stage: model.stage(of: pet), size: 115)
-                        }
-                        .frame(height: 148)
-                        .clipped()
-                        .overlay(alignment: .bottom) {
-                            LinearGradient(colors: [.clear, Color(.sRGB, white: 0.97, opacity: 1)],
-                                           startPoint: .top, endPoint: .bottom)
-                                .frame(height: 34)
-                                .allowsHitTesting(false)
-                        }
-                        .accessibilityHidden(true)
-                        PetStats(model: model, pet: pet, compact: true)
-                            .padding([.horizontal, .bottom], 12)
-                    }
-                    .background(Color(.sRGB, white: 0.97, opacity: 1), in: .rect(cornerRadius: 22))
-                    .clipShape(.rect(cornerRadius: 22))
+                Button {
+                    transitionSource = cardFrame
+                    setExpanded(true)
+                } label: {
+                    TodayHabitatCard(model: model, pet: pet)
+                        .clipShape(.rect(cornerRadius: HabitatZoomGeometry.cardRadius))
                 }
                 .buttonStyle(.plain)
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { cardFrame = $0 }
                 .accessibilityHint("打开全屏栖息地")
                 .listRowSeparator(.hidden)
                 .padding(.bottom, 12)
@@ -138,9 +126,9 @@ struct TodayView: View {
             }
         }
         .listStyle(.plain)
-        .onScrollGeometryChange(for: Bool.self, of: { value in
-            value.contentOffset.y + value.contentInsets.top <= 2
-        }, action: { _, top in atTop = top })
+        .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) {
+            _, offset in scrollOffset = offset
+        }
     }
 
     private var header: some View {
@@ -163,25 +151,32 @@ struct TodayView: View {
         .padding(.vertical, 8)
     }
 
-    private var fullHabitat: some View {
-        ZStack(alignment: .topLeading) {
-            let pet = model.state.displayedPet
-            HabitatCanvas(habitat: pet?.habitat ?? .garden, pet: pet, stage: pet.map { model.stage(of: $0) } ?? 1,
-                          animating: expanded, isMemorial: model.state.activePet == nil)
-                .ignoresSafeArea()
-            VStack(alignment: .leading) {
-                if let pet { PetStats(model: model, pet: pet, interactiveAge: true).padding(20) }
-                Spacer()
-                Button { setExpanded(false) } label: {
-                    Label("上滑查看今天", systemImage: "chevron.up")
-                        .font(.callout.weight(.semibold))
-                        .padding(.horizontal, 12).padding(.vertical, 7)
+    private func habitatGesture(viewportHeight: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .global)
+            .updating($isDragging) { _, active, _ in active = true }
+            .onChanged { value in
+                guard let distance = drag.distance(translation: value.translation, expanded: expanded,
+                                                   scrollOffset: scrollOffset) else { return }
+                dragDistance = distance
+                guard distance > 0 || dragProgress != nil else { return }
+                if dragProgress == nil, !expanded {
+                    // Keep the card's resting position while the list springs back from its overscroll.
+                    transitionSource = cardFrame.offsetBy(dx: 0, dy: min(0, scrollOffset))
                 }
-                .buttonStyle(.glass).frame(maxWidth: .infinity)
+                dragProgress = HabitatZoomDrag.progress(distance: distance, viewportHeight: viewportHeight,
+                                                        expanded: expanded)
             }
-            .safeAreaPadding(.top, 8)
-            .safeAreaPadding(.bottom, 12)
-        }
+            .onEnded { _ in
+                if dragProgress != nil {
+                    setExpanded(HabitatZoomDrag.completes(distance: dragDistance) ? !expanded : expanded)
+                }
+                resetDrag()
+            }
+    }
+
+    private func resetDrag() {
+        drag = HabitatZoomDrag()
+        dragDistance = 0
     }
 
     private func todayRow(_ plan: TrainingPlan) -> some View {
@@ -209,13 +204,100 @@ struct TodayView: View {
     }
 
     private func setExpanded(_ value: Bool) {
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.32)) { expanded = value }
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.42, extraBounce: 0)) {
+            expanded = value
+            dragProgress = nil
+        }
     }
 
     private func startTimer(_ plan: TrainingPlan) {
         if model.state.timer?.planID == plan.id || model.change({ state, now in
             try state.startTimer(for: plan.id, at: now)
         }) { timerPlan = plan }
+    }
+}
+
+private struct TodayHabitatCard: View {
+    let model: AppModel
+    let pet: Pet
+    var previewHeight: CGFloat = 148
+
+    private static let surface = Color(.sRGB, white: 0.97, opacity: 1)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack {
+                PixelImage(art: PixelArtwork.shared.habitat(pet.habitat))
+                    .scaledToFill().frame(height: previewHeight).clipped()
+                PetPortrait(species: pet.species, stage: model.stage(of: pet), size: 115)
+            }
+            .frame(height: previewHeight)
+            .clipped()
+            .overlay(alignment: .bottom) {
+                LinearGradient(colors: [.clear, Self.surface], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 34)
+                    .allowsHitTesting(false)
+            }
+            .accessibilityHidden(true)
+            PetStats(model: model, pet: pet, compact: true)
+                .padding([.horizontal, .bottom], 12)
+        }
+        .background(Self.surface)
+    }
+}
+
+private struct TodayHabitatZoom: View, Animatable {
+    let model: AppModel
+    let geometry: HabitatZoomGeometry
+    let insets: EdgeInsets
+    nonisolated var progress: CGFloat
+    let expanded: Bool
+    let close: () -> Void
+
+    nonisolated var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    var body: some View {
+        let fraction = min(1, max(0, progress))
+        let frame = geometry.frame(at: fraction)
+        let viewport = geometry.viewport
+        let pet = model.state.displayedPet
+        let previewOpacity = geometry.card.isEmpty ? 0 : max(0, 1 - fraction * 3)
+        ZStack {
+            HabitatCanvas(habitat: pet?.habitat ?? .garden, pet: pet, stage: pet.map { model.stage(of: $0) } ?? 1,
+                          animating: expanded, isMemorial: model.state.activePet == nil)
+                .frame(width: viewport.width, height: viewport.height)
+                .background(.white)
+                .scaleEffect(frame.width / max(1, viewport.width))
+            if let pet, previewOpacity > 0 {
+                TodayHabitatCard(model: model, pet: pet,
+                                 previewHeight: 148 + max(0, frame.height - geometry.card.height))
+                    .frame(width: frame.width, height: frame.height, alignment: .top)
+                    .opacity(previewOpacity)
+            }
+        }
+        .frame(width: frame.width, height: frame.height)
+        .overlay {
+            VStack(alignment: .leading) {
+                if let pet { PetStats(model: model, pet: pet, interactiveAge: true).padding(.horizontal, 20) }
+                Spacer()
+                Button(action: close) {
+                    Label("上滑查看今天", systemImage: "chevron.up")
+                        .font(.callout.weight(.semibold))
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                }
+                .buttonStyle(.glass).frame(maxWidth: .infinity)
+            }
+            .padding(.top, 12 + insets.top * fraction)
+            .padding(.bottom, 12 + insets.bottom * fraction)
+            .opacity(max(0, (fraction - 0.6) / 0.4))
+            .allowsHitTesting(fraction >= 0.99)
+        }
+        .clipShape(.rect(cornerRadius: geometry.cornerRadius(at: fraction)))
+        .opacity(fraction > 0 ? 1 : 0)
+        .position(x: frame.midX - viewport.minX, y: frame.midY - viewport.minY)
     }
 }
 

@@ -58,6 +58,12 @@
 			"path" = "HabitatScene.swift";
 			"sourceTree" = "<group>";
 		};
+		"8DE13E0AB2804C0097EFA50A" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HabitatZoom.swift";
+			"sourceTree" = "<group>";
+		};
 		"21F03B825C657BC108210BD8" = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -100,6 +106,7 @@
 				"A833E5C1616A46353A5657A3",
 				"73347DC73D5A05B6411FEC07",
 				"CD6DA027991DFB8972F2B4A1",
+				"8DE13E0AB2804C0097EFA50A",
 				"21F03B825C657BC108210BD8",
 				"D604F72762F0F6A41DED175B",
 				"83A5E0350E45E971C65207A7",
@@ -188,6 +195,10 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "CD6DA027991DFB8972F2B4A1";
 		};
+		"C037C19D52154514A43EED9D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "8DE13E0AB2804C0097EFA50A";
+		};
 		"C078FAA279E594AA599B81D2" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "21F03B825C657BC108210BD8";
@@ -218,6 +229,7 @@
 				"2748F91FEB9152BEEDC8336B",
 				"AF04DF6BE2402BADDD3EDFD9",
 				"79BD3B0BF53CC4F45C1EE41E",
+				"C037C19D52154514A43EED9D",
 				"C078FAA279E594AA599B81D2",
 				"8F64897BEE94A3F87848880E",
 				"E365DE5E8E0EBDE0CFA3D1B3",
