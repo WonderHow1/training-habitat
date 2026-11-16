@@ -568,6 +568,7 @@ async function verifyCenteredHabitatChoices(canvas, picker) {
 
 async function verifyOnboarding() {
   await navigate('new-user.html', 320, 700);
+  await includes('.board-nav a[href="ios-prototype.html"]', '日常使用原型');
   const screen = JSON.stringify(lead('.onboarding'));
   const heading = lead('.onboarding h2');
   const submitStep = () => click(lead('.onboarding button[type="submit"]'));
