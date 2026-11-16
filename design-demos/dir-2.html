@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>夜跑手账｜像素宠物健身</title><style>:root {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-optical-sizing: auto;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--board-ink);
+  background: var(--board);
+}
+button, select, input { font: inherit; }
+button { color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: .5; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+svg { flex: none; display: block; }
+p, h1, h2, h3, h4, figure { margin: 0; }
+a { color: inherit; }
+[data-theme="garden"] {
+  --board: #e8eee3; --board-ink: #233d32; --board-muted: #4b6254; --board-line: #bfccbc;
+  --surface: #f6f8f1; --layer: #fff; --wash: #e9f0e3; --ink: #25392e; --muted: #506154;
+  --line: #d7e2d2; --accent: #285a46; --on-accent: #fff; --focus: #477b58;
+  --activity: #e6eddf; --heart: #a6425a; --empty-heart: #b6a1aa;
+  --hint-bg: #f8eed8; --hint-ink: #624a27; --bad-bg: #f4e0dd; --bad-ink: #8a3e3c;
+  --r: 18px; --hero-font: "PingFang SC", sans-serif;
+}
+[data-theme="track"] {
+  color-scheme: dark;
+  --board: #151a2b; --board-ink: #f2efd5; --board-muted: #b6bad0; --board-line: #383e55;
+  --surface: #191e30; --layer: #242a3e; --wash: #30364f; --ink: #f0eedf; --muted: #bcc1d4;
+  --line: #434b64; --accent: #e5ed9f; --on-accent: #232d24; --focus: #cede8b;
+  --activity: #394056; --heart: #f2a8b7; --empty-heart: #77748d;
+  --hint-bg: #423b4f; --hint-ink: #f1d2b3; --bad-bg: #4c3346; --bad-ink: #ffc1c5;
+  --r: 9px; --hero-font: "PingFang SC", sans-serif;
+}
+[data-theme="diary"] {
+  --board: #eae7f2; --board-ink: #3b3157; --board-muted: #5d5276; --board-line: #cbc3dc;
+  --surface: #faf8fd; --layer: #fff; --wash: #efebf8; --ink: #382d50; --muted: #59506d;
+  --line: #ddd6eb; --accent: #574689; --on-accent: #fff; --focus: #755eae;
+  --activity: #eee8f8; --heart: #a84363; --empty-heart: #b4a5bd;
+  --hint-bg: #f9eddf; --hint-ink: #684d35; --bad-bg: #f7e6ed; --bad-ink: #8a405a;
+  --r: 23px; --hero-font: "Songti SC", "Noto Serif SC", serif;
+}
+.board-header, .board-tools, #board, .board-footer {
+  width: min(1314px, calc(100% - 88px));
+  margin-inline: auto;
+}
+.board-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 40px 0 24px;
+  border-bottom: 1px solid var(--board-line);
+}
+.board-identity { display: flex; gap: 17px; align-items: center; }
+.board-mark {
+  width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+}
+.board-mark svg { width: 31px; height: 28px; }
+.board-header p { color: var(--board-muted); font-size: 14px; line-height: 1.5; }
+.board-header h1 {
+  font: 750 clamp(34px, 4vw, 60px)/1.08 var(--hero-font);
+  letter-spacing: -.075em;
+  margin-top: 4px;
+}
+.board-nav { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.board-nav a, .board-nav [aria-current] {
+  text-decoration: none; font-size: 13px; padding: 9px 12px; border-radius: 20px; line-height: 1.4;
+}
+.board-nav [aria-current] { background: var(--accent); color: var(--on-accent); }
+.board-nav a:hover { background: var(--wash); }
+.board-tools {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding-block: 15px 18px;
+}
+.board-tools p, .board-footer p { color: var(--board-muted); font-size: 14px; line-height: 1.5; }
+.board-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.board-controls label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.board-controls :is(select, input, button) {
+  min-height: 36px; max-width: 100%;
+  border: 1px solid var(--board-line); border-radius: 8px;
+  background: var(--surface); color: var(--ink); padding: 5px 8px; font-size: 13px;
+}
+.board-controls button:hover { border-color: var(--board-ink); }
+#demo-feedback { min-height: 1.4em; }
+#board {
+  display: grid;
+  grid-template-columns: minmax(0, .91fr) minmax(0, 1fr) minmax(0, .91fr);
+  column-gap: clamp(24px, 4vw, 68px); row-gap: 42px; align-items: start;
+}
+.device { min-width: 0; width: 100%; scroll-margin-top: 12px; }
+.device h2 { font-size: 15px; font-weight: 650; padding-left: 3px; margin-bottom: 11px; color: var(--board-ink); }
+.device[data-phone="home"] { grid-area: 1 / 2; }
+.device[data-phone="week"] { grid-area: 1 / 1; margin-top: 59px; }
+.device[data-phone="log"] { grid-area: 1 / 3; margin-top: 93px; }
+.device[data-phone="pet"] { grid-column: 2; }
+[data-theme="track"] #board { grid-template-columns: minmax(0, 1.07fr) minmax(0, .94fr) minmax(0, .91fr); }
+[data-theme="track"] .board-header { align-items: center; }
+[data-theme="track"] .board-mark { border-radius: 9px; }
+[data-theme="track"] .device[data-phone="home"] { grid-area: 1 / 1; }
+[data-theme="track"] .device[data-phone="week"] { grid-area: 1 / 2; margin-top: 24px; }
+[data-theme="track"] .device[data-phone="log"] { margin-top: 49px; }
+[data-theme="track"] .device[data-phone="pet"] { grid-column: 1; }
+[data-theme="diary"] .board-header { padding-top: 32px; }
+[data-theme="diary"] .board-mark { border-radius: 50%; }
+[data-theme="diary"] #board { grid-template-columns: minmax(0, .9fr) minmax(0, 1.06fr) minmax(0, .9fr); }
+[data-theme="diary"] .device[data-phone="week"] { grid-area: 1 / 3; margin-top: 66px; }
+[data-theme="diary"] .device[data-phone="log"] { grid-area: 1 / 1; margin-top: 32px; }
+[data-theme="diary"] .device[data-phone="pet"] { grid-column: 3; }
+
+.board-footer { padding: 24px 0 50px; }
+.board-footer p { border-top: 1px solid var(--board-line); padding-top: 16px; }
+
+/* The supplied frame owns the status bar and safe areas. The board sets its dimensions and surface color. */
+.ios-shell { display: block !important; box-shadow: 0 0 0 2px #1f2937, 0 20px 45px #141c2633 !important; }
+.ios-screen { width: 100% !important; height: 704px !important; background: var(--surface) !important; color: var(--ink); }
+[data-phone="home"] .ios-screen { height: 774px !important; }
+.ios-content { height: 100%; }
+.ios-screen > div:has(> .ios-content) { overflow: hidden !important; }
+
+.phone-app { height: 100%; display: flex; flex-direction: column; position: relative; }
+.app-scroll { flex: 1; overflow: auto; scrollbar-width: none; padding: 4px 17px 20px; }
+.app-scroll::-webkit-scrollbar { display: none; }
+.app-head { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.app-head h2 { font-size: clamp(25px, 2.4vw, 34px); margin: 2px 0 0; color: var(--ink); letter-spacing: -.06em; line-height: 1.16; padding: 0; }
+.app-head .kicker { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.round {
+  border: 0; border-radius: 50%; background: var(--wash); width: 39px; height: 39px;
+  display: inline-grid; place-items: center; padding: 0; flex: none;
+}
+.round:hover, .secondary:hover, .text-button:hover { background: var(--activity); }
+.tabbar { flex: none; padding: 7px 10px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); }
+.tabbar button {
+  font-size: 12px; color: var(--muted); border: 0; background: transparent; min-height: 44px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 12px;
+}
+.tabbar button:hover, .tabbar button[aria-current] { color: var(--ink); background: var(--wash); }
+.tabbar button[aria-current] { font-weight: 700; }
+.tabbar button[aria-current] svg { color: var(--accent); }
+
+.habitat { background: var(--layer); border-radius: var(--r); border: 1px solid var(--line); padding: 7px 7px 11px; margin-bottom: 15px; }
+.habitat-art { position: relative; overflow: hidden; border-radius: calc(var(--r) - 5px); }
+.pixel-scene { display: block; width: 100%; aspect-ratio: 144 / 70; object-fit: cover; image-rendering: pixelated; }
+.expanded .pixel-scene { aspect-ratio: 144 / 98; }
+.scene-label {
+  position: absolute; left: 9px; top: 9px; border-radius: 5px; padding: 4px 7px;
+  font-size: 12px; font-weight: 650; background: var(--surface); color: var(--ink);
+}
+.pet-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 6px 8px; }
+.pet-meta strong { font-size: 20px; font-weight: 760; letter-spacing: -.045em; }
+.pet-meta span { font-size: 12px; color: var(--muted); margin-left: 7px; }
+.hearts { display: flex; gap: 5px; align-items: center; }
+.filled { color: var(--heart); }
+.empty { color: var(--empty-heart); }
+.growth { padding-inline: 6px; display: flex; align-items: center; gap: 9px; }
+.growth span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.growth-bar { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; background: var(--wash); }
+.growth-bar i { display: block; background: var(--accent); min-height: 100%; border-radius: 4px; transition: width .2s ease; }
+
+.today-task { padding: 13px; background: var(--layer); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 15px; }
+.task-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+:is(.task-heading, .section-heading, .following, .pet-effects) h3 { font-size: 16px; font-weight: 720; letter-spacing: -.035em; }
+.task-main { display: flex; align-items: center; gap: 11px; margin: 13px 0; }
+.activity { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 10px; background: var(--activity); color: var(--ink); flex: none; }
+.task-main h4 { font-size: 19px; letter-spacing: -.04em; line-height: 1.25; }
+.task-main p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.task-main p span { margin-inline: 2px; }
+.task-actions, .record-actions, .sheet-buttons { display: flex; gap: 8px; }
+.task-actions .primary { flex: 1; }
+.primary, .secondary {
+  min-height: 42px; border-radius: max(7px, calc(var(--r) - 7px)); border: 1px solid var(--line);
+  display: inline-flex; gap: 7px; align-items: center; justify-content: center; padding: 6px 13px; font-weight: 670; font-size: 14px;
+}
+.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.primary:hover { filter: brightness(.92); }
+.primary:active, .round:active, .secondary:active { transform: translateY(1px); }
+.secondary { background: var(--wash); color: var(--ink); }
+.full, .section-add { width: 100%; }
+.following { margin-bottom: 12px; }
+.following h3 { margin: 0 0 7px 2px; }
+.list-row {
+  border: 0; border-bottom: 1px solid var(--line); background: transparent; width: 100%; min-width: 0;
+  display: flex; align-items: center; text-align: left; gap: 9px; padding: 11px 2px;
+}
+.list-row:hover { background: var(--wash); }
+.list-copy { flex: 1; min-width: 0; }
+.list-copy strong, .list-end strong { display: block; font-size: 15px; line-height: 1.35; }
+.list-row small, .switch-row small, .choice small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; margin-top: 3px; }
+.list-end { text-align: right; white-space: nowrap; font-size: 13px; }
+.list-row > svg { color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 20px; padding: 4px 7px; font-size: 12px; line-height: 1.1; font-weight: 670; background: var(--wash); white-space: nowrap; }
+.chip i, .mark { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: inline-block; }
+.chip.grace, .mark.grace { background: var(--hint-bg); color: var(--hint-ink); }
+.chip.missed, .activity.missed { background: var(--bad-bg); color: var(--bad-ink); }
+.chip.done, .mark.done { background: var(--accent); color: var(--on-accent); }
+.notice-link {
+  border: 0; border-radius: max(6px, var(--r)); background: var(--hint-bg); color: var(--hint-ink);
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; padding: 10px 12px;
+}
+.notice-link:hover { filter: brightness(.96); }
+.notice-link strong, .notice-link small { display: block; font-size: 13px; line-height: 1.35; }
+.notice-link small { font-size: 12px; margin-top: 3px; }
+.empty-copy { color: var(--muted); font-size: 14px; line-height: 1.55; padding: 12px 0; }
+
+.week-card {
+  background: var(--layer); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 10px 9px; margin-bottom: 18px;
+}
+.week-heading, .week-total { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.week-heading h3 { font-size: 15px; white-space: nowrap; margin: 0; font-weight: 690; }
+.week-heading .round { width: 34px; height: 34px; }
+.week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-block: 9px; }
+.day {
+  border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 5px 0 3px;
+  display: grid; justify-items: center; min-width: 0; gap: 3px;
+}
+.day:hover, .day.actual { background: var(--wash); }
+.day[aria-pressed="true"] { border-color: var(--accent); }
+.day small { font-size: 12px; color: var(--muted); }
+.day strong { font-size: 16px; }
+.day span { min-height: 7px; display: flex; align-items: center; gap: 2px; }
+.day .mark { width: 4px; height: 4px; }
+.day .mark.upcoming { background: var(--muted); }
+.day .mark.missed { background: var(--bad-ink); }
+.day .mark.grace { background: var(--hint-ink); }
+.week-total { border-top: 1px solid var(--line); padding: 9px 2px 0; }
+.week-total > span { font-size: 13px; color: var(--muted); }
+.week-total strong { font-size: 25px; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.week-total strong span { font-size: 16px; color: var(--muted); }
+.plan-list, .pet-effects { margin-bottom: 15px; }
+.text-button { border: 0; background: transparent; font-size: 13px; border-radius: 8px; padding: 7px; }
+.record-actions { margin-bottom: 14px; }
+.record-source { white-space: nowrap; }
+.record-actions button { flex: 1; padding-inline: 5px; white-space: nowrap; }
+.segments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; background: var(--wash); padding: 3px; border-radius: 10px; margin-bottom: 6px; }
+.segments button { min-height: 35px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 13px; }
+.segments button[aria-pressed="true"] { background: var(--layer); font-weight: 700; color: var(--ink); }
+.pet-options { display: grid; gap: 8px; margin-bottom: 16px; }
+.pet-effects .list-row { min-height: 58px; }
+
+[data-theme="track"] .app-head h2 { letter-spacing: -.025em; }
+[data-theme="track"] .today-task { background: var(--accent); color: var(--on-accent); border: 0; padding: 15px; }
+[data-theme="track"] .today-task :is(.activity, .chip, .primary) { background: #212a28; color: #f3f4db; border-color: #212a28; }
+[data-theme="track"] .today-task .secondary { background: transparent; color: inherit; border-color: #59644a; }
+[data-theme="track"] .today-task p { color: #384532; }
+[data-theme="track"] .task-main { margin: 23px 0 19px; }
+[data-theme="track"] .task-main h4 { font-size: 24px; }
+[data-theme="track"] .track-readout .habitat { display: grid; grid-template-columns: 1fr 102px; grid-template-rows: 1fr auto; padding: 10px; }
+[data-theme="track"] .track-readout .habitat-art { grid-area: 1 / 2 / 3; }
+[data-theme="track"] .track-readout .pixel-scene { height: 100%; aspect-ratio: auto; }
+[data-theme="track"] .track-readout .scene-label { display: none; }
+[data-theme="track"] .track-readout .pet-meta { display: grid; gap: 6px; align-content: center; }
+[data-theme="track"] .track-readout .growth { padding-bottom: 7px; }
+[data-theme="track"] .attention { margin-bottom: 15px; }
+[data-theme="track"] .week-card { background: var(--wash); border-radius: 8px; }
+[data-theme="track"] .week-total { flex-direction: row-reverse; justify-content: start; gap: 10px; }
+[data-theme="track"] .week-total strong { font-size: 30px; color: var(--accent); }
+[data-theme="track"] .day.actual { color: var(--on-accent); background: var(--accent); }
+[data-theme="track"] .day.actual small { color: var(--on-accent); }
+[data-theme="track"] .list-row { min-height: 62px; }
+
+[data-theme="diary"] .app-head h2 { font-family: var(--hero-font); font-weight: 800; }
+[data-theme="diary"] .diary-story { border-radius: var(--r); background: var(--layer); border: 1px solid var(--line); margin-bottom: 12px; }
+[data-theme="diary"] .diary-story .habitat { border: 0; background: none; margin: 0; padding-bottom: 4px; }
+[data-theme="diary"] .diary-story .pixel-scene { aspect-ratio: 144 / 68; }
+[data-theme="diary"] .diary-story .habitat-art { border-radius: 17px 17px 6px 6px; }
+.story-caption { font-family: "Songti SC", "Noto Serif SC", serif; font-size: 14px; padding: 7px 13px 11px; color: var(--muted); }
+[data-theme="diary"] .attention { margin-bottom: 12px; }
+[data-theme="diary"] .today-task { border: 0; border-radius: 0; padding: 12px 0 0; background: none; border-top: 1px solid var(--line); }
+[data-theme="diary"] .today-task .activity { border-radius: 50%; }
+[data-theme="diary"] .task-main h4 { font-family: var(--hero-font); font-size: 22px; }
+[data-theme="diary"] .week-card { background: none; border: 0; padding-inline: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+[data-theme="diary"] .week-total { border: 0; }
+[data-theme="diary"] .record-feed .list-row { padding: 14px 4px; }
+[data-theme="diary"] .record-feed .activity { border-radius: 50%; }
+
+.shade { position: absolute; inset: 0; z-index: 12; display: flex; align-items: end; background: #11102366; }
+.sheet {
+  background: var(--layer); color: var(--ink); border-radius: 24px 24px 0 0; width: 100%;
+  max-height: 96%; overflow: auto; padding: 7px 16px 18px; overscroll-behavior: contain;
+}
+.grab { width: 32px; height: 4px; border-radius: 5px; background: var(--line); margin: 0 auto 7px; }
+.sheet header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 10px; }
+.sheet h3 { font-size: 21px; letter-spacing: -.045em; }
+.sheet header .round { width: 35px; height: 35px; }
+.sheet-note { font-size: 14px; line-height: 1.55; color: var(--muted); margin: 8px 0 12px; }
+.sheet-status { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.sheet dl { font-size: 14px; margin: 6px 0 10px; }
+.sheet dl div { display: flex; justify-content: space-between; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.sheet dl dt { color: var(--muted); }
+.sheet dl dd { margin: 0; text-align: right; font-weight: 650; }
+.sheet-buttons button:first-child { flex: 1; }
+.field { display: grid; gap: 5px; margin-bottom: 11px; min-width: 0; font-size: 13px; }
+.field span { color: var(--muted); }
+.field :is(select, input) {
+  width: 100%; min-width: 0; min-height: 42px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 9px; padding: 7px 8px; font-size: 16px;
+}
+.form-pair { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 7px; }
+.form-error { color: var(--bad-ink); font-size: 13px; margin-bottom: 5px; }
+.sheet fieldset { border: 0; margin: 0 0 10px; padding: 0; min-width: 0; }
+.sheet legend { font-weight: 650; font-size: 15px; margin-bottom: 4px; padding: 0; }
+.choice { display: flex; align-items: center; padding: 9px 0; gap: 6px; font-size: 14px; border-bottom: 1px solid var(--line); }
+.choice span:nth-child(2) { flex: 1; }
+.choice input { accent-color: var(--accent); }
+.switch-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; width: 100%; background: none; text-align: left; padding: 9px 0; }
+.switch { width: 46px; height: 27px; border-radius: 30px; background: var(--line); padding: 3px; display: flex; align-items: center; }
+.switch-row[aria-checked="true"] .switch { justify-content: end; background: var(--accent); }
+.switch:before { content: ""; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; }
+.avatar { image-rendering: pixelated; width: 69px; }
+.adopt-avatar { background: var(--wash); border-radius: 14px; text-align: center; }
+.toast {
+  position: absolute; z-index: 14; left: 16px; right: 16px; bottom: 62px; border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px; background: var(--ink); color: var(--surface); text-align: center; font-size: 14px;
+  pointer-events: none;
+}
+
+@media (max-width: 1190px) {
+  .board-header, .board-tools, #board, .board-footer { width: calc(100% - 48px); }
+  #board { column-gap: 24px; }
+}
+@media (max-width: 1080px) {
+  :is(#board, [data-theme] #board) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); max-width: 820px; }
+  :is(#board, [data-theme] #board) .device { grid-area: auto; margin: 0; }
+  .board-tools { align-items: start; }
+  .device[data-phone="week"], .device[data-phone="pet"] { padding-top: 24px; }
+}
+@media (max-width: 730px) {
+  .board-header, .board-tools, #board, .board-footer { width: calc(100% - 30px); max-width: 442px; }
+  .board-header, .board-tools { align-items: start; flex-direction: column; gap: 12px; }
+  .board-header { padding-top: 22px; padding-bottom: 13px; }
+  .board-mark { width: 46px; height: 46px; }
+  .board-identity { gap: 11px; }
+  .board-tools { padding: 10px 0 14px; }
+  .board-tools p { font-size: 13px; }
+  :is(#board, [data-theme] #board) { grid-template-columns: minmax(0, 1fr); }
+  .device { max-width: 417px; margin-inline: auto; }
+  .device[data-phone="week"], .device[data-phone="pet"] { padding-top: 0; }
+  .app-head h2 { font-size: 29px; }
+}
+@media (max-width: 370px) {
+  .board-header, .board-tools, #board, .board-footer { width: calc(100% - 14px); }
+  .app-scroll { padding-inline: 12px; }
+  .ios-shell { padding: 8px !important; }
+  .ios-status { padding-inline: 20px !important; }
+  .ios-status > div { gap: 4px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
+#demo-feedback:empty { display: none; }
+[data-theme="garden"] .attention { margin-bottom: 12px; }
+[data-theme="diary"] .record-feed h3 { font-size: 13px; color: var(--muted); font-weight: 650; margin: 16px 4px 0; }
+@media (min-width: 1405px) {
+  :is(#board, [data-theme] #board) {
+    grid-template-columns: minmax(300px, 1fr) minmax(350px, 1.17fr) minmax(300px, 1fr) minmax(300px, 1fr);
+    column-gap: 16px;
+  }
+  .device[data-phone="pet"] { grid-area: 1 / 4; margin-top: 34px; }
+  [data-theme="track"] #board {
+    grid-template-columns: minmax(350px, 1.17fr) minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr);
+  }
+  [data-theme="track"] .device[data-phone="pet"] { grid-area: 1 / 4; margin-top: 73px; }
+  [data-theme="diary"] .device[data-phone="pet"] { grid-area: 1 / 3; margin-top: 32px; }
+  [data-theme="diary"] .device[data-phone="week"] { grid-area: 1 / 4; margin-top: 66px; }
+  [data-theme]:not([data-theme="track"]) [data-phone="home"] .ios-screen { height: 816px !important; }
+  .device:not([data-phone="home"]) .ios-status { padding-inline: 14px !important; }
+  .device:not([data-phone="home"]) .app-scroll { padding-inline: 13px; }
+  .device:not([data-phone="home"]) .app-head h2 { font-size: 29px; }
+}
+@media (max-width: 730px) {
+  .board-controls { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; }
+  .board-controls label { white-space: nowrap; }
+  .board-controls label:nth-child(2) input { min-width: 0; width: min(100%, 175px); }
+  #reset { grid-area: 1 / 2; }
+  #advance { grid-area: 2 / 2; }
+}
+</style></head>
+<body data-theme="track">
+<header class="board-header">
+  <div class="board-identity"><div class="board-mark"><svg viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M4 2h3v4h10V2h3v7h2v8h-2v3H4v-3H2V9h2z"/><path fill="var(--accent)" d="M6 10h3v3H6zm9 0h3v3h-3zm-5 5h4v2h-4z"/></svg></div><div><p>像素宠物健身 · iOS 方向稿</p><h1>夜跑手账</h1></div></div>
+  <nav class="board-nav" aria-label="设计方向"><a href="dir-1.html">训练栖地</a><span aria-current="page">夜跑手账</span><a href="dir-3.html">团团日记</a><a href="thumbs.html">六稿总览</a></nav>
+</header>
+<div class="board-tools">
+  <div><p>先处理今天的训练，团团的状态始终在旁。</p><p id="demo-feedback" role="status"></p></div>
+  <div class="board-controls">
+    <label>场景<select id="demo-scene" aria-label="场景">
+      <option value="standard">日常训练</option><option value="onboarding">首次领养</option>
+      <option value="death">宠物离世</option><option value="no-plan">无计划日</option>
+    </select></label>
+    <label>北京时间<input id="demo-time" type="datetime-local" value="2026-11-16T20:00" min="2026-11-16T20:00"></label>
+    <button type="button" id="advance">推进时间</button><button type="button" id="reset">重置</button>
+  </div>
+</div>
+<main id="board"><section class="device" id="view-home" data-phone="home"><h2>今天</h2></section><section class="device" id="view-week" data-phone="week"><h2>一周计划</h2></section><section class="device" id="view-log" data-phone="log"><h2>训练记录</h2></section><section class="device" id="view-pet" data-phone="pet"><h2>宠物与成长</h2></section></main>
+<footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。夜色与训练是这一版的视觉重点。</p></footer>
+<script>const DAY = 86_400_000;
+const DEMO_AT = '2026-11-16T20:00';
+const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
+const sports = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸', '户外跑步', '其他训练'];
+const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
+
+function bj(date, time = '00:00') {
+  return Date.parse(date + 'T' + time + ':00+08:00');
+}
+
+function dateAt(time) {
+  return new Date(time + 8 * 3_600_000).toISOString().slice(0, 10);
+}
+
+function dayPlus(date, count) {
+  return dateAt(bj(date) + count * DAY);
+}
+
+function monday(date) {
+  const weekday = new Date(date + 'T00:00:00Z').getUTCDay();
+  return dayPlus(date, -((weekday + 6) % 7));
+}
+
+function dateLabel(date) {
+  return Number(date.slice(5, 7)) + '月' + Number(date.slice(8, 10)) + '日';
+}
+
+function deadline(plan) {
+  return bj(plan.date) + DAY;
+}
+
+function stamp(time) {
+  return dateLabel(dateAt(time)) + ' ' + new Date(time + 8 * 3_600_000).toISOString().slice(11, 16);
+}
+
+function seed(scenario = 'standard') {
+  const add = (id, date, title, minutes) => ({ id, date: '2026-11-' + date, title, minutes, effective: bj('2026-11-09') });
+  const first = add('first', '10', '核心训练', 15);
+  const old = add('old', '12', '校园夜跑', 20);
+  const grace = add('grace', '15', '舒展拉伸', 15);
+  const today = add('today', '16', '校园夜跑', 20);
+  const next = add('next', '19', '下肢力量', 30);
+  const last = add('last', '21', '舒展拉伸', 15);
+  const state = {
+    now: bj(...DEMO_AT.split('T')),
+    reminders: true,
+    plans: [first, old, grace, today, next, last],
+    records: [
+      { id: 'sample-walk', date: '2026-11-14', start: '16:12', minutes: 24, title: '户外跑步', source: 'device' },
+      { id: 'sample-stretch', date: '2026-11-13', start: '21:10', minutes: 12, title: '舒展拉伸', source: 'manual' },
+      {
+      id: 'sample', date: first.date, start: '18:40', minutes: 18, title: first.title,
+      source: 'manual', plan: first.id
+    }],
+    pets: [{ id: 'moss', name: '团团', spans: [[bj('2026-11-09'), null]], born: '2026-11-09' }],
+    active: 'moss',
+    finished: { first: { at: bj(first.date, '19:00'), pet: 'moss', record: 'sample' } },
+    misses: {},
+    serial: 1
+  };
+  if (scenario === 'death') {
+    state.plans.push(add('miss2', '11', '下肢力量', 25), add('miss3', '13', '核心训练', 15));
+  }
+  if (scenario === 'onboarding') {
+    Object.assign(state, { plans: [], records: [], pets: [], active: null, finished: {} });
+  }
+  refresh(state);
+  return state;
+}
+
+function petAt(state, time) {
+  return state.pets.find(pet => pet.spans.some(([start, end]) => start <= time && (end === null || time < end)))?.id ?? null;
+}
+
+function points(state, petId) {
+  return Object.values(state.finished).filter(event => event.pet === petId).length;
+}
+
+function health(state, petId) {
+  if (!petId) return 0;
+  return Math.max(0, 3 - Object.entries(state.misses).filter(([id, pet]) => pet === petId && !state.finished[id]).length);
+}
+
+function refresh(state) {
+  const pending = state.plans.filter(plan => !state.finished[plan.id] && !Object.hasOwn(state.misses, plan.id) && deadline(plan) + DAY <= state.now);
+  pending.sort((a, b) => deadline(a) - deadline(b));
+  for (const plan of pending) {
+    const petId = petAt(state, deadline(plan));
+    state.misses[plan.id] = petId;
+    if (petId && state.active === petId && health(state, petId) === 0) {
+      state.pets.find(pet => pet.id === petId).spans.at(-1)[1] = deadline(plan) + DAY;
+      state.active = null;
+    }
+  }
+}
+
+function status(state, plan) {
+  if (state.finished[plan.id]) return 'done';
+  if (Object.hasOwn(state.misses, plan.id)) return 'missed';
+  return state.now < deadline(plan) ? 'upcoming' : 'grace';
+}
+
+function changeDate(state, plan, date) {
+  if (status(state, plan) !== 'upcoming' || monday(date) !== monday(plan.date) || date < dateAt(state.now)) return false;
+  if (plan.date !== date) {
+    plan.date = date;
+    plan.effective = state.now;
+  }
+  return true;
+}
+
+function eligible(state, plan, record) {
+  if (!plan || state.finished[plan.id] || record.plan || record.date !== plan.date) return false;
+  const start = bj(record.date, record.start);
+  const end = start + record.minutes * 60_000;
+  if (!Number.isFinite(end) || start < plan.effective || end >= deadline(plan) || end > state.now || record.minutes < plan.minutes) return false;
+  return state.now < deadline(plan) + DAY || ((record.source === 'device' || Boolean(record.deviceId)) && state.now < deadline(plan) + 7 * DAY);
+}
+
+function match(state, plan, record) {
+  if (!eligible(state, plan, record)) return false;
+  const end = bj(record.date, record.start) + record.minutes * 60_000;
+  const pet = Object.hasOwn(state.misses, plan.id) ? state.misses[plan.id] : petAt(state, end);
+  state.finished[plan.id] = { at: state.now, pet, record: record.id };
+  record.plan = plan.id;
+  return true;
+}
+
+function saveRecord(state, input, merge = false) {
+  const exact = input.deviceId && state.records.find(record => record.deviceId === input.deviceId);
+  if (exact) return exact;
+  if (merge) {
+    const similar = similarRecord(state, input);
+    if (similar) {
+      similar.deviceId = input.deviceId;
+      return similar;
+    }
+  }
+  const record = { ...input, id: 'record-' + ++state.serial };
+  state.records.unshift(record);
+  return record;
+}
+
+function similarRecord(state, input) {
+  return state.records.find(record =>
+    record.source === 'manual' && record.date === input.date && record.start === input.start && record.minutes === input.minutes
+  );
+}
+
+function switchPet(state, pet) {
+  const active = state.pets.find(entry => entry.id === state.active);
+  if (active) active.spans.at(-1)[1] = state.now;
+  pet.spans.push([state.now, null]);
+  state.active = pet.id;
+}
+
+function adopt(state, name) {
+  if (state.active) return false;
+  const pet = { id: 'pet-' + ++state.serial, name, spans: [], born: dateAt(state.now) };
+  state.pets.push(pet);
+  switchPet(state, pet);
+  return true;
+}
+
+function recoverable(state) {
+  return state.pets.filter(pet =>
+    pet.id !== state.active && health(state, pet.id) > 0 &&
+    Object.entries(state.misses).some(([id, owner]) => owner === pet.id && state.finished[id])
+  );
+}
+
+function restore(state, petId) {
+  const pet = recoverable(state).find(entry => entry.id === petId);
+  if (!pet) return false;
+  switchPet(state, pet);
+  return true;
+}
+
+const sprite = [
+  '.......II.......II.......',
+  '......IGGI.....IGGI......',
+  '.....IGGGGI...IGGGGI.....',
+  '.....IGLLLGIIIGLLLGI.....',
+  '....IGLLLLLLLLLLLLLLI....',
+  '...IGLLLLLLLLLLLLLLLGI...',
+  '..IGLLLLLLLLLLLLLLLLLGI..',
+  '..IGLLLWLLLWLLLWLLLLGI..',
+  '.IGLLLLLLLLLLLLLLLLLLLGI.',
+  '.IGLLLLKKLLLLLLKKLLLLLGI.',
+  '.IGLLLLKWLLLLLLKWLLLLLGI.',
+  '.IGLLLLKKLLLLLLKKLLLLLGI.',
+  '.IGLBBLLLLLLLLLLLLBBLLGI.',
+  '.IGLBBLLLKKLKKLLLLBBLLGI.',
+  '..IGLLLLLLKKKLLLLLLLLGI..',
+  '..IGGGLLLLLLLLLLLLLGGI...',
+  '...IGGGLLLLLLLLLLLGGI....',
+  '....IGGLLLLLLLLLLLGI.....',
+  '....IGLLLLLCCLLLLLGI.....',
+  '...IGLLLLLCCCCLLLLLGI....',
+  '...IGLLLLLLCCLLLLLLGI....',
+  '....IGGGGGGGGGGGGGGI.....',
+  '.....IIIIGIIIIIGIII......',
+  '........II.....II........'
+];
+const palettes = {
+  garden: { sky: '#b9dbe0', haze: '#d7e8d4', cloud: '#f5f2d5', far: '#94baa5', mid: '#73a783', trees: '#438263', land: '#84ab56', lit: '#b3cb72', turf: '#71944a', shore: '#a8c4be', water: '#80bdad', wave: '#bedfd0', flower: '#f9df95' },
+  track: { sky: '#393758', haze: '#55486f', cloud: '#6f6688', far: '#555676', mid: '#4d607c', trees: '#3d506f', land: '#60767d', lit: '#93a697', turf: '#4e626d', shore: '#7999a7', water: '#596e98', wave: '#8f9dbb', flower: '#dec7f0' },
+  diary: { sky: '#c2cbed', haze: '#e7dff7', cloud: '#f9edef', far: '#a7b1d1', mid: '#909cc3', trees: '#6d82ae', land: '#a2afc5', lit: '#c6cfdb', turf: '#879bbb', shore: '#c5cef0', water: '#a1b9df', wave: '#e3e8fb', flower: '#f8e4ab' },
+  studio: { sky: '#edc39c', haze: '#f1d3ac', cloud: '#fff0d0', far: '#d1a381', mid: '#ba917c', trees: '#927757', land: '#c6a574', lit: '#dec08a', turf: '#af9469', shore: '#e1cbaa', water: '#ceae92', wave: '#efdbc5', flower: '#fbecba' },
+  clay: { sky: '#dfbfae', haze: '#f1d9be', cloud: '#ffeecc', far: '#b58d86', mid: '#af786a', trees: '#865f58', land: '#c58d72', lit: '#eab68a', turf: '#aa745b', shore: '#cca58d', water: '#bd938b', wave: '#ebcbb7', flower: '#fff2d6' },
+  signal: { sky: '#b9d8ce', haze: '#cce5dc', cloud: '#e3fbec', far: '#85afac', mid: '#709596', trees: '#4e767a', land: '#80a99a', lit: '#a1c5a8', turf: '#6d978a', shore: '#b5d6d0', water: '#92b6bf', wave: '#c6e0dc', flower: '#fae5ac' }
+};
+
+function paintPet(ctx, x, y, scale, level, faded) {
+  const colors = { I: '#573851', G: '#c8788d', L: '#e5a3ad', B: '#f6c3ae', W: '#fff2d8', K: '#382843', C: '#f9d6c2' };
+  ctx.save();
+  if (faded) ctx.globalAlpha = 0.32;
+  sprite.forEach((row, j) => [...row].forEach((color, i) => {
+    if (color === '.') return;
+    ctx.fillStyle = colors[color];
+    ctx.fillRect(x + i * scale, y + j * scale, scale, scale);
+  }));
+  if (level > 1) {
+    ctx.fillStyle = '#6c6564';
+    ctx.fillRect(x + 5 * scale, y + 15 * scale, 15 * scale, 2 * scale);
+    ctx.fillStyle = '#f6d77d';
+    ctx.fillRect(x + 5 * scale, y + 15 * scale, 14 * scale, scale);
+    ctx.fillRect(x + 16 * scale, y + 16 * scale, 3 * scale, 3 * scale);
+  }
+  if (level > 2) {
+    ctx.fillStyle = '#8da55b';
+    ctx.fillRect(x + 11 * scale, y - 2 * scale, scale, 5 * scale);
+    ctx.fillRect(x + 12 * scale, y - 2 * scale, 4 * scale, 2 * scale);
+  }
+  ctx.restore();
+}
+
+function drawScene(canvas) {
+  const ctx = canvas.getContext('2d');
+  const p = palettes[canvas.dataset.palette];
+  const compact = canvas.hasAttribute('data-avatar');
+  const wide = canvas.hasAttribute('data-wide');
+  const level = Number(canvas.dataset.level ?? 1);
+  const faded = canvas.dataset.faded === 'true';
+  const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
+  if (compact) {
+    paintPet(ctx, 4, 5, 1, level, faded);
+    return;
+  }
+  box(0, 0, 144, 83, p.sky);
+  box(0, 18, 144, 46, p.haze);
+  const night = canvas.dataset.palette === 'track';
+  if (night) {
+    box(107, 8, 8, 11, '#e5d8bc');
+    box(105, 10, 12, 7, '#e5d8bc');
+    box(111, 7, 6, 7, p.sky);
+    for (const [x, y] of [[10, 10], [27, 15], [37, 4], [69, 8], [90, 13], [132, 8]]) box(x, y, 1, 1, '#efe2b9');
+  } else {
+    for (const [x, y, w] of [[7, 11, 27], [63, 5, 21], [104, 14, 32]]) {
+      box(x, y, w, 3, p.cloud);
+      box(x + 5, y - 3, w - 10, 4, p.cloud);
+      box(x + 10, y - 5, 9, 3, p.cloud);
+    }
+  }
+  for (let x = 0; x < 144; x += 3) {
+    const y = 33 - Math.round((Math.sin(x / 11) + Math.sin(x / 29)) * 4);
+    box(x, y, 3, 25, p.far);
+    const y2 = 40 - Math.round((Math.sin(x / 9 + 2) + Math.sin(x / 26)) * 3);
+    box(x, y2, 3, 21, p.mid);
+  }
+  const tree = (x, y, size) => {
+    box(x, y + size, size, size * 2, p.trees);
+    box(x - size, y + size * 2, size * 3, size * 2, p.trees);
+    box(x - size * 2, y + size * 3, size * 5, size, p.trees);
+    box(x, y + size * 4, size, 3, p.turf);
+  };
+  [[4, 24, 4], [15, 28, 3], [25, 31, 2], [137, 24, 4], [126, 30, 3], [116, 34, 2]].forEach(([x, y, s]) => tree(x, y, s));
+  box(0, 44, 144, 39, p.land);
+  for (let y = 48; y < 87; y += 3) {
+    const left = 109 - Math.round((y - 47) * 1.72) + (y % 8);
+    box(left, y, 144 - left, 3, p.shore);
+    box(left + 3, y, 144 - left, 3, p.water);
+  }
+  for (const [x, y, w] of [[115, 53, 13], [127, 61, 8], [106, 65, 9], [92, 72, 17], [77, 80, 14], [124, 77, 13], [139, 70, 5]]) box(x, y, w, 1, p.wave);
+  for (const [x, y] of [[6, 53], [11, 69], [22, 50], [25, 76], [38, 63], [45, 51], [55, 69], [16, 80], [84, 51], [102, 44], [1, 76], [67, 76]]) {
+    box(x, y, 4, 1, p.turf);
+    box(x + 2, y - 2, 1, 2, p.turf);
+    box(x + 1, y - 2, 1, 1, p.lit);
+  }
+  for (const [x, y] of [[17, 57], [30, 69], [41, 74], [45, 76], [9, 64], [51, 49], [74, 67], [92, 52]]) {
+    box(x, y, 1, 3, p.trees);
+    box(x - 1, y - 1, 3, 1, p.flower);
+    box(x, y - 2, 1, 3, p.flower);
+  }
+  const x = wide ? 56 : 58;
+  box(x - 4, 62, 31, 2, p.turf);
+  box(x, 64, 23, 1, p.turf);
+  paintPet(ctx, x, 39, 1, level, faded);
+  if (faded) {
+    box(x + 26, 54, 1, 7, p.flower);
+    box(x + 24, 55, 5, 2, p.flower);
+  } else {
+    box(x + 34, 41, 1, 5, p.flower);
+    box(x + 32, 43, 5, 1, p.flower);
+    box(x - 5, 46, 2, 2, p.flower);
+  }
+}
+
+function petCanvas(theme, level = 1, faded = false, avatar = false) {
+  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+}
+
+// Precompiled from huashu-design assets/ios_frame.jsx using the frameNode JSX factory.
+"use strict";
+/**
+ * IosFrame — iPhone设备边框
+ *
+ * 参考iPhone 15 Pro（393×852 logical pixels）
+ * 含：灵动岛 + 状态栏（时间/信号/电池）+ Home Indicator + 圆角
+ *
+ * 用法：
+ *   <IosFrame time="9:41" battery={85}>
+ *     <YourAppContent />
+ *   </IosFrame>
+ *
+ * 自定义：
+ *   <IosFrame width={390} height={844} darkMode showKeyboard>
+ *     ...
+ *   </IosFrame>
+ */
+const iosFrameStyles = {
+    wrapper: {
+        display: 'inline-block',
+        padding: 12,
+        background: '#000',
+        borderRadius: 60,
+        boxShadow: '0 0 0 2px #1f2937, 0 20px 60px rgba(0,0,0,0.3)',
+        position: 'relative',
+    },
+    screen: {
+        position: 'relative',
+        borderRadius: 48,
+        overflow: 'hidden',
+        background: '#fff',
+    },
+    statusBar: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 54,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 32px 0 32px',
+        fontSize: 16,
+        fontWeight: 600,
+        fontFamily: '-apple-system, "SF Pro Text", sans-serif',
+        zIndex: 20,
+        pointerEvents: 'none',
+    },
+    dynamicIsland: {
+        position: 'absolute',
+        top: 12,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 124,
+        height: 36,
+        background: '#000',
+        borderRadius: 999,
+        zIndex: 30,
+    },
+    statusIcons: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+    },
+    signalIcon: {
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 2,
+        height: 12,
+    },
+    signalBar: {
+        width: 3,
+        background: 'currentColor',
+        borderRadius: 1,
+    },
+    wifiIcon: {
+        width: 16,
+        height: 12,
+        position: 'relative',
+    },
+    batteryIcon: {
+        width: 26,
+        height: 12,
+        border: '1.5px solid currentColor',
+        borderRadius: 3,
+        padding: 1,
+        position: 'relative',
+        opacity: 0.8,
+    },
+    batteryCap: {
+        position: 'absolute',
+        top: 3,
+        right: -3,
+        width: 2,
+        height: 6,
+        background: 'currentColor',
+        borderRadius: '0 1px 1px 0',
+    },
+    content: {
+        position: 'absolute',
+        top: 54,
+        left: 0,
+        right: 0,
+        bottom: 34,
+        overflow: 'auto',
+    },
+    homeIndicator: {
+        position: 'absolute',
+        bottom: 10,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 140,
+        height: 5,
+        background: 'rgba(0,0,0,0.3)',
+        borderRadius: 999,
+        zIndex: 10,
+    },
+    homeIndicatorDark: {
+        background: 'rgba(255,255,255,0.5)',
+    },
+};
+function IosFrame({ children, width = 393, height = 852, time = '9:41', battery = 100, darkMode = false, showStatusBar = true, showDynamicIsland = true, showHomeIndicator = true, }) {
+    const textColor = darkMode ? '#fff' : '#000';
+    return (frameNode("div", { style: iosFrameStyles.wrapper },
+        frameNode("div", { style: {
+                ...iosFrameStyles.screen,
+                width,
+                height,
+                background: darkMode ? '#000' : '#fff',
+            } },
+            showStatusBar && (frameNode("div", { style: { ...iosFrameStyles.statusBar, color: textColor } },
+                frameNode("span", null, time),
+                frameNode("div", { style: iosFrameStyles.statusIcons },
+                    frameNode("div", { style: iosFrameStyles.signalIcon },
+                        frameNode("div", { style: { ...iosFrameStyles.signalBar, height: 4 } }),
+                        frameNode("div", { style: { ...iosFrameStyles.signalBar, height: 6 } }),
+                        frameNode("div", { style: { ...iosFrameStyles.signalBar, height: 9 } }),
+                        frameNode("div", { style: { ...iosFrameStyles.signalBar, height: 11 } })),
+                    frameNode("svg", { width: "16", height: "12", viewBox: "0 0 16 12", fill: "none", style: { color: textColor } },
+                        frameNode("path", { d: "M8 11.5a1 1 0 100-2 1 1 0 000 2z", fill: "currentColor" }),
+                        frameNode("path", { d: "M3 7.5a7 7 0 0110 0", stroke: "currentColor", strokeWidth: "1.3", fill: "none", strokeLinecap: "round" }),
+                        frameNode("path", { d: "M1 4.5a11 11 0 0114 0", stroke: "currentColor", strokeWidth: "1.3", fill: "none", strokeLinecap: "round", opacity: "0.7" })),
+                    frameNode("div", { style: iosFrameStyles.batteryIcon },
+                        frameNode("div", { style: {
+                                width: `${battery}%`,
+                                height: '100%',
+                                background: 'currentColor',
+                                borderRadius: 1,
+                                opacity: 0.9,
+                            } }),
+                        frameNode("div", { style: iosFrameStyles.batteryCap }))))),
+            showDynamicIsland && frameNode("div", { style: iosFrameStyles.dynamicIsland }),
+            frameNode("div", { style: iosFrameStyles.content }, children),
+            showHomeIndicator && (frameNode("div", { style: {
+                    ...iosFrameStyles.homeIndicator,
+                    ...(darkMode ? iosFrameStyles.homeIndicatorDark : {}),
+                } })))));
+}
+if (typeof window !== 'undefined') {
+    window.IosFrame = IosFrame;
+}
+
+function frameNode(tag, attributes, ...children) {
+  const isSvg = ['svg', 'path'].includes(tag);
+  const node = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag);
+  const svgAttributes = { strokeWidth: 'stroke-width', strokeLinecap: 'stroke-linecap' };
+  const lengths = new Set(['borderRadius', 'height', 'width', 'top', 'right', 'bottom', 'left', 'fontSize', 'padding']);
+  for (const [name, value] of Object.entries(attributes ?? {})) {
+    if (name === 'style') {
+      for (const [property, styleValue] of Object.entries(value)) {
+        node.style[property] = typeof styleValue === 'number' && lengths.has(property) ? styleValue + 'px' : styleValue;
+      }
+    } else {
+      node.setAttribute(svgAttributes[name] ?? name, value);
+    }
+  }
+  node.append(...children.filter(child => child !== false && child != null));
+  return node;
+}
+
+function iosFrame() {
+  const outlet = document.createElement('div');
+  outlet.className = 'ios-content';
+  const wrapper = IosFrame({ children: outlet, darkMode: document.body.dataset.theme === 'track', battery: 85 });
+  wrapper.className = 'ios-shell';
+  wrapper.firstElementChild.className = 'ios-screen';
+  wrapper.firstElementChild.firstElementChild.className = 'ios-status';
+  wrapper.firstElementChild.firstElementChild.setAttribute('aria-hidden', 'true');
+  return wrapper;
+}
+
+const root = document.querySelector('#board');
+const theme = document.body.dataset.theme;
+const icons = {
+  home: 'M3 10.5 12 3l9 7.5V20H3z M9 20v-6h6v6', week: 'M4 6h16v14H4z M4 10h16 M8 4v4 M16 4v4',
+  log: 'M5 4h14v16H5z M8 9h8 M8 13h8 M8 17h5', pet: 'M5 11V5l5 4h4l5-4v6l2 3v3l-4 3H7l-4-3v-3z M8 14h.1 M16 14h.1 M11 17h2',
+  plus: 'M5 12h14 M12 5v14', arrow: 'm9 6 6 6-6 6', back: 'm15 6-6 6 6 6',
+  run: 'M14 4a1.6 1.6 0 1 0 0 .1 M6 10l5-2 4 2 3 3h3 M11 8l-2 6 4 2-2 5 M9 14l-3 4H3',
+  dumbbell: 'M8 5v14 M4 8v8 M16 5v14 M20 8v8 M8 12h8', stretch: 'M12 4a1.5 1.5 0 1 0 0 .1 M4 8l8 3 8-3 M12 11v4 M12 15l-5 5 M12 15l5 5',
+  check: 'm5 12 4 4L19 6', watch: 'M8 6l1-4h6l1 4 M8 18l1 4h6l1-4 M7 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M12 9v3l2 1',
+  bell: 'M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3z M10 21h4', close: 'm6 6 12 12 M18 6 6 18',
+  sun: 'M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0z M12 2v2 M12 20v2 M2 12h2 M20 12h2 M5 5l1.5 1.5 M17.5 17.5 19 19 M19 5l-1.5 1.5 M6.5 17.5 5 19'
+};
+const icon = (name, size = 21) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
+const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+const button = (text, action, cls = 'primary', value = '', disabled = false) =>
+  `<button type="button" class="${cls}" data-action="${action}" data-value="${escape(value)}" ${disabled ? 'disabled' : ''}>${text}</button>`;
+const round = (name, label, action, value = '') =>
+  `<button type="button" class="round" aria-label="${label}" title="${label}" data-action="${action}" data-value="${escape(value)}">${icon(name)}</button>`;
+const field = (label, input) => `<label class="field"><span>${label}</span>${input}</label>`;
+const chip = status => `<span class="chip ${status}"><i></i>${statuses[status]}</span>`;
+const activity = name => name.includes('跑') ? 'run' : name.includes('拉伸') ? 'stretch' : 'dumbbell';
+const heart = filled => `<svg width="19" height="17" viewBox="0 0 11 10" aria-hidden="true" class="${filled ? 'filled' : 'empty'}"><path fill="currentColor" d="M1 0h3v1h3V0h3v1h1v4h-1v1H9v1H8v1H7v1H6v1H5V9H4V8H3V7H2V6H1V5H0V1h1z"/></svg>`;
+const orderByDate = (a, b) => a.date.localeCompare(b.date);
+const clocks = date => date.split('T');
+
+function createPhone(initial) {
+  const phone = iosFrame();
+  const outlet = phone.querySelector('.ios-content');
+  let state = seed();
+  let tab = initial;
+  let overlay = null;
+  let scenario = 'standard';
+  let week = monday(dateAt(state.now));
+  let selectedDay = null;
+  let logFilter = 'all';
+  let notice = '';
+  let restoreFocus = null;
+
+  const current = () => state.pets.find(pet => pet.id === state.active) ??
+    state.pets.reduce((last, pet) => !last || pet.spans.at(-1)[1] >= last.spans.at(-1)[1] ? pet : last, null);
+  const getPlan = id => state.plans.find(plan => plan.id === id);
+  const getRecord = id => state.records.find(record => record.id === id);
+  const today = () => dateAt(state.now);
+  const weekday = date => '周' + '日一二三四五六'[new Date(date + 'T00:00:00Z').getUTCDay()];
+
+  function head(title, sub, action = '') {
+    return `<header class="app-head"><div><p class="kicker">${sub}</p><h2>${title}</h2></div>${action}</header>`;
+  }
+
+  function profile(pet, full = false) {
+    const count = pet ? points(state, pet.id) : 0;
+    const level = count >= 5 ? 3 : count >= 2 ? 2 : 1;
+    const hp = pet ? health(state, pet.id) : 0;
+    const name = pet ? escape(pet.name) : '待领养';
+    const lives = `<div class="hearts" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
+    return `<section class="habitat ${full ? 'expanded' : ''}">
+      <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${hp ? '栖息地' : pet ? '纪念画像' : '待领养'}</span></div>
+      <div class="pet-meta"><div><strong>${name}</strong><span>${pet && !hp ? '已离世' : ['幼苗期', '成长期', '成熟期'][level - 1]}</span></div>${lives}</div>
+      <div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>
+    </section>`;
+  }
+
+  function planRow(plan, showDate = true) {
+    const stage = status(state, plan);
+    const hint = stage === 'grace' ? '补记至 ' + stamp(deadline(plan) + DAY) :
+      showDate ? weekday(plan.date) + ' · ' + dateLabel(plan.date) : '目标 ' + plan.minutes + ' 分钟';
+    return `<button type="button" class="list-row" data-action="detail" data-value="${plan.id}">
+      <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
+      <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${icon('arrow', 14)}
+    </button>`;
+  }
+
+  function home() {
+    const now = state.plans.filter(plan => plan.date === today()).sort(orderByDate);
+    const next = state.plans.filter(plan => plan.date > today()).sort(orderByDate)[0];
+    const due = state.plans.filter(plan => status(state, plan) === 'grace').sort(orderByDate)[0];
+    const missed = state.plans.filter(plan => status(state, plan) === 'missed').sort(orderByDate).at(-1);
+    const pet = current();
+    const todayPlan = now[0];
+    const stage = todayPlan && status(state, todayPlan);
+    const intro = head('今天', dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
+    const task = `<section class="today-task"><div class="task-heading"><h3>今日训练</h3>${todayPlan ? chip(stage) : ''}</div>
+      ${todayPlan ? `<div class="task-main"><span class="activity">${icon(activity(todayPlan.title), 24)}</span><div><h4>${escape(todayPlan.title)}</h4><p>目标 ${todayPlan.minutes} 分钟 <span>·</span> 今日结束前</p></div></div>
+      ${stage === 'upcoming' ? `<div class="task-actions">${button('记录训练', 'manual', 'primary', todayPlan.id)}${button('改期', 'reschedule', 'secondary', todayPlan.id)}</div>` : button('查看训练', 'detail', 'secondary full', todayPlan.id)}
+      ${now.slice(1).map(plan => planRow(plan, false)).join('')}` :
+      `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`}</section>`;
+    const following = `<section class="following"><h3>下一次训练</h3>${next ? planRow(next) : '<p class="empty-copy">暂无后续安排</p>'}</section>`;
+    const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
+      : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;
+    if (theme === 'track') return intro + task + `<div class="track-readout">${profile(pet)}</div>` + pulse + following;
+    const lastGrowth = pet && Object.entries(state.finished).filter(([, event]) => event.pet === pet.id)
+      .sort(([, a], [, b]) => b.at - a.at)[0];
+    const diaryCaption = lastGrowth ? '最近成长于 ' + dateLabel(getPlan(lastGrowth[0]).date) + ' · ' + escape(getPlan(lastGrowth[0]).title) : '完成计划后会记录' + escape(pet?.name ?? '宠物') + '的成长。';
+    if (theme === 'diary') return intro + `<div class="diary-story">${profile(pet)}<div class="story-caption">${diaryCaption}</div></div>` + pulse + task + following;
+    return intro + profile(pet) + task + pulse + following;
+  }
+
+  function calendar() {
+    const end = dayPlus(week, 6);
+    const plans = state.plans.filter(plan => monday(plan.date) === week).sort(orderByDate);
+    const shown = selectedDay ? plans.filter(plan => plan.date === selectedDay) : plans;
+    const done = plans.filter(plan => status(state, plan) === 'done').length;
+    const strip = Array.from({ length: 7 }, (_, index) => {
+      const date = dayPlus(week, index);
+      const slots = plans.filter(plan => plan.date === date);
+      const marks = slots.length ? slots.slice(0, 3).map(plan => `<i class="mark ${status(state, plan)}"></i>`).join('') : '<i></i>';
+      return `<button type="button" class="day ${date === today() ? 'actual' : ''}" aria-pressed="${selectedDay === date}" data-action="day" data-value="${date}">
+        <small>${'一二三四五六日'[index]}</small><strong>${Number(date.slice(8))}</strong><span>${marks}</span></button>`;
+    }).join('');
+    return head('训练计划', '周一至周日', round('plus', '新增训练', 'new')) +
+      `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}<h3>${dateLabel(week)}–${dateLabel(end)}</h3>${round('arrow', '下一周', 'next')}</div>
+      <div class="week-days" aria-label="筛选训练日期">${strip}</div>
+      <div class="week-total"><span>本周已完成</span><strong>${done}<span> / ${plans.length}</span></strong></div></section>
+      <section class="plan-list"><div class="section-heading"><h3>${selectedDay ? weekday(selectedDay) + '的安排' : '本周安排'}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
+      ${shown.map(plan => planRow(plan)).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增训练', 'new', 'primary section-add');
+  }
+
+  function logged() {
+    const options = [['all', '全部'], ['manual', '手动'], ['device', '设备']];
+    const entries = state.records.filter(record => logFilter === 'all' || logFilter === record.source)
+      .sort((a, b) => bj(b.date, b.start) - bj(a.date, a.start));
+    const sourceLabel = source => source === 'device' ? '设备' : '手动';
+    const rows = entries.map((record, index) => {
+      const diaryDate = theme === 'diary' && entries[index - 1]?.date !== record.date ? `<h3>${dateLabel(record.date)} ${weekday(record.date)}</h3>` : '';
+      const date = theme === 'diary' ? '' : record.date.slice(5).replace('-', '/') + ' ';
+      return diaryDate + `<button type="button" class="list-row" data-action="record" data-value="${record.id}"><span class="activity">${icon(activity(record.title))}</span>
+      <span class="list-copy"><strong>${escape(record.title)}</strong><small>${date}${record.start}<span class="record-source"> · ${sourceLabel(record.source)}</span></small></span>
+      <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span></button>`;
+    }).join('');
+    return head('训练记录', '训练历史', round('plus', '手动记录', 'manual')) +
+      `<div class="record-actions">${button(icon('plus', 20) + '手动记录', 'manual', 'secondary')}${button(icon('watch', 20) + '导入设备', 'import', 'primary')}</div>
+      <div class="segments" aria-label="按来源筛选">${options.map(([value, label]) => `<button type="button" data-action="filter" data-value="${value}" aria-pressed="${value === logFilter}">${label}</button>`).join('')}</div>
+      <section class="record-feed">${rows || '<p class="empty-copy">暂无此来源的训练记录</p>'}</section>`;
+  }
+
+  function petScreen() {
+    const pet = current();
+    const recovered = recoverable(state);
+    const effects = [
+      ...Object.entries(state.finished).filter(([, event]) => event.pet === pet?.id)
+        .map(([id, event]) => ({ id, date: event.at, title: '成长 +1', cls: 'done' })),
+      ...Object.entries(state.misses).filter(([id, owner]) => owner === pet?.id && !state.finished[id])
+        .map(([id]) => ({ id, date: deadline(getPlan(id)) + DAY, title: '血量 −1', cls: 'missed' }))
+    ].sort((a, b) => b.date - a.date);
+    return head('我的宠物', pet ? '领养于 ' + dateLabel(pet.born) : '还没有在养宠物') +
+      profile(pet, true) + `<section class="pet-options">${state.active ? '' : button(pet ? '领养新宠物' : '领养宠物', 'adopt')}${recovered.map(entry => button('恢复 ' + escape(entry.name), 'restore', 'secondary', entry.id)).join('')}
+      ${pet && !state.active ? '<p class="empty-copy">仍可继续训练。原计划和记录会保留。</p>' : ''}</section>` +
+      `<section class="pet-effects"><h3>成长与血量</h3>${effects.map(event => `<button type="button" class="list-row" data-action="detail" data-value="${event.id}">
+      <span class="activity ${event.cls}">${event.cls === 'done' ? icon('check') : heart(true)}</span><span class="list-copy"><strong>${event.title}</strong>
+      <small>${dateLabel(getPlan(event.id).date)} · ${escape(getPlan(event.id).title)}</small></span>${icon('arrow', 14)}</button>`).join('') || '<p class="empty-copy">完成训练后，成长记录会出现在这里。</p>'}</section>`;
+  }
+
+  function sheet(title, body) {
+    return `<div class="shade"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="${initial}-sheet-title"><div class="grab"></div>
+      <header><h3 id="${initial}-sheet-title">${title}</h3>${round('close', '关闭', 'close')}</header>${body}</section></div>`;
+  }
+
+  function detail(plan) {
+    const stage = status(state, plan);
+    const done = state.finished[plan.id];
+    const record = done && getRecord(done.record);
+    let reason;
+    if (stage === 'upcoming') reason = '在计划日内完成一场达标训练，并确认关联。';
+    if (stage === 'grace') reason = '补记期间暂不扣血。请补记在原计划日完成的训练。';
+    if (stage === 'missed') reason = state.misses[plan.id] ? '补记期满仍无达标记录，已扣 1 格血。' : '补记期满仍无达标记录。截止时没有在养宠物。';
+    if (stage === 'done') reason = Object.hasOwn(state.misses, plan.id) ?
+      (state.misses[plan.id] ? '已用设备记录更正，撤销本次扣血并补记成长。' : '已用设备记录更正。截止时没有在养宠物。') :
+      (done.pet ? '本次训练已计入成长。' : '训练已经计入计划。训练结束时没有在养宠物。');
+    return sheet(escape(plan.title), `<div class="sheet-status">${chip(stage)}<span>目标 ${plan.minutes} 分钟</span></div>
+      <dl><div><dt>计划日期</dt><dd>${dateLabel(plan.date)} ${weekday(plan.date)}</dd></div>
+      <div><dt>训练截止</dt><dd>${stamp(deadline(plan))}</dd></div>
+      <div><dt>补记截止</dt><dd>${stamp(deadline(plan) + DAY)}</dd></div>
+      ${stage === 'missed' ? `<div><dt>设备更正截止</dt><dd>${stamp(deadline(plan) + 7 * DAY)}</dd></div>` : ''}
+      <div><dt>关联记录</dt><dd>${record ? escape(record.title) + ' · ' + record.minutes + ' 分钟' : '暂无'}</dd></div></dl>
+      <p class="sheet-note">${reason}</p><div class="sheet-buttons">${['upcoming', 'grace'].includes(stage) ? button(stage === 'grace' ? '补记训练' : '记录训练', 'manual', 'primary', plan.id) : ''}
+      ${stage === 'upcoming' ? button('改期', 'reschedule', 'secondary', plan.id) : ''}
+      ${stage === 'missed' && state.now < deadline(plan) + 7 * DAY ? button('导入设备记录', 'import', 'primary', plan.id) : ''}</div>`);
+  }
+
+  function trainingForm(target) {
+    const date = target ? target.date : today();
+    return sheet('手动记录', `<form data-form="manual">
+      ${field('训练项目', `<select name="title">${sports.map(sport => `<option ${(target?.title ?? sports[0]) === sport ? 'selected' : ''}>${sport}</option>`).join('')}</select>`)}
+      <div class="form-pair">${field('实际日期', `<input type="date" name="date" value="${date}" max="${today()}" required>`)}
+      ${field('开始时间', '<input type="time" name="start" value="18:30" required>')}</div>
+      ${field('实际时长（分钟）', `<input type="number" name="minutes" min="1" max="1440" value="${target?.minutes ?? 25}" required>`)}
+      <p class="form-error" role="alert"></p><button class="primary full" type="submit">下一步：确认关联</button></form>`);
+  }
+
+  function dateForm(plan) {
+    const start = plan ? monday(plan.date) : monday(selectedDay ?? today());
+    const min = today() > start ? today() : start;
+    const max = dayPlus(start, 6);
+    const picked = plan?.date ?? (selectedDay && selectedDay >= min ? selectedDay : min);
+    return sheet(plan ? '改期' : '新增训练', `<form data-form="${plan ? 'reschedule' : 'new'}">
+      ${plan ? `<p class="sheet-note">${escape(plan.title)} · ${plan.minutes} 分钟。请选择同一周内的日期。</p>` :
+        field('训练项目', `<select name="title">${sports.map(sport => `<option>${sport}</option>`).join('')}</select>`)}
+      ${field('计划日期', `<input type="date" name="date" min="${min}" ${plan ? `max="${max}"` : ''} value="${picked}" required>`)}
+      ${plan ? '' : field('目标时长（分钟）', '<input type="number" name="minutes" min="1" max="1439" value="20" required>')}
+      <p class="form-error" role="alert"></p><button type="submit" class="primary full">${plan ? '保存改期' : '保存计划'}</button></form>`);
+  }
+
+  function matchForm(record, targetId, merge = false) {
+    const choices = state.plans.filter(plan => eligible(state, plan, record));
+    return sheet('确认关联', `<p class="sheet-note">${escape(record.title)} · ${dateLabel(record.date)} ${record.start} · ${record.minutes} 分钟</p><form data-form="match">
+      ${choices.length ? `<fieldset><legend>匹配到哪项训练？</legend>${choices.map((plan, index) => `<label class="choice"><input type="radio" name="plan" value="${plan.id}"
+      ${plan.id === targetId || (!choices.some(entry => entry.id === targetId) && index === 0) ? 'checked' : ''}><span><strong>${escape(plan.title)}</strong><small>${dateLabel(plan.date)} · 目标 ${plan.minutes} 分钟</small></span>${chip(status(state, plan))}</label>`).join('')}
+      <label class="choice"><input type="radio" name="plan" value=""><span>仅保存到训练历史</span></label></fieldset>` :
+      `<p class="sheet-note">${merge && record.plan ? '已匹配过计划，合并后保留原结算。' : '这条记录目前没有可关联的计划，可以保存到训练历史。'}</p>`}
+      <button class="primary full" type="submit">${choices.length ? '确认并保存' : '保存记录'}</button></form>`);
+  }
+
+  function deviceList(targetId) {
+    const devices = [
+      { id: 'device-old', date: '2026-11-12', start: '18:30', minutes: 25, title: '户外跑步' },
+      { id: 'device-grace', date: '2026-11-15', start: '18:30', minutes: 18, title: '舒展拉伸' },
+      { id: 'device-today', date: '2026-11-16', start: '18:30', minutes: 20, title: '户外跑步' }
+    ];
+    const target = getPlan(targetId);
+    if (target) devices.sort((a, b) => Number(b.date === target.date) - Number(a.date === target.date));
+    return sheet('导入设备记录', '<p class="sheet-note">Apple 健康演示数据。选择一条训练，再确认要匹配的计划。</p>' +
+      devices.map(item => {
+        const imported = state.records.some(record => record.deviceId === item.id);
+        const { id, ...training } = item;
+        const data = JSON.stringify({ ...training, deviceId: id, source: 'device' });
+        return button(`<span class="activity">${icon('watch')}</span><span class="list-copy"><strong>${item.title}</strong><small>${dateLabel(item.date)} ${item.start}</small></span>
+          <span class="list-end">${imported ? '已导入' : item.minutes + ' 分钟'}</span>${icon('arrow', 14)}`, 'device', 'list-row', data);
+      }).join(''));
+  }
+
+  function overlayHtml() {
+    const plan = getPlan(overlay.value);
+    switch (overlay.type) {
+      case 'detail': return detail(plan);
+      case 'manual': return trainingForm(plan);
+      case 'new': return dateForm();
+      case 'reschedule': return dateForm(plan);
+      case 'import': return deviceList(overlay.value);
+      case 'match': return matchForm(overlay.record, overlay.value, overlay.merge);
+      case 'duplicate': return sheet('可能是同一场训练', `<p class="sheet-note">有同日期、同开始时间和时长的手填记录。</p><div class="sheet-buttons">
+        ${button('合并记录', 'merge', 'primary')}${button('是另一场训练', 'separate', 'secondary')}</div>`);
+      case 'record': {
+        const record = getRecord(overlay.value);
+        return sheet(escape(record.title), `<dl><div><dt>开始时间</dt><dd>${dateLabel(record.date)} ${record.start}</dd></div>
+          <div><dt>实际时长</dt><dd>${record.minutes} 分钟</dd></div><div><dt>来源</dt><dd>${record.source === 'device' ? '设备' : '手动'}${record.deviceId && record.source === 'manual' ? ' + 设备合并' : ''}</dd></div>
+          <div><dt>计划状态</dt><dd>${record.plan ? '已完成 · ' + escape(getPlan(record.plan)?.title ?? '') : '未关联'}</dd></div></dl>
+          ${record.plan ? button('查看关联计划', 'detail', 'secondary full', record.plan) : button('关联计划', 'link', 'secondary full', record.id)}`);
+      }
+      case 'settings': return sheet('训练提醒', `<button type="button" class="switch-row" data-action="reminders" role="switch" aria-checked="${state.reminders}">
+        <span><strong>开启提醒</strong><small>训练当天与进入待补记时提醒</small></span><i class="switch"></i></button>
+        <p class="sheet-note">时间均为北京时间。首页会持续显示训练状态与截止时间。</p>`);
+      case 'adopt': return sheet('领养宠物', `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>
+        <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
+        <form data-form="adopt">${field('宠物名字', '<input name="name" value="团团" maxlength="12" required>')}<button type="submit" class="primary full">确认领养</button></form>`);
+      case 'restore': {
+        const pet = state.pets.find(entry => entry.id === overlay.value);
+        return sheet('恢复 ' + escape(pet.name), `<p class="sheet-note">更正后剩 ${health(state, pet.id)} 格血。恢复后双方的血量和成长都会保留。</p><div class="sheet-buttons">
+          ${button('确认恢复', 'confirm-restore', 'primary', pet.id)}${button(state.active ? '继续养当前宠物' : '稍后决定', 'close', 'secondary')}</div>`);
+      }
+      case 'health': return sheet('Apple 健康', `<p class="sheet-note">可导入训练类型、实际开始时间和时长。也可以用手动记录。</p><div class="sheet-buttons">
+        ${button('使用演示数据', 'onboard-finish', 'primary')}${button('暂时跳过', 'onboard-finish', 'secondary')}</div>`);
+      default: return '';
+    }
+  }
+
+  const screens = { home, week: calendar, log: logged, pet: petScreen };
+
+  function render({ preserve = false, focusSheet = false } = {}) {
+    const offset = preserve ? outlet.querySelector('.app-scroll')?.scrollTop ?? 0 : 0;
+    outlet.innerHTML = `<div class="phone-app"><div class="app-scroll" ${overlay ? 'inert' : ''}>${screens[tab]()}</div>
+      <nav class="tabbar" aria-label="App 导航" ${overlay ? 'inert' : ''}>${Object.entries(tabNames).map(([key, title]) =>
+        `<button type="button" data-action="tab" data-value="${key}" ${tab === key ? 'aria-current="page"' : ''}>${icon(key)}<span>${title}</span></button>`).join('')}</nav>
+      ${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}</div>`;
+    outlet.querySelectorAll('canvas').forEach(drawScene);
+    outlet.querySelector('.app-scroll').scrollTop = offset;
+    if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });
+  }
+
+  function open(type, value = '', extra = {}) {
+    if (!overlay && document.activeElement?.dataset.action) {
+      const { action, value: key } = document.activeElement.dataset;
+      restoreFocus = { action, value: key };
+    }
+    overlay = { type, value, ...extra };
+    render({ preserve: true, focusSheet: true });
+  }
+
+  function close() {
+    const focus = restoreFocus;
+    overlay = null;
+    restoreFocus = null;
+    render({ preserve: true });
+    if (focus) [...outlet.querySelectorAll('[data-action]')].find(button =>
+      button.dataset.action === focus.action && button.dataset.value === focus.value
+    )?.focus({ preventScroll: true });
+  }
+
+  function feedback(message) {
+    notice = message;
+    close();
+    const previous = message;
+    window.setTimeout(() => {
+      if (notice !== previous) return;
+      notice = '';
+      outlet.querySelector('.toast')?.remove();
+    }, 3000);
+  }
+
+  function load(nextScenario) {
+    scenario = nextScenario;
+    state = seed(nextScenario === 'no-plan' ? 'standard' : nextScenario);
+    if (nextScenario === 'no-plan') {
+      state.now = bj('2026-11-17', '20:00');
+      refresh(state);
+    }
+    week = monday(today());
+    selectedDay = null;
+    logFilter = 'all';
+    tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
+    overlay = null;
+    notice = '';
+    render();
+    if (nextScenario === 'onboarding' && initial === 'home') open('adopt');
+  }
+
+  function selectDevice(record, target) {
+    const existing = state.records.find(entry => entry.deviceId === record.deviceId);
+    if (existing) {
+      open('record', existing.id);
+    } else if (similarRecord(state, record)) {
+      open('duplicate', target, { record });
+    } else {
+      open('match', target, { record });
+    }
+  }
+
+  const handle = {
+    tab(value) { tab = value; notice = ''; render(); outlet.querySelector('[aria-current="page"]')?.focus({ preventScroll: true }); },
+    detail: value => open('detail', value),
+    manual: value => open('manual', value),
+    reschedule: value => open('reschedule', value),
+    record: value => open('record', value),
+    import: value => open('import', value),
+    restore: value => open('restore', value),
+    new: () => open('new'),
+    settings: () => open('settings'),
+    adopt: () => open('adopt'),
+    link: value => open('match', '', { record: getRecord(value) }),
+    close,
+    previous() { week = dayPlus(week, -7); selectedDay = null; render(); outlet.querySelector('[data-action="previous"]').focus(); },
+    next() { week = dayPlus(week, 7); selectedDay = null; render(); outlet.querySelector('[data-action="next"]').focus(); },
+    day(value) { selectedDay = value === selectedDay ? null : (value || null); render({ preserve: true }); },
+    filter(value) { logFilter = value; render({ preserve: true }); outlet.querySelector('[aria-pressed="true"]').focus(); },
+    reminders() {
+      state.reminders = !state.reminders;
+      render({ preserve: true });
+      outlet.querySelector('[role="switch"]').focus();
+    },
+    device(value) { selectDevice(JSON.parse(value), overlay.value); },
+    merge() { open('match', overlay.value, { record: { ...similarRecord(state, overlay.record), deviceId: overlay.record.deviceId }, incoming: overlay.record, merge: true }); },
+    separate() { open('match', overlay.value, { record: overlay.record }); },
+    'confirm-restore'(value) {
+      if (restore(state, value)) feedback('已恢复原宠物');
+    },
+    'onboard-finish'() { scenario = 'standard'; tab = 'home'; feedback('可以开始训练了'); }
+  };
+
+  outlet.addEventListener('click', event => {
+    const control = event.target.closest('[data-action]');
+    if (control) handle[control.dataset.action]?.(control.dataset.value);
+    else if (event.target.classList.contains('shade')) close();
+  });
+  outlet.addEventListener('keydown', event => {
+    if (!overlay) return;
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      close();
+    }
+    if (event.key !== 'Tab') return;
+    const items = [...outlet.querySelectorAll('.sheet :is(button, input, select):not(:disabled)')];
+    if (event.shiftKey && document.activeElement === items[0]) {
+      event.preventDefault();
+      items.at(-1)?.focus();
+    } else if (!event.shiftKey && document.activeElement === items.at(-1)) {
+      event.preventDefault();
+      items[0]?.focus();
+    }
+  });
+  outlet.addEventListener('submit', event => {
+    const form = event.target;
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    switch (form.dataset.form) {
+      case 'manual': {
+        const record = { ...data, minutes: Number(data.minutes), source: 'manual' };
+        if (bj(record.date, record.start) + record.minutes * 60_000 > state.now) {
+          form.querySelector('.form-error').textContent = '请填写已结束的训练。';
+          return;
+        }
+        open('match', overlay.value, { record });
+        break;
+      }
+      case 'match': {
+        const { record, merge, incoming } = overlay;
+        const saved = record.id && !merge ? record : saveRecord(state, incoming ?? record, merge);
+        const plan = getPlan(data.plan);
+        const previousStatus = plan && status(state, plan);
+        const updated = plan && match(state, plan, saved);
+        feedback(updated ? (previousStatus === 'missed' ? '已更正计划结算' : '训练计划已完成') : '训练记录已保存');
+        break;
+      }
+      case 'reschedule': {
+        if (!changeDate(state, getPlan(overlay.value), data.date)) {
+          form.querySelector('.form-error').textContent = '请选择原计划同一周内的有效日期。';
+          return;
+        }
+        feedback('已改期，截止时间已更新');
+        break;
+      }
+      case 'new': {
+        const plan = { ...data, minutes: Number(data.minutes), id: 'plan-' + ++state.serial, effective: state.now };
+        state.plans.push(plan);
+        week = monday(plan.date);
+        selectedDay = null;
+        if (scenario === 'onboarding') open('health');
+        else { tab = 'week'; feedback('已保存训练计划'); }
+        break;
+      }
+      case 'adopt': {
+        const name = data.name.trim();
+        if (!name) {
+          form.elements.name.setCustomValidity('请输入宠物的名字。');
+          form.elements.name.reportValidity();
+          form.elements.name.setCustomValidity('');
+          return;
+        }
+        if (!adopt(state, name)) return;
+        if (scenario === 'onboarding') open('new');
+        else feedback('已领养 ' + escape(name));
+        break;
+      }
+      default: break;
+    }
+  });
+
+  render();
+  return { phone, load, advance(date) {
+    const time = bj(...clocks(date));
+    if (!Number.isFinite(time) || time < state.now) return false;
+    state.now = time;
+    refresh(state);
+    overlay = null;
+    render();
+    return true;
+  } };
+}
+
+const phones = [...root.querySelectorAll('[data-phone]')].map(container => {
+  const app = createPhone(container.dataset.phone);
+  container.append(app.phone);
+  return app;
+});
+
+const lead = phones.find((_, index) => root.querySelectorAll('[data-phone]')[index].dataset.phone === 'home');
+const demoScene = document.querySelector('#demo-scene');
+const demoTime = document.querySelector('#demo-time');
+const demoHint = document.querySelector('#demo-feedback');
+
+demoScene.addEventListener('change', () => {
+  phones.forEach(app => app.load(demoScene.value));
+  demoTime.value = demoScene.value === 'no-plan' ? '2026-11-17T20:00' : DEMO_AT;
+  demoHint.textContent = '';
+});
+document.querySelector('#reset').addEventListener('click', () => {
+  demoScene.value = 'standard';
+  demoScene.dispatchEvent(new Event('change'));
+  demoHint.textContent = '已重置演示。';
+});
+document.querySelector('#advance').addEventListener('click', () => {
+  if (!lead.advance(demoTime.value)) {
+    demoHint.textContent = '请选择当前演示时间或之后的时间。';
+    return;
+  }
+  phones.filter(app => app !== lead).forEach(app => app.advance(demoTime.value));
+  demoHint.textContent = '已按北京时间更新结算。';
+});
+</script></body></html>

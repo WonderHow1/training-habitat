@@ -1,0 +1,177 @@
+const DAY = 86_400_000;
+const DEMO_AT = '2026-11-16T20:00';
+const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
+const sports = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸', '户外跑步', '其他训练'];
+const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
+
+function bj(date, time = '00:00') {
+  return Date.parse(date + 'T' + time + ':00+08:00');
+}
+
+function dateAt(time) {
+  return new Date(time + 8 * 3_600_000).toISOString().slice(0, 10);
+}
+
+function dayPlus(date, count) {
+  return dateAt(bj(date) + count * DAY);
+}
+
+function monday(date) {
+  const weekday = new Date(date + 'T00:00:00Z').getUTCDay();
+  return dayPlus(date, -((weekday + 6) % 7));
+}
+
+function dateLabel(date) {
+  return Number(date.slice(5, 7)) + '月' + Number(date.slice(8, 10)) + '日';
+}
+
+function deadline(plan) {
+  return bj(plan.date) + DAY;
+}
+
+function stamp(time) {
+  return dateLabel(dateAt(time)) + ' ' + new Date(time + 8 * 3_600_000).toISOString().slice(11, 16);
+}
+
+function seed(scenario = 'standard') {
+  const add = (id, date, title, minutes) => ({ id, date: '2026-11-' + date, title, minutes, effective: bj('2026-11-09') });
+  const first = add('first', '10', '核心训练', 15);
+  const old = add('old', '12', '校园夜跑', 20);
+  const grace = add('grace', '15', '舒展拉伸', 15);
+  const today = add('today', '16', '校园夜跑', 20);
+  const next = add('next', '19', '下肢力量', 30);
+  const last = add('last', '21', '舒展拉伸', 15);
+  const state = {
+    now: bj(...DEMO_AT.split('T')),
+    reminders: true,
+    plans: [first, old, grace, today, next, last],
+    records: [
+      { id: 'sample-walk', date: '2026-11-14', start: '16:12', minutes: 24, title: '户外跑步', source: 'device' },
+      { id: 'sample-stretch', date: '2026-11-13', start: '21:10', minutes: 12, title: '舒展拉伸', source: 'manual' },
+      {
+      id: 'sample', date: first.date, start: '18:40', minutes: 18, title: first.title,
+      source: 'manual', plan: first.id
+    }],
+    pets: [{ id: 'moss', name: '团团', spans: [[bj('2026-11-09'), null]], born: '2026-11-09' }],
+    active: 'moss',
+    finished: { first: { at: bj(first.date, '19:00'), pet: 'moss', record: 'sample' } },
+    misses: {},
+    serial: 1
+  };
+  if (scenario === 'death') {
+    state.plans.push(add('miss2', '11', '下肢力量', 25), add('miss3', '13', '核心训练', 15));
+  }
+  if (scenario === 'onboarding') {
+    Object.assign(state, { plans: [], records: [], pets: [], active: null, finished: {} });
+  }
+  refresh(state);
+  return state;
+}
+
+function petAt(state, time) {
+  return state.pets.find(pet => pet.spans.some(([start, end]) => start <= time && (end === null || time < end)))?.id ?? null;
+}
+
+function points(state, petId) {
+  return Object.values(state.finished).filter(event => event.pet === petId).length;
+}
+
+function health(state, petId) {
+  if (!petId) return 0;
+  return Math.max(0, 3 - Object.entries(state.misses).filter(([id, pet]) => pet === petId && !state.finished[id]).length);
+}
+
+function refresh(state) {
+  const pending = state.plans.filter(plan => !state.finished[plan.id] && !Object.hasOwn(state.misses, plan.id) && deadline(plan) + DAY <= state.now);
+  pending.sort((a, b) => deadline(a) - deadline(b));
+  for (const plan of pending) {
+    const petId = petAt(state, deadline(plan));
+    state.misses[plan.id] = petId;
+    if (petId && state.active === petId && health(state, petId) === 0) {
+      state.pets.find(pet => pet.id === petId).spans.at(-1)[1] = deadline(plan) + DAY;
+      state.active = null;
+    }
+  }
+}
+
+function status(state, plan) {
+  if (state.finished[plan.id]) return 'done';
+  if (Object.hasOwn(state.misses, plan.id)) return 'missed';
+  return state.now < deadline(plan) ? 'upcoming' : 'grace';
+}
+
+function changeDate(state, plan, date) {
+  if (status(state, plan) !== 'upcoming' || monday(date) !== monday(plan.date) || date < dateAt(state.now)) return false;
+  if (plan.date !== date) {
+    plan.date = date;
+    plan.effective = state.now;
+  }
+  return true;
+}
+
+function eligible(state, plan, record) {
+  if (!plan || state.finished[plan.id] || record.plan || record.date !== plan.date) return false;
+  const start = bj(record.date, record.start);
+  const end = start + record.minutes * 60_000;
+  if (!Number.isFinite(end) || start < plan.effective || end >= deadline(plan) || end > state.now || record.minutes < plan.minutes) return false;
+  return state.now < deadline(plan) + DAY || ((record.source === 'device' || Boolean(record.deviceId)) && state.now < deadline(plan) + 7 * DAY);
+}
+
+function match(state, plan, record) {
+  if (!eligible(state, plan, record)) return false;
+  const end = bj(record.date, record.start) + record.minutes * 60_000;
+  const pet = Object.hasOwn(state.misses, plan.id) ? state.misses[plan.id] : petAt(state, end);
+  state.finished[plan.id] = { at: state.now, pet, record: record.id };
+  record.plan = plan.id;
+  return true;
+}
+
+function saveRecord(state, input, merge = false) {
+  const exact = input.deviceId && state.records.find(record => record.deviceId === input.deviceId);
+  if (exact) return exact;
+  if (merge) {
+    const similar = similarRecord(state, input);
+    if (similar) {
+      similar.deviceId = input.deviceId;
+      return similar;
+    }
+  }
+  const record = { ...input, id: 'record-' + ++state.serial };
+  state.records.unshift(record);
+  return record;
+}
+
+function similarRecord(state, input) {
+  return state.records.find(record =>
+    record.source === 'manual' && record.date === input.date && record.start === input.start && record.minutes === input.minutes
+  );
+}
+
+function switchPet(state, pet) {
+  const active = state.pets.find(entry => entry.id === state.active);
+  if (active) active.spans.at(-1)[1] = state.now;
+  pet.spans.push([state.now, null]);
+  state.active = pet.id;
+}
+
+function adopt(state, name) {
+  if (state.active) return false;
+  const pet = { id: 'pet-' + ++state.serial, name, spans: [], born: dateAt(state.now) };
+  state.pets.push(pet);
+  switchPet(state, pet);
+  return true;
+}
+
+function recoverable(state) {
+  return state.pets.filter(pet =>
+    pet.id !== state.active && health(state, pet.id) > 0 &&
+    Object.entries(state.misses).some(([id, owner]) => owner === pet.id && state.finished[id])
+  );
+}
+
+function restore(state, petId) {
+  const pet = recoverable(state).find(entry => entry.id === petId);
+  if (!pet) return false;
+  switchPet(state, pet);
+  return true;
+}
