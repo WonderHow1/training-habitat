@@ -296,7 +296,7 @@ async function demoDirection(index, glass = false) {
     await change(lead('.sheet input[name="minutes"]'), '10');
     await submit();
     await includes(lead('.toast'), '已保存训练记录，计划尚未完成');
-    await includes(lead('.today-task'), '待训练');
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .chip.upcoming')}) === null`), true);
     await includes(lead('.habitat .growth'), '0 / 100 XP');
     await clickLead('tab', 'log');
     await clickLead('record', 'record-2');
@@ -304,6 +304,7 @@ async function demoDirection(index, glass = false) {
     await clickLead('close');
     await clickLead('tab', 'home');
     await clickLead('detail', 'today');
+    await includes(lead('.sheet .sheet-status'), '待训练');
   }
   await (glass ? click(lead('.sheet ' + act('edit-plan', 'today'))) : clickLead('reschedule', 'today'));
   await change(lead('input[name="date"]'), '2026-11-17');

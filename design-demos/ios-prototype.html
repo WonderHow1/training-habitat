@@ -2593,7 +2593,7 @@ function createPhone(container) {
       (plan.start ? ' · ' + plan.start : actions && stage === 'upcoming' ? ' · 今日结束前' : '');
     return workoutRow(`
       <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
-      <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${quick ? '' : icon('arrow', 14)}
+      ${quick && stage === 'upcoming' ? '' : `<span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>`}${quick ? '' : icon('arrow', 14)}
     `, 'detail', plan.id, actions, quick);
   }
 
