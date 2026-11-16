@@ -712,6 +712,19 @@ a { color: inherit; }
   object-fit: cover;
   image-rendering: pixelated;
 }
+.scene-pet-touch {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(34%, 160px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  touch-action: manipulation;
+}
+.onboarding .scene-pet-touch { z-index: 3; }
 .habitat-entry-header {
   --habitat-pill: rgb(255 255 255 / 50%);
   position: absolute;
@@ -795,7 +808,7 @@ a { color: inherit; }
 .pet-scene-panel .pet-options .empty-copy { padding-block: 1px; font-size: 13px; }
 .pet-scene-panel .list-row { min-height: 50px; padding: 7px 2px; }
 .pet-scene-panel .activity { width: 34px; height: 34px; }
-.species-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.species-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
 .species-choice {
   position: relative;
   display: grid;
@@ -930,26 +943,32 @@ a { color: inherit; }
   }
   .onboarding-warning { position: absolute; inset: 100% 0 auto; }
 }
+.onboarding-pet-touch {
+  display: block;
+  width: clamp(92px, 20vh, 136px);
+  margin: 0 auto 7px;
+  padding: 0;
+  border-radius: 20px;
+}
 .onboarding-pet-preview {
   display: block;
-  width: clamp(100px, 22vh, 148px);
+  width: 100%;
   height: auto;
   image-rendering: pixelated;
-  margin: 0 auto 7px;
 }
 .onboarding[data-step="pet"] .onboarding-content { padding-bottom: 12px; }
 .onboarding[data-step="pet"] .field { text-align: center; }
 .onboarding[data-step="pet"] input[name="name"] { text-align: center; }
 .onboarding-species {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 5px;
   min-width: 0;
   margin: 0 0 18px;
   padding: 0;
   border: 0;
 }
-.onboarding-choice { display: grid; place-items: center; gap: 2px; position: relative; min-height: 52px; padding-inline: 5px; cursor: pointer; }
+.onboarding-choice { display: grid; place-items: center; gap: 2px; position: relative; min-height: 52px; padding-inline: 2px; font-size: 12px; white-space: nowrap; cursor: pointer; }
 .onboarding-choice-icon .avatar { display: block; width: 33px; height: 33px; image-rendering: pixelated; }
 .onboarding-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .onboarding-choice:has(:checked) > span:last-child { font-weight: 740; text-decoration: underline; text-underline-offset: 5px; }
@@ -1338,8 +1357,7 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
   function updatePetPreview() {
     const preview = view.querySelector('.onboarding-pet-preview');
     preview.dataset.species = draft.species;
-    preview.setAttribute('aria-label', `${petSpecies[draft.species]}的预览`);
-    preview.getContext('2d').clearRect(0, 0, preview.width, preview.height);
+    preview.parentElement.setAttribute('aria-label', `摸摸${petSpecies[draft.species]}`);
     drawScene(preview);
   }
 
@@ -1351,7 +1369,7 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       () => `<div class="onboarding-goal"><label class="goal-entry">
         <input type="number" name="minutes" min="${MIN_DAILY_GOAL}" max="1440" step="1" inputmode="numeric" value="${escape(draft.minutes)}" aria-label="每日目标分钟数" aria-describedby="onboarding-warning" required><span>分钟</span>
       </label><p class="onboarding-warning" id="onboarding-warning" role="status"></p></div>`,
-      () => `<canvas class="onboarding-pet-preview" width="33" height="33" data-avatar data-palette="${palette}" role="img"></canvas>
+      () => `<button type="button" class="onboarding-pet-touch"><canvas class="onboarding-pet-preview" width="33" height="33" data-avatar data-palette="${palette}" aria-hidden="true"></canvas></button>
         <fieldset class="onboarding-species" aria-label="宠物种类">${Object.entries(petSpecies).map(([species, label]) => `<label class="onboarding-choice">
           <input type="radio" name="species" value="${species}" ${species === draft.species ? 'checked' : ''}>
           <span class="onboarding-choice-icon" aria-hidden="true">${petCanvas(palette, 1, false, true, species)}</span><span>${label}</span></label>`).join('')}
@@ -1359,7 +1377,8 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       () => habitatPicker(draft.habitat)
     ];
     const fullScene = index === 2 ? `<canvas class="onboarding-habitat-art" width="88" height="192" data-portrait="onboarding" data-centered-pet
-      data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>` : '';
+      data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>
+      <button type="button" class="scene-pet-touch" aria-label="摸摸${petSpecies[draft.species]}"></button>` : '';
     view.innerHTML = `${fullScene}<form class="onboarding-form">
       <header class="onboarding-head">
         <h2 tabindex="-1">${titles[index]}</h2>
@@ -1372,9 +1391,15 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
     view.scrollTop = 0;
     if (index === 1) {
       updatePetPreview();
-      view.querySelectorAll('.onboarding-choice .avatar').forEach(drawScene);
+      const preview = view.querySelector('.onboarding-pet-preview');
+      animatePet(preview, preview.parentElement);
+      view.querySelectorAll('.onboarding-choice .avatar').forEach(canvas => drawScene(canvas));
     }
-    if (index === 2) drawScene(view.querySelector('.onboarding-habitat-art'));
+    if (index === 2) {
+      const preview = view.querySelector('.onboarding-habitat-art');
+      drawScene(preview);
+      animatePet(preview, view.querySelector('.scene-pet-touch'));
+    }
     updateWarning();
     view.querySelector('h2').focus({ preventScroll: true });
   }
@@ -1445,8 +1470,14 @@ const MIN_DAILY_GOAL = 10;
 const XP_PER_LEVEL = 100;
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
-const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
-const petWeightsInGrams = { cat: 3200, dog: 6000, rabbit: 1800, hamster: 120 };
+const petSpecies = {
+  cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠', guineaPig: '荷兰猪',
+  chinchilla: '龙猫', parrot: '鹦鹉', turtle: '乌龟', hedgehog: '刺猬', goldfish: '金鱼'
+};
+const petWeightsInGrams = {
+  cat: 3200, dog: 6000, rabbit: 1800, hamster: 120, guineaPig: 850,
+  chinchilla: 540, parrot: 95, turtle: 420, hedgehog: 390, goldfish: 35
+};
 const habitatStyles = { garden: '草地', gym: '健身房', 'running-track': '操场跑道', living: '客厅', bedroom: '卧室' };
 
 function bj(date, time = '00:00') {
@@ -1730,70 +1761,215 @@ function restore(state, petId) {
   return true;
 }
 
-const catSprite = [
-  '.......II.......II.......',
-  '......IGGI.....IGGI......',
-  '.....IGGGGI...IGGGGI.....',
-  '.....IGLLLGIIIGLLLGI.....',
-  '....IGLLLLLLLLLLLLLLI....',
-  '...IGLLLLLLLLLLLLLLLGI...',
-  '..IGLLLLLLLLLLLLLLLLLGI..',
-  '..IGLLLWLLLWLLLWLLLLGI..',
-  '.IGLLLLLLLLLLLLLLLLLLLGI.',
-  '.IGLLLLKKLLLLLLKKLLLLLGI.',
-  '.IGLLLLKWLLLLLLKWLLLLLGI.',
-  '.IGLLLLKKLLLLLLKKLLLLLGI.',
-  '.IGLBBLLLLLLLLLLLLBBLLGI.',
-  '.IGLBBLLLKKLKKLLLLBBLLGI.',
-  '..IGLLLLLLKKKLLLLLLLLGI..',
-  '..IGGGLLLLLLLLLLLLLGGI...',
-  '...IGGGLLLLLLLLLLLGGI....',
-  '....IGGLLLLLLLLLLLGI.....',
-  '....IGLLLLLCCLLLLLGI.....',
-  '...IGLLLLLCCCCLLLLLGI....',
-  '...IGLLLLLLCCLLLLLLGI....',
-  '....IGGGGGGGGGGGGGGI.....',
-  '.....IIIIGIIIIIGIII......',
-  '........II.....II........'
-];
+function petArt(colors, scarf, reaction, art) {
+  const pixels = art.trim().split('\n').map(row => row.trim());
+  return {
+    pixels,
+    width: Math.max(...pixels.map(row => row.length)),
+    scarf,
+    reaction,
+    colors: { W: '#fff5df', M: colors.I, E: colors.I, ...colors }
+  };
+}
 
 const petSprites = {
-  cat: {
-    pixels: catSprite, scarf: 15,
-    colors: { I: '#573851', G: '#c8788d', L: '#e5a3ad', B: '#f6c3ae', W: '#fff2d8', K: '#382843', C: '#f9d6c2' }
-  },
-  dog: {
-    pixels: [
-      '......IIIIIIIII......', '....IILLLLLLLLLII....', '..IIILLLLLLLLLLLIII..', '.IIGILLLLLLLLLLLIGII.',
-      'IGGGILLLLLWLLLLLIGGGI', 'IGGGILLLWWWWWLLLIGGGI', 'IGGGILLKWWWWWKLIGGGGI', 'IGGGILLWCCCCCKLIGGGGI',
-      'IGGGILLCCCCCCCLIGGGGI', '.IGGILCCCCKCCCCLIGGI.', '..IIILCCCCCCCCCLIII..', '....IGCCCCKCCCGI.....',
-      '.....IGGGGGGGI......', '.....ILLLLLLLI......', '....ILLLCCCLLLI.....', '...ILLLCCCCCLLLI....',
-      '...ILLLCCCCCLLLII...', '...IGLLLCCCLLLGIGI..', '....IGGGGGGGGGIII...', '.....IIIIIIIII......',
-      '......II...II.......'
-    ], scarf: 16,
-    colors: { I: '#593d36', G: '#a56c4b', L: '#e6ad73', C: '#fff0d4', W: '#f9d9a7', K: '#3f292c' }
-  },
-  rabbit: {
-    pixels: [
-      '....III.......III....', '...ILLLI.....ILLLI...', '...IBBLI.....ILBBI...', '...IBBLI.....ILBBI...',
-      '...IBBLI.....ILBBI...', '....IBLI.....ILBI....', '....ILLLIIIIIILLI....', '...ILLLLLLLLLLLLLI...',
-      '..ILLLLLLLLLLLLLLLI..', '.ILLLLLLLLLLLLLLLLLI.', '.ILLLKLLLLLLLLKLLLLI.', '.ILLLKLLLLLLLLKLLLLI.',
-      '.ILBLLLLLBLLLLLLBLI.', '..ILLLLLKCKLLLLLLI..', '...IGLLLLLLLLLLGI...', '....IGGGGGGGGGGI....',
-      '.....ILLLLLLLLI.....', '....ILLLCCCCLLLI....', '...ILLLCCCCCCLLLI...', '...ILLLCCCCCCLLLII..',
-      '...IGLLLCCCCLLLGICI.', '....IGGGGGGGGGGIIII.', '.....IIIIIIIIIII....', '......II.....II.....'
-    ], scarf: 15,
-    colors: { I: '#58536e', G: '#aaa4c4', L: '#eeeaf7', B: '#e8a8bd', C: '#fff7ef', K: '#3d344c' }
-  },
-  hamster: {
-    pixels: [
-      '....IIII.....IIII....', '...IGBBI.....IBBGI...', '...IGLLIIIIIIILLGI...', '..IGLLLLLLLLLLLLLGI..',
-      '.IGLLLLLLLLLLLLLLLGI.', '.IGLLLKLLLLLLLKLLLGI.', '.IGLLLKLLLLLLLKLLLGI.', 'IGLBBBLLCCCLLBBBLGGI',
-      'IGLBBBLLCKCLLBBBLGGI', 'IGLBBLCLCCCLCLBBLGGI', '.IGLLCCCCCCCCCLLGGI.', '.IGLGCCCCCCCCCGILLI.',
-      '..IGLCCCCCCCCCLLGI..', '..IGLCCCCCCCCCLLGI..', '..IGLLCCCCCCCLLLGI..', '...IGLLCCCCCLLLGI...',
-      '....IGGGGGGGGGGI....', '.....IIIIIIIIII.....', '......II....II......'
-    ], scarf: 16,
-    colors: { I: '#644335', G: '#ba8651', L: '#eec387', B: '#e9a592', C: '#fdf0d2', K: '#44302c' }
-  }
+  cat: petArt({ I: '#633e49', G: '#d87870', L: '#f4ad84', B: '#ef8588', C: '#ffe2b4', E: '#392831' }, 15,
+    [[0, -1], [0, -4], [0, -5], [0, -3], [0, 0], [0, 1], [0, 0]], `
+      ......II.......II......
+      .....IBGI.....IGBI.....
+      .....IBLGI...IGLBI.....
+      .....IGLLLIIILLLGI.....
+      ....IGLLLLGGGLLLLGI....
+      ...IGLLLLLLGLLLLLLGI...
+      ..IGLLLGLCLCLGLLLLLGI..
+      ..IGLLEELLLLLLEELLLGI..
+      ..IGLLEELLLLLLEELLLGI..
+      ..IGBLLLLLMMMLLLBLGGI..
+      ...IGLLLCMMMCMLLLGGI...
+      ....IGLLLLCCLLLLGGI....
+      .....IIGGLLLLGGGII..II.
+      ......ILLLLLLLLLI..IGI.
+      .....IGLLLLCCLLLGI.ILI.
+      .....IGLLLCCCCLLLIIIGI.
+      .....IGGLCCCCCCLGLLGI..
+      ......IIGGGGGGGGGIIII..
+      ......IICIIIIIICII.....
+    `),
+  dog: petArt({ I: '#563c32', G: '#a9643b', L: '#e2a96c', B: '#ed9387', C: '#fff0c8', E: '#33262b' }, 15,
+    [[1, 0], [-1, -1], [1, 0], [-1, -1], [1, 0], [-1, 0], [0, 0]], `
+      .......IIIIIIII........
+      .....IILLLLCLLLII......
+      ...IIGILLLCCCLLIGII....
+      ..IGGGILLLCCCLLIGGGI...
+      .IGGGGILLCCCCLLIGGGGI..
+      .IGGGGILLECCELLIGGGGI..
+      .IGGGGILLECCELLIGGGGI..
+      .IGGGGILBCMMCBLIGGGGI..
+      ..IGGGICCCMMCCCIGGGI...
+      ...IIIGCCCCMCCCGIII....
+      ......IGCCBBCCGI.......
+      .......IIIGGIII....II..
+      .......ILLLLLI....IGI..
+      ......ILLLCCLLI..IGLI..
+      ......IGLCCCCLI.IGGI...
+      ......IGLCCCCLGIIGI....
+      .......IGGGGGLLGGI.....
+      .......IICIIIICII......
+    `),
+  rabbit: petArt({ I: '#534763', G: '#a893bf', L: '#e4d9f0', B: '#e6a4be', C: '#fff3ed', E: '#352c44' }, 16,
+    [[0, -1], [0, -5], [0, -2], [0, 0], [0, -4], [0, -2], [0, 0]], `
+      .....III.....III.....
+      ....ILBBI...IBBLI....
+      ....ILBBI...IBBLI....
+      ....ILBBI...IBBLI....
+      ....ILBBI...IBBLI....
+      .....ILBI...IBLI.....
+      .....ILGIIIIGLLI.....
+      ....IGLLLLLLLLLGI....
+      ...IGLLLLLLLLLLLGI...
+      ..IGLLLELLLLLELLLGI..
+      ..IGLLLELLLLLELLLGI..
+      ..IGBLLLCLMCLLLBLGI..
+      ...IGLLLCCMCCLLLGI...
+      ....IGLLLCCCLLGGI....
+      .....IIGGGGGGII......
+      ......ILLLLLLI..II...
+      .....IGLLCCLLGIIWCI..
+      .....IGLCCCCLGIGGI...
+      .......IIGGGGIII.....
+      ......IICIIICII......
+    `),
+  hamster: petArt({ I: '#5b4030', G: '#be7d47', L: '#edb968', B: '#ed9883', C: '#fff0c3', E: '#392936' }, 16,
+    [[0, 1], [0, 0], [0, -1], [0, 0], [0, 1], [0, 0]], `
+      .....IIII.....IIII.....
+      ....IBBBI.....IBBBI....
+      ....ILGGIIIIIIIGGLI....
+      ...IGLLLLLLLLLLLLLGI...
+      ..IGLLLLLLLLLLLLLLLGI..
+      .IGLLLELLLLLLLLELLLLGI.
+      .IGLLLELLLLLLLLELLLLGI.
+      IGLLBBLLLCCCLLLLBBLLLGI
+      IGLBBCLLCCMCCLLCBBLGGGI
+      IGLBCCLCCCMCCCLCCBLGGGI
+      .IGLCCCCCCCCCCCCCLGGGI.
+      ..IGLCCCCCCCCCCCLGGGI..
+      ..IGLLCCCCCCCCCLLGGGI..
+      ...IGLLCCCCCCCLLGGGI...
+      ....IIGGGGGGGGGGII.....
+      ......IICIIIICII.......
+    `),
+  guineaPig: petArt({ I: '#533832', G: '#8e5541', L: '#c98159', B: '#eaa194', C: '#f5ded1', E: '#342931' }, 17,
+    [[-1, 0], [1, 0], [2, 0], [0, -2], [-1, 0], [0, 0]], `
+      ..........IIIIII........
+      .......IIILLLLLIIIII....
+      .....IIGGLLLLLLILBBGI...
+      ....IGGGGLLLLLCCIGGGII..
+      ...IGGGGGLLLLCCCCLLLGGI.
+      ..IGGGGGLLLCCCCCCLELGGI.
+      .IGGGGGLLLLCCCCCCLELBGGI
+      .IGGGGLLLLCCCCCCCCCLBMCI
+      ILLGGLLLLLCCCCCCCCCLMMCI
+      ILLLGLLLLCCCCCCCCCCCMMCI
+      ILGLLLLLLCCCCCCCWCCCCGGI
+      .IGLLLLLLCCCCCCWWCCCGGI.
+      ..IGGLGLCCCCCCCCCCGGGI..
+      ...IIGGGGGGGGGGGGGGII...
+      .....IICIIIIIICII.......
+    `),
+  chinchilla: petArt({ I: '#45405a', G: '#77769d', L: '#aaa9c4', B: '#d8a1b6', C: '#e7e7f6', E: '#292639' }, 15,
+    [[-1, -2], [0, -5], [1, -6], [2, -4], [1, -1], [0, 0], [0, -1], [0, 0]], `
+      ....IIII.....IIII.......
+      ...IGBBGI...IGBBGI......
+      ..IGBBBGLIIILGBBBGI.....
+      ..IGBBGLLLLLLLGBBGI.....
+      ...IGGLLLLLLLLLGGI......
+      ....IGCGLCLCLGCGI.......
+      ...IGLLLELLLELLLGI......
+      ...IGLLLELLLELLLGI......
+      ...IGBLLCCMCCLBLGI......
+      ....IGLCCCCCCCLGI.......
+      .....IIGGGGGGII.....III.
+      ......ILLCCLLI.....IGLGI
+      .....IGLCCCCLGI...IGGGGI
+      .....IGCCCCCCLGI.IGLGGI.
+      .....IGCCCCCCCGIIGGGI...
+      ......IGGGGGGGLLGGI.....
+      ......IICIIICIIIII......
+    `),
+  parrot: petArt({ I: '#344c50', G: '#397b7b', L: '#70c8ac', B: '#eaa45c', C: '#f9df87', E: '#242e3d' }, 14,
+    [[0, -2], [-2, -4], [0, -3], [2, -5], [0, -3], [-1, -2], [0, 0]], `
+      ..........II.........
+      .........IGII........
+      ........IGLGI........
+      .......IGLLLLIII.....
+      ......IGLLLLLCCCI....
+      .....IGLLLLLCCEEBI...
+      .....IGLLLLLCCEEBBI..
+      .....IGLLLLLLCCBBBI..
+      .....IGLLLLLLCCMMI...
+      ....IGGGLLLLLCCGI....
+      ...IGGGLGLLLLCGI.....
+      ..IGGGLGLGLLCGI......
+      ..IGGLGLGLLLCGI......
+      .IGGGLGLLLLCGI.......
+      IGLGLGLLLLCGI........
+      IGLGIGGGGGI..........
+      .IGIIIBBIBBI.........
+      ..II..II.II..........
+    `),
+  turtle: petArt({ I: '#37473a', G: '#638450', L: '#a9bf70', B: '#e6a184', C: '#dcc981', E: '#243930' }, 18,
+    [[0, 1], [0, 1], [1, 0], [2, -1], [1, -1], [0, 0]], `
+      .........IIIIII.........
+      .......IIGGCCGGII.......
+      .....IIGCLCCCCLCGII.....
+      ....IGCLCCCCCCCCLCGI....
+      ...IGCLCCCGGCCCCCLCGII..
+      ..IGCLCCGLCCLGCCCCLCIILI
+      ..IGCLCCGLCCLGCCCCLGILEI
+      .IGCCLCCCGGCCCCCLCCGILEI
+      IIGGCCCCCLLCCCCCCGGGIIBI
+      ILLIGGGCCCCCCGGGGGIILLLI
+      .IIIGGGGGGGGGGGGIIICLGI.
+      ...IGLLLCGLLCCLLLLIGGI..
+      ....ILLIIIIIIIILLII.....
+      .....II.........II......
+    `),
+  hedgehog: petArt({ I: '#533345', G: '#7c576a', L: '#eac5a6', B: '#e9929d', C: '#fff0d1', E: '#32263a' }, 17,
+    [[0, 1], [-2, 1], [-2, 0], [0, -2], [1, -1], [0, 0]], `
+      ..........I.............
+      ......I..IGI..I.........
+      ....IIGIIGGGIIGI........
+      ...IGGGGGGGGGGGGI.......
+      ..IGCGGGCGGGCGGGI.......
+      .IGGGCGGGCGGGGGGGIII....
+      .IGCGGGCGGGGCGGGILLGI...
+      IGGGCGGGGGCGGGGILBLLGI..
+      IGCGGGCGGGGGGGILLLLELGI.
+      IGGGCGGGCGGGGILLLLLELBGI
+      IGLGGGGGGGGGILLLLLLLCMMI
+      .IGLLGGGGGIILLLLCCCCMMI.
+      ..IGLLILLLLLLLCCCCCIGI..
+      ...IIGGGGGGGGGGGGII.....
+      .....IICIIIICII.........
+    `),
+  goldfish: petArt({ I: '#80504d', G: '#d57351', L: '#fbab62', B: '#ef8181', C: '#ffe2a1', E: '#492d38' }, 17,
+    [[-2, -1], [-1, -3], [1, -4], [3, -2], [2, -1], [0, 0]], `
+      ..........III...........
+      .........IGLGI..........
+      .III....IGLLLLIIIII.....
+      ICLGII.IILLLLLLLLLLII...
+      ICLLLLIIGLLCCLLLLLLLGI..
+      .ICLLLLIGLLLLLLLLLEELGI.
+      ..IGLLLIGLLLLCLLLLEELGI.
+      ...IGGLIGLLLLLLLCLLLBLGI
+      ..IGLLLIGLLLLCCLLLLLLMMI
+      .ICLLLLIGLCLLLLLLLLCLGI.
+      ICLLLLIIGLLLLLLLLCCLGI..
+      ICLGII..IIGLLLLLLGGII...
+      .III.....IIGGGGGGGII....
+      ..........IGLGI.........
+      ...........III..........
+    `)
 };
 
 const gardenPalette = {
@@ -1815,15 +1991,30 @@ const palettes = {
   signal: { sky: '#b9d8ce', haze: '#cce5dc', cloud: '#e3fbec', far: '#85afac', mid: '#709596', trees: '#4e767a', land: '#80a99a', lit: '#a1c5a8', turf: '#6d978a', shore: '#b5d6d0', water: '#92b6bf', wave: '#c6e0dc', flower: '#fae5ac' }
 };
 
-function paintPet(ctx, x, y, scale, level, faded, species) {
-  const { pixels, colors, scarf } = petSprites[species] ?? petSprites.cat;
-  const left = x + Math.floor((25 - pixels[0].length) / 2) * scale;
+function paintPet(ctx, x, y, scale, level, faded, species, pose) {
+  const { pixels, width, colors, scarf } = petSprites[species] ?? petSprites.cat;
+  const restX = x;
+  const restY = y;
+  x += (pose?.x ?? 0) * scale;
+  y += (pose?.y ?? 0) * scale;
+  const left = x + Math.floor((25 - width) / 2) * scale;
   const top = y + (24 - pixels.length) * scale;
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
+  if (species === 'goldfish') {
+    const bowl = ['....IIIIIIIIIIIIIIIIIIII....', '...ICCCCCCCCCCCCCCCCCCCCI...', '..ICLLLLLLLLLLLLLLLLLLLLCI..',
+      '.ICLLLLLLLLLLLLLLLLLLLLLLCI.', 'ICLLLLLLLLLLLLLLLLLLLLLLLLCI'];
+    const rows = [...bowl, ...Array(12).fill(bowl.at(-1)), ...bowl.slice(0, -1).reverse()];
+    const glass = { I: '#779bb9', C: '#f5faff', L: '#ceedff' };
+    rows.forEach((row, j) => [...row].forEach((color, i) => {
+      if (color === '.') return;
+      ctx.fillStyle = glass[color];
+      ctx.fillRect(restX + (i - 2) * scale, restY + (j + 4) * scale, scale, scale);
+    }));
+  }
   pixels.forEach((row, j) => [...row].forEach((color, i) => {
     if (color === '.') return;
-    ctx.fillStyle = colors[color];
+    ctx.fillStyle = pose?.blink && color === 'E' && pixels[j + 1]?.[i] === 'E' ? colors.L : colors[color];
     ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
   }));
   if (level > 1) {
@@ -1839,6 +2030,15 @@ function paintPet(ctx, x, y, scale, level, faded, species) {
     ctx.fillRect(x + 12 * scale, y - 2 * scale, 4 * scale, 2 * scale);
   }
   ctx.restore();
+  if (pose?.heart) {
+    const heart = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
+    const left = Math.min(x + 23 * scale, ctx.canvas.width - 7 * scale);
+    const top = Math.max(0, y + (15 - pixels.length) * scale);
+    ctx.fillStyle = '#e46d8e';
+    heart.forEach((row, j) => [...row].forEach((pixel, i) => {
+      if (pixel === '#') ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
+    }));
+  }
 }
 
 function centeredPetPosition(canvas, species) {
@@ -1849,7 +2049,7 @@ function centeredPetPosition(canvas, species) {
   };
 }
 
-function drawScene(canvas) {
+function drawScene(canvas, pose) {
   const ctx = canvas.getContext('2d');
   const p = palettes[canvas.dataset.palette];
   const compact = canvas.hasAttribute('data-avatar');
@@ -1859,20 +2059,21 @@ function drawScene(canvas) {
   const species = canvas.dataset.species ?? 'cat';
   const habitat = canvas.dataset.habitat ?? 'garden';
   if (!compact && habitat === 'running-track') {
-    drawRunningTrack(ctx, canvas, level, faded, species);
+    drawRunningTrack(ctx, canvas, level, faded, species, pose);
     return;
   }
   if (!compact && habitat !== 'garden') {
-    drawIndoorHabitat(ctx, canvas, habitat, level, faded, species);
+    drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose);
     return;
   }
   if (canvas.hasAttribute('data-portrait')) {
-    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species), canvas.hasAttribute('data-empty'), species);
+    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species), canvas.hasAttribute('data-empty'), species, pose);
     return;
   }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
   if (compact) {
-    paintPet(ctx, 4, 5, 1, level, faded, species);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    paintPet(ctx, 4, 5, 1, level, faded, species, pose);
     return;
   }
   box(0, 0, 144, 83, p.sky);
@@ -1923,7 +2124,7 @@ function drawScene(canvas) {
   const { x, y } = canvas.dataset.palette === 'blueGarden' ? centeredPetPosition(canvas, species) : { x: wide ? 56 : 58, y: 39 };
   box(x - 4, y + 23, 31, 2, p.turf);
   box(x, y + 25, 23, 1, p.turf);
-  paintPet(ctx, x, y, 1, level, faded, species);
+  paintPet(ctx, x, y, 1, level, faded, species, pose);
   if (faded) {
     box(x + 26, y + 15, 1, 7, p.flower);
     box(x + 24, y + 16, 5, 2, p.flower);
@@ -1934,7 +2135,7 @@ function drawScene(canvas) {
   }
 }
 
-function drawRunningTrack(ctx, canvas, level, faded, species) {
+function drawRunningTrack(ctx, canvas, level, faded, species, pose) {
   const { width, height } = canvas;
   const portrait = canvas.hasAttribute('data-portrait');
   const horizon = Math.round(height * .39);
@@ -1979,7 +2180,7 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
   };
   box(petX - 2, petY + 22, 29, 2, '#885445');
   box(petX + 1, petY + 24, 23, 1, '#885445');
-  paintPet(ctx, petX, petY, 1, level, faded, species);
+  paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
 const roomPalettes = {
@@ -1988,7 +2189,7 @@ const roomPalettes = {
   bedroom: ['#efe7f2', '#cbbad3', '#e4d1db', '#cfb9c7', '#795f79']
 };
 
-function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
+function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose) {
   const { width, height } = canvas;
   const portrait = canvas.hasAttribute('data-portrait');
   const floor = portrait ? 77 : 48;
@@ -2053,10 +2254,10 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
   const rug = habitat === 'gym' ? '#90aaa7' : trim;
   box(petX - 7, petY + 19, 39, 14, rug);
   box(petX - 3, petY + 22, 31, 3, seams);
-  if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species);
+  if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
-function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, species) {
+function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, species, pose) {
   const box = (x, y, w, h, color) => {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
@@ -2098,13 +2299,55 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
   if (empty) return;
   box(petX - 2, petY + 23, 28, 2, p.turf);
   box(petX + 2, petY + 25, 22, 1, p.turf);
-  paintPet(ctx, petX, petY, 1, level, faded, species);
+  paintPet(ctx, petX, petY, 1, level, faded, species, pose);
   box(petX + 32, petY + 1, 1, 5, p.flower);
   box(petX + 30, petY + 3, 5, 1, p.flower);
 }
 
 function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false } = {}) {
   return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+}
+
+function animatePet(canvas, target) {
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let species = canvas.dataset.species;
+  let idleSince = performance.now();
+  let touchedAt = -Infinity;
+  let previousPose = '';
+
+  function paint(now) {
+    if (canvas.dataset.species !== species) {
+      species = canvas.dataset.species;
+      idleSince = now;
+      touchedAt = -Infinity;
+      previousPose = '';
+    }
+    const { reaction } = petSprites[species];
+    const elapsed = Math.max(0, now - touchedAt);
+    const index = Math.floor(elapsed / 110);
+    const heart = elapsed < (motion.matches ? 660 : reaction.length * 110);
+    const [x, y] = !motion.matches && heart ? reaction[index] : [0, 0];
+    const blink = !motion.matches && (heart ? index === 2 : (now - idleSince) % 3000 >= 2750);
+    const pose = `${x},${y},${blink},${heart}`;
+    if (pose === previousPose) return;
+    previousPose = pose;
+    drawScene(canvas, { x, y, blink, heart });
+  }
+
+  function tick(now) {
+    if (!canvas.isConnected || target.closest('[inert]')) return;
+    paint(now);
+    requestAnimationFrame(tick);
+  }
+
+  target.addEventListener('click', () => {
+    // Synchronize the species before starting a reaction on a freshly selected preview.
+    const now = performance.now();
+    paint(now);
+    touchedAt = now;
+    paint(now);
+  });
+  requestAnimationFrame(tick);
 }
 
 // Precompiled from huashu-design assets/ios_frame.jsx using the frameNode JSX factory.
@@ -2681,7 +2924,8 @@ function createPhone(container) {
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait data-centered-pet ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      ${hp ? `<button type="button" class="scene-pet-touch" aria-label="摸摸${name}"></button>` : ''}
       <header class="habitat-entry-header">
         <h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
@@ -2694,7 +2938,9 @@ function createPhone(container) {
         ${petOptions(pet)}
         ${petTimeline(pet, awards)}
       </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
-    drawScene(habitatEntry.querySelector('canvas'));
+    const landscape = habitatEntry.querySelector('canvas');
+    drawScene(landscape);
+    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'));
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
   }
@@ -2703,7 +2949,7 @@ function createPhone(container) {
     if (showHabitat === visible) return;
     showHabitat = visible;
     render();
-    const target = visible ? habitatEntry.querySelector('button') : scrollArea.querySelector('.app-head h2');
+    const target = visible ? habitatEntry.querySelector('.habitat-continue') : scrollArea.querySelector('.app-head h2');
     if (!visible) target.tabIndex = -1;
     target.focus({ preventScroll: true });
   }
@@ -3128,7 +3374,7 @@ function createPhone(container) {
       updateTimer();
       timerTick = setInterval(updateTimer, 250);
     }
-    outlet.querySelectorAll('canvas').forEach(drawScene);
+    outlet.querySelectorAll('canvas').forEach(canvas => drawScene(canvas));
     scrollArea.scrollTop = offset;
     renderHabitat(preserve);
     if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });

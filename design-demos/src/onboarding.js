@@ -47,8 +47,7 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
   function updatePetPreview() {
     const preview = view.querySelector('.onboarding-pet-preview');
     preview.dataset.species = draft.species;
-    preview.setAttribute('aria-label', `${petSpecies[draft.species]}的预览`);
-    preview.getContext('2d').clearRect(0, 0, preview.width, preview.height);
+    preview.parentElement.setAttribute('aria-label', `摸摸${petSpecies[draft.species]}`);
     drawScene(preview);
   }
 
@@ -60,7 +59,7 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       () => `<div class="onboarding-goal"><label class="goal-entry">
         <input type="number" name="minutes" min="${MIN_DAILY_GOAL}" max="1440" step="1" inputmode="numeric" value="${escape(draft.minutes)}" aria-label="每日目标分钟数" aria-describedby="onboarding-warning" required><span>分钟</span>
       </label><p class="onboarding-warning" id="onboarding-warning" role="status"></p></div>`,
-      () => `<canvas class="onboarding-pet-preview" width="33" height="33" data-avatar data-palette="${palette}" role="img"></canvas>
+      () => `<button type="button" class="onboarding-pet-touch"><canvas class="onboarding-pet-preview" width="33" height="33" data-avatar data-palette="${palette}" aria-hidden="true"></canvas></button>
         <fieldset class="onboarding-species" aria-label="宠物种类">${Object.entries(petSpecies).map(([species, label]) => `<label class="onboarding-choice">
           <input type="radio" name="species" value="${species}" ${species === draft.species ? 'checked' : ''}>
           <span class="onboarding-choice-icon" aria-hidden="true">${petCanvas(palette, 1, false, true, species)}</span><span>${label}</span></label>`).join('')}
@@ -68,7 +67,8 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       () => habitatPicker(draft.habitat)
     ];
     const fullScene = index === 2 ? `<canvas class="onboarding-habitat-art" width="88" height="192" data-portrait="onboarding" data-centered-pet
-      data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>` : '';
+      data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>
+      <button type="button" class="scene-pet-touch" aria-label="摸摸${petSpecies[draft.species]}"></button>` : '';
     view.innerHTML = `${fullScene}<form class="onboarding-form">
       <header class="onboarding-head">
         <h2 tabindex="-1">${titles[index]}</h2>
@@ -81,9 +81,15 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
     view.scrollTop = 0;
     if (index === 1) {
       updatePetPreview();
-      view.querySelectorAll('.onboarding-choice .avatar').forEach(drawScene);
+      const preview = view.querySelector('.onboarding-pet-preview');
+      animatePet(preview, preview.parentElement);
+      view.querySelectorAll('.onboarding-choice .avatar').forEach(canvas => drawScene(canvas));
     }
-    if (index === 2) drawScene(view.querySelector('.onboarding-habitat-art'));
+    if (index === 2) {
+      const preview = view.querySelector('.onboarding-habitat-art');
+      drawScene(preview);
+      animatePet(preview, view.querySelector('.scene-pet-touch'));
+    }
     updateWarning();
     view.querySelector('h2').focus({ preventScroll: true });
   }

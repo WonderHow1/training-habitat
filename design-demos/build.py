@@ -17,9 +17,11 @@ CANDIDATES = [
     ("signal", "校园排班", "一周横排，显示训练与空档", "#e0eee9", "#255f64", "05", ""),
     (DIRECTIONS[2][0], DIRECTIONS[2][1], "像素明信片与补记提示", "#eee9f7", "#574689", "06", "dir-3.html"),
 ]
-PIXELS = (SRC / "pixels.js").read_text()
+PIXELS = "\n".join((SRC / name).read_text() for name in ("pet-art.js", "pixels.js"))
 STYLE = (SRC / "style.css").read_text()
-JS = "\n".join((SRC / name).read_text() for name in ("training.js", "pixels.js", "frame.js", "habitat.js", "workout-swipe.js", "app.js"))
+JS = "\n".join([(SRC / "training.js").read_text(), PIXELS] + [
+    (SRC / name).read_text() for name in ("pet-motion.js", "frame.js", "habitat.js", "workout-swipe.js", "app.js")
+])
 
 MARK = '<svg viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M4 2h3v4h10V2h3v7h2v8h-2v3H4v-3H2V9h2z"/><path fill="var(--accent)" d="M6 10h3v3H6zm9 0h3v3h-3zm-5 5h4v2h-4z"/></svg>'
 
@@ -136,7 +138,7 @@ def build_thumbs():
     return chrome("六稿总览｜像素宠物健身", THUMB_CSS) + f"""
 <body><main><header><h1>像素宠物健身</h1><p>六张首页探索，三张可点击方向稿</p></header><div class="grid">{cards_html}</div></main>
 <script>{PIXELS}
-document.querySelectorAll('canvas').forEach(drawScene);</script></body></html>
+document.querySelectorAll('canvas').forEach(canvas => drawScene(canvas));</script></body></html>
 """
 
 

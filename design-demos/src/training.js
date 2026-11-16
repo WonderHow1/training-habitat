@@ -5,8 +5,14 @@ const MIN_DAILY_GOAL = 10;
 const XP_PER_LEVEL = 100;
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
-const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
-const petWeightsInGrams = { cat: 3200, dog: 6000, rabbit: 1800, hamster: 120 };
+const petSpecies = {
+  cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠', guineaPig: '荷兰猪',
+  chinchilla: '龙猫', parrot: '鹦鹉', turtle: '乌龟', hedgehog: '刺猬', goldfish: '金鱼'
+};
+const petWeightsInGrams = {
+  cat: 3200, dog: 6000, rabbit: 1800, hamster: 120, guineaPig: 850,
+  chinchilla: 540, parrot: 95, turtle: 420, hedgehog: 390, goldfish: 35
+};
 const habitatStyles = { garden: '草地', gym: '健身房', 'running-track': '操场跑道', living: '客厅', bedroom: '卧室' };
 
 function bj(date, time = '00:00') {

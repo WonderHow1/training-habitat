@@ -1,69 +1,3 @@
-const catSprite = [
-  '.......II.......II.......',
-  '......IGGI.....IGGI......',
-  '.....IGGGGI...IGGGGI.....',
-  '.....IGLLLGIIIGLLLGI.....',
-  '....IGLLLLLLLLLLLLLLI....',
-  '...IGLLLLLLLLLLLLLLLGI...',
-  '..IGLLLLLLLLLLLLLLLLLGI..',
-  '..IGLLLWLLLWLLLWLLLLGI..',
-  '.IGLLLLLLLLLLLLLLLLLLLGI.',
-  '.IGLLLLKKLLLLLLKKLLLLLGI.',
-  '.IGLLLLKWLLLLLLKWLLLLLGI.',
-  '.IGLLLLKKLLLLLLKKLLLLLGI.',
-  '.IGLBBLLLLLLLLLLLLBBLLGI.',
-  '.IGLBBLLLKKLKKLLLLBBLLGI.',
-  '..IGLLLLLLKKKLLLLLLLLGI..',
-  '..IGGGLLLLLLLLLLLLLGGI...',
-  '...IGGGLLLLLLLLLLLGGI....',
-  '....IGGLLLLLLLLLLLGI.....',
-  '....IGLLLLLCCLLLLLGI.....',
-  '...IGLLLLLCCCCLLLLLGI....',
-  '...IGLLLLLLCCLLLLLLGI....',
-  '....IGGGGGGGGGGGGGGI.....',
-  '.....IIIIGIIIIIGIII......',
-  '........II.....II........'
-];
-
-const petSprites = {
-  cat: {
-    pixels: catSprite, scarf: 15,
-    colors: { I: '#573851', G: '#c8788d', L: '#e5a3ad', B: '#f6c3ae', W: '#fff2d8', K: '#382843', C: '#f9d6c2' }
-  },
-  dog: {
-    pixels: [
-      '......IIIIIIIII......', '....IILLLLLLLLLII....', '..IIILLLLLLLLLLLIII..', '.IIGILLLLLLLLLLLIGII.',
-      'IGGGILLLLLWLLLLLIGGGI', 'IGGGILLLWWWWWLLLIGGGI', 'IGGGILLKWWWWWKLIGGGGI', 'IGGGILLWCCCCCKLIGGGGI',
-      'IGGGILLCCCCCCCLIGGGGI', '.IGGILCCCCKCCCCLIGGI.', '..IIILCCCCCCCCCLIII..', '....IGCCCCKCCCGI.....',
-      '.....IGGGGGGGI......', '.....ILLLLLLLI......', '....ILLLCCCLLLI.....', '...ILLLCCCCCLLLI....',
-      '...ILLLCCCCCLLLII...', '...IGLLLCCCLLLGIGI..', '....IGGGGGGGGGIII...', '.....IIIIIIIII......',
-      '......II...II.......'
-    ], scarf: 16,
-    colors: { I: '#593d36', G: '#a56c4b', L: '#e6ad73', C: '#fff0d4', W: '#f9d9a7', K: '#3f292c' }
-  },
-  rabbit: {
-    pixels: [
-      '....III.......III....', '...ILLLI.....ILLLI...', '...IBBLI.....ILBBI...', '...IBBLI.....ILBBI...',
-      '...IBBLI.....ILBBI...', '....IBLI.....ILBI....', '....ILLLIIIIIILLI....', '...ILLLLLLLLLLLLLI...',
-      '..ILLLLLLLLLLLLLLLI..', '.ILLLLLLLLLLLLLLLLLI.', '.ILLLKLLLLLLLLKLLLLI.', '.ILLLKLLLLLLLLKLLLLI.',
-      '.ILBLLLLLBLLLLLLBLI.', '..ILLLLLKCKLLLLLLI..', '...IGLLLLLLLLLLGI...', '....IGGGGGGGGGGI....',
-      '.....ILLLLLLLLI.....', '....ILLLCCCCLLLI....', '...ILLLCCCCCCLLLI...', '...ILLLCCCCCCLLLII..',
-      '...IGLLLCCCCLLLGICI.', '....IGGGGGGGGGGIIII.', '.....IIIIIIIIIII....', '......II.....II.....'
-    ], scarf: 15,
-    colors: { I: '#58536e', G: '#aaa4c4', L: '#eeeaf7', B: '#e8a8bd', C: '#fff7ef', K: '#3d344c' }
-  },
-  hamster: {
-    pixels: [
-      '....IIII.....IIII....', '...IGBBI.....IBBGI...', '...IGLLIIIIIIILLGI...', '..IGLLLLLLLLLLLLLGI..',
-      '.IGLLLLLLLLLLLLLLLGI.', '.IGLLLKLLLLLLLKLLLGI.', '.IGLLLKLLLLLLLKLLLGI.', 'IGLBBBLLCCCLLBBBLGGI',
-      'IGLBBBLLCKCLLBBBLGGI', 'IGLBBLCLCCCLCLBBLGGI', '.IGLLCCCCCCCCCLLGGI.', '.IGLGCCCCCCCCCGILLI.',
-      '..IGLCCCCCCCCCLLGI..', '..IGLCCCCCCCCCLLGI..', '..IGLLCCCCCCCLLLGI..', '...IGLLCCCCCLLLGI...',
-      '....IGGGGGGGGGGI....', '.....IIIIIIIIII.....', '......II....II......'
-    ], scarf: 16,
-    colors: { I: '#644335', G: '#ba8651', L: '#eec387', B: '#e9a592', C: '#fdf0d2', K: '#44302c' }
-  }
-};
-
 const gardenPalette = {
   sky: '#b9dbe0', haze: '#d7e8d4', cloud: '#f5f2d5', far: '#94baa5', mid: '#73a783',
   trees: '#438263', land: '#84ab56', lit: '#b3cb72', turf: '#71944a',
@@ -83,15 +17,30 @@ const palettes = {
   signal: { sky: '#b9d8ce', haze: '#cce5dc', cloud: '#e3fbec', far: '#85afac', mid: '#709596', trees: '#4e767a', land: '#80a99a', lit: '#a1c5a8', turf: '#6d978a', shore: '#b5d6d0', water: '#92b6bf', wave: '#c6e0dc', flower: '#fae5ac' }
 };
 
-function paintPet(ctx, x, y, scale, level, faded, species) {
-  const { pixels, colors, scarf } = petSprites[species] ?? petSprites.cat;
-  const left = x + Math.floor((25 - pixels[0].length) / 2) * scale;
+function paintPet(ctx, x, y, scale, level, faded, species, pose) {
+  const { pixels, width, colors, scarf } = petSprites[species] ?? petSprites.cat;
+  const restX = x;
+  const restY = y;
+  x += (pose?.x ?? 0) * scale;
+  y += (pose?.y ?? 0) * scale;
+  const left = x + Math.floor((25 - width) / 2) * scale;
   const top = y + (24 - pixels.length) * scale;
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
+  if (species === 'goldfish') {
+    const bowl = ['....IIIIIIIIIIIIIIIIIIII....', '...ICCCCCCCCCCCCCCCCCCCCI...', '..ICLLLLLLLLLLLLLLLLLLLLCI..',
+      '.ICLLLLLLLLLLLLLLLLLLLLLLCI.', 'ICLLLLLLLLLLLLLLLLLLLLLLLLCI'];
+    const rows = [...bowl, ...Array(12).fill(bowl.at(-1)), ...bowl.slice(0, -1).reverse()];
+    const glass = { I: '#779bb9', C: '#f5faff', L: '#ceedff' };
+    rows.forEach((row, j) => [...row].forEach((color, i) => {
+      if (color === '.') return;
+      ctx.fillStyle = glass[color];
+      ctx.fillRect(restX + (i - 2) * scale, restY + (j + 4) * scale, scale, scale);
+    }));
+  }
   pixels.forEach((row, j) => [...row].forEach((color, i) => {
     if (color === '.') return;
-    ctx.fillStyle = colors[color];
+    ctx.fillStyle = pose?.blink && color === 'E' && pixels[j + 1]?.[i] === 'E' ? colors.L : colors[color];
     ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
   }));
   if (level > 1) {
@@ -107,6 +56,15 @@ function paintPet(ctx, x, y, scale, level, faded, species) {
     ctx.fillRect(x + 12 * scale, y - 2 * scale, 4 * scale, 2 * scale);
   }
   ctx.restore();
+  if (pose?.heart) {
+    const heart = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
+    const left = Math.min(x + 23 * scale, ctx.canvas.width - 7 * scale);
+    const top = Math.max(0, y + (15 - pixels.length) * scale);
+    ctx.fillStyle = '#e46d8e';
+    heart.forEach((row, j) => [...row].forEach((pixel, i) => {
+      if (pixel === '#') ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
+    }));
+  }
 }
 
 function centeredPetPosition(canvas, species) {
@@ -117,7 +75,7 @@ function centeredPetPosition(canvas, species) {
   };
 }
 
-function drawScene(canvas) {
+function drawScene(canvas, pose) {
   const ctx = canvas.getContext('2d');
   const p = palettes[canvas.dataset.palette];
   const compact = canvas.hasAttribute('data-avatar');
@@ -127,20 +85,21 @@ function drawScene(canvas) {
   const species = canvas.dataset.species ?? 'cat';
   const habitat = canvas.dataset.habitat ?? 'garden';
   if (!compact && habitat === 'running-track') {
-    drawRunningTrack(ctx, canvas, level, faded, species);
+    drawRunningTrack(ctx, canvas, level, faded, species, pose);
     return;
   }
   if (!compact && habitat !== 'garden') {
-    drawIndoorHabitat(ctx, canvas, habitat, level, faded, species);
+    drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose);
     return;
   }
   if (canvas.hasAttribute('data-portrait')) {
-    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species), canvas.hasAttribute('data-empty'), species);
+    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species), canvas.hasAttribute('data-empty'), species, pose);
     return;
   }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
   if (compact) {
-    paintPet(ctx, 4, 5, 1, level, faded, species);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    paintPet(ctx, 4, 5, 1, level, faded, species, pose);
     return;
   }
   box(0, 0, 144, 83, p.sky);
@@ -191,7 +150,7 @@ function drawScene(canvas) {
   const { x, y } = canvas.dataset.palette === 'blueGarden' ? centeredPetPosition(canvas, species) : { x: wide ? 56 : 58, y: 39 };
   box(x - 4, y + 23, 31, 2, p.turf);
   box(x, y + 25, 23, 1, p.turf);
-  paintPet(ctx, x, y, 1, level, faded, species);
+  paintPet(ctx, x, y, 1, level, faded, species, pose);
   if (faded) {
     box(x + 26, y + 15, 1, 7, p.flower);
     box(x + 24, y + 16, 5, 2, p.flower);
@@ -202,7 +161,7 @@ function drawScene(canvas) {
   }
 }
 
-function drawRunningTrack(ctx, canvas, level, faded, species) {
+function drawRunningTrack(ctx, canvas, level, faded, species, pose) {
   const { width, height } = canvas;
   const portrait = canvas.hasAttribute('data-portrait');
   const horizon = Math.round(height * .39);
@@ -247,7 +206,7 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
   };
   box(petX - 2, petY + 22, 29, 2, '#885445');
   box(petX + 1, petY + 24, 23, 1, '#885445');
-  paintPet(ctx, petX, petY, 1, level, faded, species);
+  paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
 const roomPalettes = {
@@ -256,7 +215,7 @@ const roomPalettes = {
   bedroom: ['#efe7f2', '#cbbad3', '#e4d1db', '#cfb9c7', '#795f79']
 };
 
-function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
+function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose) {
   const { width, height } = canvas;
   const portrait = canvas.hasAttribute('data-portrait');
   const floor = portrait ? 77 : 48;
@@ -321,10 +280,10 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
   const rug = habitat === 'gym' ? '#90aaa7' : trim;
   box(petX - 7, petY + 19, 39, 14, rug);
   box(petX - 3, petY + 22, 31, 3, seams);
-  if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species);
+  if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
-function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, species) {
+function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, species, pose) {
   const box = (x, y, w, h, color) => {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
@@ -366,7 +325,7 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
   if (empty) return;
   box(petX - 2, petY + 23, 28, 2, p.turf);
   box(petX + 2, petY + 25, 22, 1, p.turf);
-  paintPet(ctx, petX, petY, 1, level, faded, species);
+  paintPet(ctx, petX, petY, 1, level, faded, species, pose);
   box(petX + 32, petY + 1, 1, 5, p.flower);
   box(petX + 30, petY + 3, 5, 1, p.flower);
 }

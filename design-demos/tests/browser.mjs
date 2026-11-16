@@ -192,6 +192,29 @@ async function demoDirection(index, glass = false) {
       const behind = entry.closest('.ios-screen').querySelector('.app-scroll');
       return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
     })()`));
+    const landscape = JSON.stringify(lead('.habitat-landscape'));
+    assert.ok(await evaluate(`new Promise(resolve => {
+      const canvas = document.querySelector(${landscape});
+      const still = canvas.cloneNode();
+      drawScene(still);
+      const rest = still.toDataURL();
+      const end = performance.now() + 3300;
+      function check() {
+        if (canvas.toDataURL() !== rest) resolve(true);
+        else if (performance.now() >= end) resolve(false);
+        else requestAnimationFrame(check);
+      }
+      check();
+    })`), 'An untouched pet blinks in the habitat');
+    await click(lead('.scene-pet-touch'));
+    assert.ok(await evaluate(`(() => {
+      const canvas = document.querySelector(${landscape});
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) return true;
+      }
+      return false;
+    })()`), 'Tapping the full-screen pet shows a pixel heart');
     await enterToday();
     await assertPetCentered(lead('.habitat-link .pixel-scene'));
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-link .scene-label'))}) === null`),
@@ -327,7 +350,7 @@ async function demoDirection(index, glass = false) {
       const form = lead('form[data-form="adopt"]');
       await includes(form + ' .species-options', '仓鼠');
       const previews = await evaluate(`[...document.querySelectorAll(${JSON.stringify(form + ' .species-choice canvas')})].map(canvas => canvas.toDataURL())`);
-      assert.equal(new Set(previews).size, 4);
+      assert.equal(new Set(previews).size, 10);
       await click(form + ' .species-choice:has(input[value="dog"])');
       const rooms = new Set();
       for (const habitat of ['garden', 'running-track', 'living', 'bedroom', 'gym']) {
@@ -505,19 +528,36 @@ async function verifyOnboarding() {
   await checkHeading('领养宠物');
   const petPreview = JSON.stringify(lead('.onboarding-pet-preview'));
   const cat = await evaluate(`document.querySelector(${petPreview}).toDataURL()`);
+  assert.ok(await evaluate(`(() => {
+    const preview = document.querySelector(${petPreview});
+    const options = [...preview.parentElement.nextElementSibling.querySelectorAll('input')];
+    const rests = new Set();
+    const reactions = new Set();
+    for (const option of options) {
+      option.click();
+      drawScene(preview);
+      const still = preview.toDataURL();
+      rests.add(still);
+      preview.parentElement.click();
+      const reaction = preview.toDataURL();
+      if (preview.dataset.species !== option.value || reaction === still) return false;
+      reactions.add(reaction);
+    }
+    return options.length === 10 && rests.size === 10 && reactions.size === 10;
+  })()`), 'Each of the ten selectable pets has a distinct portrait and reacts to a tap');
   await click(lead('.onboarding-choice:has(input[value="rabbit"])'));
   assert.notEqual(await evaluate(`document.querySelector(${petPreview}).toDataURL()`), cat);
   assert.ok(await evaluate(`(() => {
     const preview = document.querySelector(${petPreview});
     const rect = preview.getBoundingClientRect();
     const view = preview.closest('.onboarding').getBoundingClientRect();
-    const options = preview.nextElementSibling;
+    const options = preview.parentElement.nextElementSibling;
     const icons = [...options.querySelectorAll('canvas.avatar')];
     return preview.dataset.species === 'rabbit' && rect.bottom <= options.getBoundingClientRect().top &&
-      (rect.top + rect.height / 2 - view.top) / view.height < .47 && icons.length === 4 &&
-      new Set(icons.map(icon => icon.toDataURL())).size === 4 &&
-      getComputedStyle(preview.parentElement.querySelector('input[name="name"]')).textAlign === 'center';
-  })()`), 'The raised preview updates above four illustrated choices and the centered name');
+      (rect.top + rect.height / 2 - view.top) / view.height < .47 && icons.length === 10 &&
+      new Set(icons.map(icon => icon.toDataURL())).size === 10 && options.scrollWidth === options.clientWidth &&
+      getComputedStyle(options.parentElement.querySelector('input[name="name"]')).textAlign === 'center';
+  })()`), 'The preview fits above all ten illustrated choices on a 320px screen');
   await change(lead('.onboarding input[name="name"]'), '小栗');
   await click(lead('.onboarding [data-back]'));
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(goal)}).value`), '121');
@@ -790,7 +830,9 @@ async function verifyGlass() {
   await waitForHabitat(true);
   const habitatAppearance = () => evaluate(`(() => {
     const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
-    return [scene.querySelector('.habitat-entry-header').innerHTML, scene.querySelector('canvas').toDataURL()];
+    const still = scene.querySelector('canvas').cloneNode();
+    drawScene(still);
+    return [scene.querySelector('.habitat-entry-header').innerHTML, still.toDataURL()];
   })()`);
   const todayHabitat = await habitatAppearance();
   await enterToday();

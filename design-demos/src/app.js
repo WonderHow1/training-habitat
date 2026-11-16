@@ -204,7 +204,8 @@ function createPhone(container) {
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait data-centered-pet ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      ${hp ? `<button type="button" class="scene-pet-touch" aria-label="摸摸${name}"></button>` : ''}
       <header class="habitat-entry-header">
         <h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
@@ -217,7 +218,9 @@ function createPhone(container) {
         ${petOptions(pet)}
         ${petTimeline(pet, awards)}
       </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
-    drawScene(habitatEntry.querySelector('canvas'));
+    const landscape = habitatEntry.querySelector('canvas');
+    drawScene(landscape);
+    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'));
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
   }
@@ -226,7 +229,7 @@ function createPhone(container) {
     if (showHabitat === visible) return;
     showHabitat = visible;
     render();
-    const target = visible ? habitatEntry.querySelector('button') : scrollArea.querySelector('.app-head h2');
+    const target = visible ? habitatEntry.querySelector('.habitat-continue') : scrollArea.querySelector('.app-head h2');
     if (!visible) target.tabIndex = -1;
     target.focus({ preventScroll: true });
   }
@@ -651,7 +654,7 @@ function createPhone(container) {
       updateTimer();
       timerTick = setInterval(updateTimer, 250);
     }
-    outlet.querySelectorAll('canvas').forEach(drawScene);
+    outlet.querySelectorAll('canvas').forEach(canvas => drawScene(canvas));
     scrollArea.scrollTop = offset;
     renderHabitat(preserve);
     if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });

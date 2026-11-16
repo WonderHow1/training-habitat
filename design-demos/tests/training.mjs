@@ -6,10 +6,10 @@ import vm from 'node:vm';
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
   adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays } = vm.runInNewContext(model + `
+  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays, petSpecies } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
      adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays })`);
+     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays, petSpecies })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -108,6 +108,26 @@ test('pet age advances at local midnight and a memorial retains the age at death
   assert.equal(petAgeInDays(living, bj('2026-11-17')), 8);
   const memorial = seed('death').pets[0];
   assert.equal(petAgeInDays(memorial, bj('2026-11-17')), 6);
+});
+
+test('all ten species can be adopted with their own attributes', () => {
+  const source = readFileSync(new URL('../src/pet-art.js', import.meta.url), 'utf8');
+  const sprites = vm.runInNewContext(source + '\npetSprites');
+  assert.equal(Object.keys(petSpecies).length, 10);
+  assert.deepEqual(Object.keys(sprites), Object.keys(petSpecies));
+  for (const [species, name] of Object.entries(petSpecies)) {
+    const state = seed('onboarding');
+    assert.equal(adopt(state, name, species, 'living'), true, species);
+    const pet = state.pets.find(entry => entry.id === state.active);
+    assert.equal(pet.species, species);
+    assert.equal(pet.habitat, 'living');
+    assert.ok(pet.weightGrams > 0);
+    const { pixels, colors, width, reaction } = sprites[species];
+    assert.ok(width <= 25 && pixels.length <= 24);
+    assert.ok(pixels.every(row => row.length === width && [...row].every(pixel => pixel === '.' || Object.hasOwn(colors, pixel))));
+    assert.ok(pixels.some((row, y) => [...row].some((pixel, x) => pixel === 'E' && pixels[y + 1]?.[x] === 'E')));
+    assert.ok(reaction.some(([x, y]) => x !== 0 || y !== 0));
+  }
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {
