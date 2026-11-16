@@ -180,6 +180,10 @@ async function demoDirection(index, glass = false) {
   await clickLead('detail', 'old');
   await includes(lead('.sheet .sheet-status'), '已完成');
   await includes(lead('.sheet-note'), '撤销本次扣血');
+  if (glass) {
+    assert.ok(await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.sheet dl div'))})]
+      .every(row => getComputedStyle(row).borderBottomWidth === '0px')`));
+  }
   await clickLead('close');
   await clickLead('detail', 'grace');
   await includes(lead('.sheet'), '补记截止');
@@ -458,9 +462,15 @@ async function verifyOpenSurfaces() {
     ];
     const canvas = getComputedStyle(document.querySelector('.habitat-link .pixel-scene'));
     const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
+    const blockDividers = ['.board-header', '.board-footer p', '.week-total', '.plan-list .list-row', '.record-feed .list-row', '.pet-scene-panel .list-row'];
+    const hasOpenSpacing = blockDividers.every(selector => {
+      const style = getComputedStyle(document.querySelector(selector));
+      return style.borderTopWidth === '0px' && style.borderBottomWidth === '0px';
+    }) && parseFloat(getComputedStyle(document.querySelector('.week-days')).marginTop) > 9 &&
+      parseFloat(getComputedStyle(document.querySelector('.plan-list .list-row')).paddingTop) > 11;
     return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
-      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none';
-  })()`), 'Cards and controls have no perimeter strokes, and landscape cards fade into their content');
+      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none' && hasOpenSpacing;
+  })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
 }
 let failed = false;
 try {

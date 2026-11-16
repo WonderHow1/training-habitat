@@ -26,8 +26,15 @@
 }
 [data-glass] .board-controls button:hover { background: var(--activity); }
 [data-glass] :is(.habitat, .today-task, .week-card, .primary, .secondary, .day, .toast) { border: 0; }
+[data-glass] :is(.board-header, .board-footer p, .week-total, .list-row, .sheet dl div, .choice) { border-block: 0; }
 [data-glass] :is(.today-task, .week-card) { padding-inline: 0; }
+[data-glass] .week-card { margin-bottom: 21px; }
+[data-glass] .week-days { gap: 3px; margin-block: 12px 8px; }
+[data-glass] .week-total { padding-top: 11px; }
+[data-glass] .plan-list { margin-bottom: 12px; }
 [data-glass] .day[aria-pressed="true"] { background: #cfe5fd; }
+[data-glass] .list-row { padding-block: 13px; gap: 10px; border-radius: 10px; }
+[data-glass] :is(.sheet dl div, .choice) { padding-block: 11px; }
 [data-glass] .app-scroll {
   padding-bottom: 111px;
   scroll-padding-block: 77px 111px;
@@ -236,8 +243,7 @@
 .pet-scene-panel .growth-bar { background-color: #c8dcf2; }
 .pet-scene-panel .pet-options { margin: 5px 0; }
 .pet-scene-panel .pet-options .empty-copy { padding-block: 1px; font-size: 13px; }
-.pet-scene-panel .list-row { min-height: 48px; padding: 5px 2px; }
-.pet-scene-panel .list-row:last-child { border-bottom: 0; }
+.pet-scene-panel .list-row { min-height: 50px; padding: 7px 2px; }
 .pet-scene-panel .activity { width: 34px; height: 34px; }
 .habitat-continue {
   position: absolute;
