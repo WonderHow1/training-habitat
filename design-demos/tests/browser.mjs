@@ -168,6 +168,7 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
     await includes(habitatGrowth, 'Lv.1');
     await includes(habitatGrowth, '0 / 100 XP');
+    await assertGardenPetCentered(lead('.habitat-landscape'));
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
       const rect = entry.getBoundingClientRect();
@@ -176,6 +177,7 @@ async function demoDirection(index, glass = false) {
       return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
     })()`));
     await enterToday();
+    await assertGardenPetCentered(lead('.habitat-link .pixel-scene'));
     await includes(lead('.habitat-link .pet-attributes'), '年龄7 天');
     await includes(lead('.habitat-link .pet-attributes'), '体重3.2 公斤');
     await includes(lead('.today-task'), '今日训练');
@@ -379,6 +381,31 @@ async function demoDirection(index, glass = false) {
     })()`));
     await screenshot(name + '-mobile-pet');
   }
+}
+
+async function assertGardenPetCentered(selector) {
+  assert.ok(await evaluate(`(() => {
+    const canvas = document.querySelector(${JSON.stringify(selector)});
+    const { width, height } = canvas;
+    const { data } = canvas.getContext('2d').getImageData(0, 0, width, height);
+    const outline = petSprites[canvas.dataset.species].colors.I.slice(1);
+    const [red, green, blue] = outline.match(/../g).map(channel => parseInt(channel, 16));
+    let left = width;
+    let right = -1;
+    let top = height;
+    let bottom = -1;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        if (data[i] !== red || data[i + 1] !== green || data[i + 2] !== blue) continue;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+    }
+    return right >= left && bottom >= top && Math.abs(left + right + 1 - width) <= 2 && Math.abs(top + bottom + 1 - height) <= 2;
+  })()`), 'The grass scene centers the pet sprite in ' + selector);
 }
 
 async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
@@ -669,6 +696,7 @@ async function verifyGlass() {
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
   await includes(lead('.habitat-entry-header'), '我的宠物');
   await includes(lead('.habitat-entry-header'), '领养于 11月9日');
+  await assertGardenPetCentered(lead('.habitat-landscape'));
   await includes(lead('.pet-attributes > div:first-child'), '年龄7 天');
   await includes(lead('.pet-attributes > div:last-child'), '体重3.2 公斤');
   await includes(lead('.pet-scene-panel'), '经验与血量');
