@@ -393,7 +393,7 @@
 .species-choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 .species-choice .avatar { display: block; width: 44px; max-width: 100%; }
 .habitat-choice-preview { overflow: hidden; border-radius: 13px; margin-bottom: 12px; }
-.habitat-continue {
+:is(.habitat-continue, .habitat-onboarding) {
   position: absolute;
   bottom: 40px;
   left: 50%;
@@ -413,6 +413,12 @@
   font-weight: 700;
   -webkit-backdrop-filter: blur(14px) saturate(125%);
   backdrop-filter: blur(14px) saturate(125%);
+}
+.habitat-onboarding {
+  bottom: 96px;
+  min-height: 44px;
+  font-size: 13px;
+  background: #f8f8f8d1;
 }
 .habitat-continue svg { transform: rotate(-90deg); }
 .habitat.habitat-link {
@@ -454,6 +460,8 @@
   max-width: 370px;
   margin-inline: auto;
 }
+.onboarding-head { position: relative; }
+.onboarding-exit { position: absolute; inset: -18px 0 auto auto; }
 .onboarding-head progress {
   display: block;
   width: 76px;
@@ -658,7 +666,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   [data-glass] { --control-glint: none; --control-tint: #f4f4f4; --control-selected: #eaeaea; --control-shadow: none; }
-  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel) {
+  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .habitat-onboarding, .pet-scene-panel) {
     background: var(--layer);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;

@@ -100,6 +100,7 @@ function createPhone(container) {
   const onboarding = usesGlass && initial === 'home' ? createOnboarding(phoneScreen, {
     palette: habitatPalette, speciesPicker, habitatPicker,
     finish({ minutes, name, species, habitat }) {
+      if (scenario !== 'onboarding') load('onboarding', { startOnboarding: false });
       if (!adopt(state, name.trim(), species, habitat)) return;
       state.dailyGoal = Number(minutes);
       scenario = 'standard';
@@ -107,7 +108,12 @@ function createPhone(container) {
       showHabitat = true;
       onboarding.stop();
       render();
-      habitatEntry.querySelector('button').focus({ preventScroll: true });
+      habitatEntry.querySelector('.habitat-continue').focus({ preventScroll: true });
+    },
+    cancel() {
+      onboarding.stop();
+      render({ preserve: true });
+      habitatEntry.querySelector('[data-action="open-onboarding"]')?.focus({ preventScroll: true });
     }
   }) : null;
 
@@ -175,7 +181,7 @@ function createPhone(container) {
     phoneScreen.toggleAttribute('data-habitat', active);
     phoneScreen.toggleAttribute('data-habitat-tabs', petTab);
     habitatEntry.toggleAttribute('data-active', active);
-    habitatEntry.inert = !active || Boolean(overlay);
+    habitatEntry.inert = !active || Boolean(overlay) || Boolean(onboarding?.active);
     if (tab !== 'home' && !petTab) return;
     const pet = current();
     const details = petDetails(pet);
@@ -197,7 +203,8 @@ function createPhone(container) {
         ${petGrowth(details)}
         ${petOptions(pet)}
         ${petTimeline(pet, awards)}
-      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
+      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>
+        ${onboarding ? button('新用户引导', 'open-onboarding', 'habitat-onboarding') : ''}`}`;
     drawScene(habitatEntry.querySelector('canvas'));
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
@@ -572,6 +579,7 @@ function createPhone(container) {
       else button.removeAttribute('aria-current');
     });
     tabbar.style.setProperty('--tab-index', index);
+    layers.hidden = Boolean(onboarding?.active);
     layers.innerHTML = `${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}`;
     outlet.querySelectorAll('canvas').forEach(drawScene);
     scrollArea.scrollTop = offset;
@@ -632,7 +640,7 @@ function createPhone(container) {
     }, 3000);
   }
 
-  function load(nextScenario) {
+  function load(nextScenario, { startOnboarding = true } = {}) {
     onboarding?.stop();
     if (usesGlass && !onboarding && nextScenario === 'onboarding') nextScenario = 'standard';
     scenario = nextScenario;
@@ -650,7 +658,7 @@ function createPhone(container) {
     overlay = null;
     restoreFocus = null;
     notice = '';
-    if (nextScenario === 'onboarding' && onboarding) onboarding.start();
+    if (nextScenario === 'onboarding' && onboarding && startOnboarding) onboarding.start();
     render();
     if (nextScenario === 'onboarding' && !onboarding && initial === 'home') open('adopt');
   }
@@ -679,6 +687,10 @@ function createPhone(container) {
       tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
     },
     habitat() { setHabitat(true); },
+    'open-onboarding'() {
+      onboarding.start({ canExit: true });
+      render({ preserve: true });
+    },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),

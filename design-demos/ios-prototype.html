@@ -782,7 +782,7 @@ a { color: inherit; }
 .species-choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 .species-choice .avatar { display: block; width: 44px; max-width: 100%; }
 .habitat-choice-preview { overflow: hidden; border-radius: 13px; margin-bottom: 12px; }
-.habitat-continue {
+:is(.habitat-continue, .habitat-onboarding) {
   position: absolute;
   bottom: 40px;
   left: 50%;
@@ -802,6 +802,12 @@ a { color: inherit; }
   font-weight: 700;
   -webkit-backdrop-filter: blur(14px) saturate(125%);
   backdrop-filter: blur(14px) saturate(125%);
+}
+.habitat-onboarding {
+  bottom: 96px;
+  min-height: 44px;
+  font-size: 13px;
+  background: #f8f8f8d1;
 }
 .habitat-continue svg { transform: rotate(-90deg); }
 .habitat.habitat-link {
@@ -843,6 +849,8 @@ a { color: inherit; }
   max-width: 370px;
   margin-inline: auto;
 }
+.onboarding-head { position: relative; }
+.onboarding-exit { position: absolute; inset: -18px 0 auto auto; }
 .onboarding-head progress {
   display: block;
   width: 76px;
@@ -1047,7 +1055,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   [data-glass] { --control-glint: none; --control-tint: #f4f4f4; --control-selected: #eaeaea; --control-shadow: none; }
-  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel) {
+  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .habitat-onboarding, .pet-scene-panel) {
     background: var(--layer);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -1155,7 +1163,7 @@ function trainingHeatmap(records, today, selection, id) {
 const onboardingColors = ['#e9f2ff', '#e6f3e8', '#f5eaf9', '#fbefdf', '#fae9eb'];
 const dailyGoalWarning = '每日目标超过 2 小时。请留出休息时间，避免过度训练。';
 
-function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finish }) {
+function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finish, cancel }) {
   const view = document.createElement('section');
   view.className = 'onboarding';
   view.hidden = true;
@@ -1165,6 +1173,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
   let step;
   let color = -1;
   let timer;
+  let canExit = false;
 
   function changeColor() {
     const length = onboardingColors.length;
@@ -1193,6 +1202,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
     ];
     view.innerHTML = `<form class="onboarding-form">
       <header class="onboarding-head">
+        ${canExit ? `<button type="button" class="round onboarding-exit" data-exit aria-label="退出新用户引导">${icon('close')}</button>` : ''}
         <progress max="3" value="${index + 1}" aria-label="引导进度"></progress>
         <h2 tabindex="-1">${titles[index]}</h2>
       </header>
@@ -1225,6 +1235,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
   });
   view.addEventListener('click', event => {
     if (event.target.closest('[data-back]')) show(step - 1);
+    if (event.target.closest('[data-exit]')) cancel();
   });
   view.addEventListener('submit', event => {
     event.preventDefault();
@@ -1248,8 +1259,9 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
 
   return {
     get active() { return !view.hidden; },
-    start() {
+    start(options = {}) {
       stop();
+      canExit = options.canExit ?? false;
       draft = { minutes: String(DEFAULT_DAILY_GOAL), name: '团团', species: 'cat', habitat: 'garden' };
       view.hidden = false;
       show(0);
@@ -2383,6 +2395,7 @@ function createPhone(container) {
   const onboarding = usesGlass && initial === 'home' ? createOnboarding(phoneScreen, {
     palette: habitatPalette, speciesPicker, habitatPicker,
     finish({ minutes, name, species, habitat }) {
+      if (scenario !== 'onboarding') load('onboarding', { startOnboarding: false });
       if (!adopt(state, name.trim(), species, habitat)) return;
       state.dailyGoal = Number(minutes);
       scenario = 'standard';
@@ -2390,7 +2403,12 @@ function createPhone(container) {
       showHabitat = true;
       onboarding.stop();
       render();
-      habitatEntry.querySelector('button').focus({ preventScroll: true });
+      habitatEntry.querySelector('.habitat-continue').focus({ preventScroll: true });
+    },
+    cancel() {
+      onboarding.stop();
+      render({ preserve: true });
+      habitatEntry.querySelector('[data-action="open-onboarding"]')?.focus({ preventScroll: true });
     }
   }) : null;
 
@@ -2458,7 +2476,7 @@ function createPhone(container) {
     phoneScreen.toggleAttribute('data-habitat', active);
     phoneScreen.toggleAttribute('data-habitat-tabs', petTab);
     habitatEntry.toggleAttribute('data-active', active);
-    habitatEntry.inert = !active || Boolean(overlay);
+    habitatEntry.inert = !active || Boolean(overlay) || Boolean(onboarding?.active);
     if (tab !== 'home' && !petTab) return;
     const pet = current();
     const details = petDetails(pet);
@@ -2480,7 +2498,8 @@ function createPhone(container) {
         ${petGrowth(details)}
         ${petOptions(pet)}
         ${petTimeline(pet, awards)}
-      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
+      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>
+        ${onboarding ? button('新用户引导', 'open-onboarding', 'habitat-onboarding') : ''}`}`;
     drawScene(habitatEntry.querySelector('canvas'));
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
@@ -2855,6 +2874,7 @@ function createPhone(container) {
       else button.removeAttribute('aria-current');
     });
     tabbar.style.setProperty('--tab-index', index);
+    layers.hidden = Boolean(onboarding?.active);
     layers.innerHTML = `${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}`;
     outlet.querySelectorAll('canvas').forEach(drawScene);
     scrollArea.scrollTop = offset;
@@ -2915,7 +2935,7 @@ function createPhone(container) {
     }, 3000);
   }
 
-  function load(nextScenario) {
+  function load(nextScenario, { startOnboarding = true } = {}) {
     onboarding?.stop();
     if (usesGlass && !onboarding && nextScenario === 'onboarding') nextScenario = 'standard';
     scenario = nextScenario;
@@ -2933,7 +2953,7 @@ function createPhone(container) {
     overlay = null;
     restoreFocus = null;
     notice = '';
-    if (nextScenario === 'onboarding' && onboarding) onboarding.start();
+    if (nextScenario === 'onboarding' && onboarding && startOnboarding) onboarding.start();
     render();
     if (nextScenario === 'onboarding' && !onboarding && initial === 'home') open('adopt');
   }
@@ -2962,6 +2982,10 @@ function createPhone(container) {
       tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
     },
     habitat() { setHabitat(true); },
+    'open-onboarding'() {
+      onboarding.start({ canExit: true });
+      render({ preserve: true });
+    },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),

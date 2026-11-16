@@ -1,7 +1,7 @@
 const onboardingColors = ['#e9f2ff', '#e6f3e8', '#f5eaf9', '#fbefdf', '#fae9eb'];
 const dailyGoalWarning = '每日目标超过 2 小时。请留出休息时间，避免过度训练。';
 
-function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finish }) {
+function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finish, cancel }) {
   const view = document.createElement('section');
   view.className = 'onboarding';
   view.hidden = true;
@@ -11,6 +11,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
   let step;
   let color = -1;
   let timer;
+  let canExit = false;
 
   function changeColor() {
     const length = onboardingColors.length;
@@ -39,6 +40,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
     ];
     view.innerHTML = `<form class="onboarding-form">
       <header class="onboarding-head">
+        ${canExit ? `<button type="button" class="round onboarding-exit" data-exit aria-label="退出新用户引导">${icon('close')}</button>` : ''}
         <progress max="3" value="${index + 1}" aria-label="引导进度"></progress>
         <h2 tabindex="-1">${titles[index]}</h2>
       </header>
@@ -71,6 +73,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
   });
   view.addEventListener('click', event => {
     if (event.target.closest('[data-back]')) show(step - 1);
+    if (event.target.closest('[data-exit]')) cancel();
   });
   view.addEventListener('submit', event => {
     event.preventDefault();
@@ -94,8 +97,9 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
 
   return {
     get active() { return !view.hidden; },
-    start() {
+    start(options = {}) {
       stop();
+      canExit = options.canExit ?? false;
       draft = { minutes: String(DEFAULT_DAILY_GOAL), name: '团团', species: 'cat', habitat: 'garden' };
       view.hidden = false;
       show(0);

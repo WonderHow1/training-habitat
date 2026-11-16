@@ -948,6 +948,14 @@ async function verifyOpenSurfaces() {
 
 async function verifyNarrowTrainingSummary() {
   await navigate('ios-prototype.html', 320, 700);
+  const onboardingEntry = lead(act('open-onboarding'));
+  const onboardingExit = lead('.onboarding [data-exit]');
+  await includes(onboardingEntry, '新用户引导');
+  assert.ok(await evaluate(`(() => {
+    const entry = document.querySelector(${JSON.stringify(onboardingEntry)});
+    const rect = entry.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight && entry.closest('.habitat-entry').hasAttribute('data-active');
+  })()`), 'The new-user shortcut is visible on the first screen');
   await enterToday();
   await settleHabitatAnimation();
   assert.equal(await todayHeadline(), '今天已经锻炼0小时');
@@ -982,8 +990,22 @@ async function verifyNarrowTrainingSummary() {
   await waitForHeatScroll(`weeks.scrollLeft < ${latest - 40}`);
   assert.equal(await evaluate('document.documentElement.scrollLeft'), 0);
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
-  await change('#demo-scene', 'onboarding');
+  await clickLead('tab', 'home');
+  await clickLead('detail', 'today');
+  await clickLead('manual', 'today');
+  await submit();
+  await clickLead('habitat');
+  await click(onboardingEntry);
+  await includes(lead('.onboarding h2'), '设定每日训练目标');
+  await click(onboardingExit);
+  await enterToday();
+  assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
+  await clickLead('habitat');
+  await click(onboardingEntry);
   await verifyOnboarding('ios-prototype-mobile-onboarding');
+  await enterToday();
+  assert.equal(await todayHeadline(), '今天已经锻炼0小时');
+  await includes(lead('.today-remaining'), '你距离目标还有121分钟');
 }
 let failed = false;
 try {
