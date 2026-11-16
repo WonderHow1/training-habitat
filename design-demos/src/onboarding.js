@@ -1,4 +1,4 @@
-const onboardingColors = ['#ffd7df', '#ffdfc3', '#fff0af', '#d6f3cf', '#ccefeb', '#d6e6ff', '#eadbff'];
+const onboardingColors = ['#fa8198', '#ffa258', '#ffda49', '#91d568', '#57cfbf', '#7cafff', '#c492f5'];
 const onboardingColorInterval = 2000;
 const onboardingProfileKey = 'pixel-fitness.new-user-profile';
 const dailyGoalWarning = '每日目标超过 2 小时。请留出休息时间，避免过度训练。';
@@ -62,11 +62,12 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       </label><p class="onboarding-warning" id="onboarding-warning" role="status"></p></div>`,
       () => `<canvas class="onboarding-pet-preview" width="33" height="33" data-avatar data-palette="${palette}" role="img"></canvas>
         <fieldset class="onboarding-species" aria-label="宠物种类">${Object.entries(petSpecies).map(([species, label]) => `<label class="onboarding-choice">
-          <input type="radio" name="species" value="${species}" ${species === draft.species ? 'checked' : ''}><span>${label}</span></label>`).join('')}
+          <input type="radio" name="species" value="${species}" ${species === draft.species ? 'checked' : ''}>
+          <span class="onboarding-choice-icon" aria-hidden="true">${petCanvas(palette, 1, false, true, species)}</span><span>${label}</span></label>`).join('')}
         </fieldset>${field('宠物名字', `<input name="name" value="${escape(draft.name)}" maxlength="12" required>`)}`,
       () => habitatPicker(draft.habitat)
     ];
-    const fullScene = index === 2 ? `<canvas class="onboarding-habitat-art" width="88" height="192" data-portrait="onboarding"
+    const fullScene = index === 2 ? `<canvas class="onboarding-habitat-art" width="88" height="192" data-portrait="onboarding" data-centered-pet
       data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>` : '';
     view.innerHTML = `${fullScene}<form class="onboarding-form">
       <header class="onboarding-head">
@@ -79,7 +80,10 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       </div>
     </form>`;
     view.scrollTop = 0;
-    if (index === 1) updatePetPreview();
+    if (index === 1) {
+      updatePetPreview();
+      view.querySelectorAll('.onboarding-choice .avatar').forEach(drawScene);
+    }
     if (index === 2) drawScene(view.querySelector('.onboarding-habitat-art'));
     updateWarning();
     view.querySelector('h2').focus({ preventScroll: true });

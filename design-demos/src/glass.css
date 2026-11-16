@@ -438,6 +438,7 @@
 .habitat-open:active { background: #33333315; }
 
 .onboarding {
+  --muted: #283d57;
   position: absolute;
   inset: 0;
   z-index: 9;
@@ -464,6 +465,7 @@
 }
 .onboarding-head h2 {
   max-width: 11em;
+  color: var(--ink);
   font-size: clamp(28px, 7.6vw, 36px);
   line-height: 1.14;
   letter-spacing: -.055em;
@@ -474,12 +476,13 @@
 .onboarding-content .field { margin: 0; }
 .onboarding :is(button, input, select) { background: transparent; border: 0; color: var(--ink); }
 .onboarding .field :is(input, select) { padding-inline: 0; font-size: 20px; border-radius: 0; border: 0; }
-.goal-entry { display: flex; align-items: baseline; gap: 10px; }
+.goal-entry { display: flex; justify-content: center; align-items: baseline; gap: 10px; }
 .goal-entry input {
   width: 4ch;
   min-width: 2ch;
   max-width: 4ch;
   padding: 0;
+  text-align: center;
   appearance: textfield;
   font-size: clamp(54px, 16vw, 76px);
   font-weight: 760;
@@ -494,10 +497,21 @@
 .onboarding-warning {
   min-height: 3em;
   padding: 9px 2px 0;
-  color: #704425;
+  color: #54282c;
+  text-align: center;
   font-size: 13px;
   font-weight: 620;
   line-height: 1.5;
+}
+@media (min-height: 430px) {
+  .onboarding[data-step="goal"] .onboarding-form { position: static; justify-content: space-between; }
+  .onboarding[data-step="goal"] .onboarding-content {
+    position: absolute;
+    inset: 50% clamp(24px, 6vw, 36px) auto;
+    transform: translateY(-50%);
+    margin: 0;
+  }
+  .onboarding-warning { position: absolute; inset: 100% 0 auto; }
 }
 .onboarding-pet-preview {
   display: block;
@@ -506,6 +520,9 @@
   image-rendering: pixelated;
   margin: 0 auto 7px;
 }
+.onboarding[data-step="pet"] .onboarding-content { padding-bottom: 12px; }
+.onboarding[data-step="pet"] .field { text-align: center; }
+.onboarding[data-step="pet"] input[name="name"] { text-align: center; }
 .onboarding-species {
   display: flex;
   justify-content: space-between;
@@ -515,9 +532,10 @@
   padding: 0;
   border: 0;
 }
-.onboarding-choice { display: grid; place-items: center; position: relative; min-height: 44px; padding-inline: 5px; cursor: pointer; }
+.onboarding-choice { display: grid; place-items: center; gap: 2px; position: relative; min-height: 52px; padding-inline: 5px; cursor: pointer; }
+.onboarding-choice-icon .avatar { display: block; width: 33px; height: 33px; image-rendering: pixelated; }
 .onboarding-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.onboarding-choice:has(:checked) { font-weight: 740; text-decoration: underline; text-underline-offset: 5px; }
+.onboarding-choice:has(:checked) > span:last-child { font-weight: 740; text-decoration: underline; text-underline-offset: 5px; }
 .onboarding-choice:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 .onboarding-habitat-art, .onboarding[data-step="habitat"]::before {
   position: absolute;
@@ -526,11 +544,13 @@
   height: 100%;
 }
 .onboarding-habitat-art { object-fit: cover; image-rendering: pixelated; }
+.onboarding[data-step="habitat"] { --ink: #fff; --muted: #f8f6f0; --focus: #fff; color: var(--ink); }
+.onboarding[data-step="habitat"] option { color: #203550; background: #fff; }
 .onboarding[data-step="habitat"]::before {
   content: '';
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(#fffb, #fff0 47%, #fff0 56%, #fff9 79%, #ffff);
+  background: linear-gradient(transparent 8%, #132437a6 20%, #13243799 29%, transparent 43%, transparent 65%, #132437b3 85%, #132437e0);
 }
 .onboarding[data-step="habitat"] .onboarding-form { z-index: 2; }
 .onboarding[data-step="habitat"] .onboarding-content { margin-block: auto 0; }

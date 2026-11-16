@@ -242,8 +242,9 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
   }
 
   if (canvas.hasAttribute('data-empty')) return;
-  const petY = portrait ? (canvas.dataset.portrait === 'pet' ? 81 : 103) : 42;
-  const petX = Math.round(width * .55) - 12;
+  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
+    x: Math.round(width * .55) - 12, y: portrait ? (canvas.dataset.portrait === 'pet' ? 81 : 103) : 42
+  };
   box(petX - 2, petY + 22, 29, 2, '#885445');
   box(petX + 1, petY + 24, 23, 1, '#885445');
   paintPet(ctx, petX, petY, 1, level, faded, species);
@@ -314,8 +315,9 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
     box(right + 5, floor - 25, 8, 5, '#fff5d7');
   }
 
-  const petY = portrait ? (canvas.dataset.portrait === 'pet' ? 84 : 105) : 38;
-  const petX = Math.round((width - 25) / 2);
+  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
+    x: Math.round((width - 25) / 2), y: portrait ? (canvas.dataset.portrait === 'pet' ? 84 : 105) : 38
+  };
   const rug = habitat === 'gym' ? '#90aaa7' : trim;
   box(petX - 7, petY + 19, 39, 14, rug);
   box(petX - 3, petY + 22, 31, 3, seams);
@@ -369,6 +371,6 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
   box(petX + 30, petY + 3, 5, 1, p.flower);
 }
 
-function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden') {
-  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false } = {}) {
+  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
 }

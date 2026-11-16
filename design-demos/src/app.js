@@ -478,7 +478,7 @@ function createPhone(container) {
     const { species, habitat, level } = petDetails(current());
     return sheet('更换背景', `<form data-form="habitat-settings">
       ${habitatPicker(habitat)}
-      <div class="habitat-choice-preview">${petCanvas(habitatPalette, level, false, false, species, habitat)}</div>
+      <div class="habitat-choice-preview">${petCanvas(habitatPalette, level, false, false, species, habitat, { centered: true })}</div>
       <button type="submit" class="primary full">确认背景</button>
     </form>`);
   }

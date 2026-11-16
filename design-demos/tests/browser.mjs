@@ -170,7 +170,7 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
     await includes(habitatGrowth, 'Lv.1');
     await includes(habitatGrowth, '0 / 100 XP');
-    await assertGardenPetCentered(lead('.habitat-landscape'));
+    await assertPetCentered(lead('.habitat-landscape'));
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
       const rect = entry.getBoundingClientRect();
@@ -179,7 +179,7 @@ async function demoDirection(index, glass = false) {
       return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
     })()`));
     await enterToday();
-    await assertGardenPetCentered(lead('.habitat-link .pixel-scene'));
+    await assertPetCentered(lead('.habitat-link .pixel-scene'));
     await includes(lead('.habitat-link .pet-attributes'), '年龄7 天');
     await includes(lead('.habitat-link .pet-attributes'), '体重3.2 公斤');
     await includes(lead('.today-task'), '今日训练');
@@ -320,7 +320,7 @@ async function demoDirection(index, glass = false) {
       await includes(lead('.pet-attributes'), '0 天');
       await includes(lead('.pet-attributes'), '6 公斤');
       await clickLead('habitat-settings');
-      await change(lead('.sheet select[name="habitat"]'), 'running-track');
+      await verifyCenteredHabitatChoices(lead('.sheet .habitat-choice-preview canvas'), lead('.sheet select[name="habitat"]'));
       await submit();
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'running-track');
       await clickLead('tab', 'home');
@@ -379,8 +379,8 @@ async function demoDirection(index, glass = false) {
   }
 }
 
-async function assertGardenPetCentered(selector) {
-  assert.ok(await evaluate(`(() => {
+async function assertPetCentered(selector) {
+  const result = await evaluate(`(() => {
     const canvas = document.querySelector(${JSON.stringify(selector)});
     const { width, height } = canvas;
     const { data } = canvas.getContext('2d').getImageData(0, 0, width, height);
@@ -400,8 +400,22 @@ async function assertGardenPetCentered(selector) {
         bottom = Math.max(bottom, y);
       }
     }
-    return right >= left && bottom >= top && Math.abs(left + right + 1 - width) <= 2 && Math.abs(top + bottom + 1 - height) <= 2;
-  })()`), 'The grass scene centers the pet sprite in ' + selector);
+    const centered = right >= left && bottom >= top && Math.abs(left + right + 1 - width) <= 2 && Math.abs(top + bottom + 1 - height) <= 2;
+    return { centered, bounds: [left, top, right, bottom] };
+  })()`);
+  assert.ok(result.centered, 'The scene centers the pet sprite in ' + selector);
+  return result.bounds;
+}
+
+async function verifyCenteredHabitatChoices(canvas, picker) {
+  const center = await assertPetCentered(canvas);
+  const images = new Set();
+  for (const habitat of ['garden', 'gym', 'living', 'bedroom', 'running-track']) {
+    await change(picker, habitat);
+    images.add(await evaluate(`document.querySelector(${JSON.stringify(canvas)}).toDataURL()`));
+    assert.deepEqual(await assertPetCentered(canvas), center);
+  }
+  assert.equal(images.size, 5, 'Changing the habitat redraws every background');
 }
 
 async function verifyOnboarding() {
@@ -415,13 +429,17 @@ async function verifyOnboarding() {
     const view = document.querySelector(${screen});
     const phone = view.closest('.ios-screen');
     const rect = view.getBoundingClientRect();
+    const goal = view.querySelector('.goal-entry input').getBoundingClientRect();
+    const unit = view.querySelector('.goal-entry > span').getBoundingClientRect();
     return !view.hidden && rect.height === phone.getBoundingClientRect().height &&
       rect.width === phone.getBoundingClientRect().width && getComputedStyle(view).backgroundImage === 'none' &&
+      Math.abs(goal.left + unit.right - rect.left - rect.right) < 1 &&
+      Math.abs(goal.top + goal.bottom - rect.top - rect.bottom) < 1 &&
       phone.querySelector('.tabbar').inert && view.scrollWidth === view.clientWidth && document.documentElement.scrollHeight === innerHeight &&
       view.querySelector('h2').getBoundingClientRect().top - rect.top >= 120 &&
       getComputedStyle(view.querySelector('.onboarding-goal')).backgroundColor === 'rgba(0, 0, 0, 0)' &&
       getComputedStyle(view.querySelector('input')).backgroundColor === 'rgba(0, 0, 0, 0)';
-  })()`), 'Onboarding covers the phone with a solid color');
+  })()`), 'Onboarding covers the phone with a solid color and centers the target time');
   await screenshot('new-user-goal');
   assert.ok(await evaluate(`new Promise(resolve => {
     const view = document.querySelector(${screen});
@@ -429,7 +447,11 @@ async function verifyOnboarding() {
     const interval = setInterval(() => {
       if (view.style.backgroundColor !== initial) {
         clearInterval(interval);
-        resolve(onboardingColorInterval === 2000 && onboardingColors.length === 7 &&
+        const vivid = onboardingColors.every(color => {
+          const channels = color.slice(1).match(/../g).map(channel => parseInt(channel, 16));
+          return Math.max(...channels) - Math.min(...channels) >= 90;
+        });
+        resolve(onboardingColorInterval === 2000 && onboardingColors.length === 7 && vivid &&
           getComputedStyle(view).transitionProperty === 'background-color' && parseFloat(getComputedStyle(view).transitionDuration) > 0);
       }
     }, 25);
@@ -454,9 +476,15 @@ async function verifyOnboarding() {
   assert.notEqual(await evaluate(`document.querySelector(${petPreview}).toDataURL()`), cat);
   assert.ok(await evaluate(`(() => {
     const preview = document.querySelector(${petPreview});
-    return preview.dataset.species === 'rabbit' && preview.getBoundingClientRect().bottom <=
-      preview.nextElementSibling.getBoundingClientRect().top;
-  })()`), 'Changing species updates the preview above the choices');
+    const rect = preview.getBoundingClientRect();
+    const view = preview.closest('.onboarding').getBoundingClientRect();
+    const options = preview.nextElementSibling;
+    const icons = [...options.querySelectorAll('canvas.avatar')];
+    return preview.dataset.species === 'rabbit' && rect.bottom <= options.getBoundingClientRect().top &&
+      (rect.top + rect.height / 2 - view.top) / view.height < .47 && icons.length === 4 &&
+      new Set(icons.map(icon => icon.toDataURL())).size === 4 &&
+      getComputedStyle(preview.parentElement.querySelector('input[name="name"]')).textAlign === 'center';
+  })()`), 'The raised preview updates above four illustrated choices and the centered name');
   await change(lead('.onboarding input[name="name"]'), '小栗');
   await click(lead('.onboarding [data-back]'));
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(goal)}).value`), '121');
@@ -471,11 +499,10 @@ async function verifyOnboarding() {
     const canvas = document.querySelector(${preview});
     const rect = canvas.getBoundingClientRect();
     const screen = canvas.closest('.ios-screen').getBoundingClientRect();
-    return rect.x === screen.x && rect.y === screen.y && rect.width === screen.width && rect.height === screen.height;
+    return rect.x === screen.x && rect.y === screen.y && rect.width === screen.width && rect.height === screen.height &&
+      getComputedStyle(canvas.parentElement.querySelector('h2')).color === 'rgb(255, 255, 255)';
   })()`), 'The habitat preview fills the phone screen');
-  const grass = await evaluate(`document.querySelector(${preview}).toDataURL()`);
-  await change(lead('.onboarding select[name="habitat"]'), 'running-track');
-  assert.notEqual(await evaluate(`document.querySelector(${preview}).toDataURL()`), grass);
+  await verifyCenteredHabitatChoices(lead('.onboarding-habitat-art'), lead('.onboarding select[name="habitat"]'));
   await screenshot('new-user-habitat');
   await submitStep();
   assert.equal(await evaluate(`document.querySelector(${screen}).hidden`), true);
@@ -727,7 +754,7 @@ async function verifyGlass() {
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
   await includes(lead('.habitat-entry-header'), '我的宠物');
   await includes(lead('.habitat-entry-header'), '领养于 11月9日');
-  await assertGardenPetCentered(lead('.habitat-landscape'));
+  await assertPetCentered(lead('.habitat-landscape'));
   await includes(lead('.pet-attributes > div:first-child'), '年龄7 天');
   await includes(lead('.pet-attributes > div:last-child'), '体重3.2 公斤');
   await includes(lead('.pet-scene-panel'), '经验与血量');
