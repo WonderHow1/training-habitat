@@ -5,12 +5,30 @@ import vm from 'node:vm';
 
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-  adopt, restore, recoverable, saveRecord, similarRecord } = vm.runInNewContext(model + `
+  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-     adopt, restore, recoverable, saveRecord, similarRecord })`);
+     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
+});
+
+test('week numbers use Monday and handle year boundaries', () => {
+  const cases = [
+    ['2026-11-16', 2026, 47], ['2026-11-22', 2026, 47],
+    ['2027-01-01', 2026, 53], ['2027-01-04', 2027, 1],
+    ['2025-12-29', 2026, 1]
+  ];
+  for (const [date, year, number] of cases) {
+    assert.deepEqual({ ...isoWeek(date) }, { year, number }, date);
+  }
+});
+
+test('the calendar has the correct length for each month', () => {
+  assert.equal(daysInMonth('2024-02'), 29);
+  assert.equal(daysInMonth('2100-02'), 28);
+  assert.equal(daysInMonth('2026-11'), 30);
+  assert.equal(daysInMonth('2026-12'), 31);
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {

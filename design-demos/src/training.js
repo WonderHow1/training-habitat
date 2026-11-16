@@ -21,6 +21,18 @@ function monday(date) {
   return dayPlus(date, -((weekday + 6) % 7));
 }
 
+function isoWeek(date) {
+  const start = monday(date);
+  const year = dayPlus(start, 3).slice(0, 4);
+  const first = monday(year + '-01-04');
+  return { year: Number(year), number: 1 + (bj(start) - bj(first)) / (7 * DAY) };
+}
+
+function daysInMonth(month) {
+  const next = dayPlus(month + '-01', 32).slice(0, 7) + '-01';
+  return Number(dayPlus(next, -1).slice(8));
+}
+
 function dateLabel(date) {
   return Number(date.slice(5, 7)) + '月' + Number(date.slice(8, 10)) + '日';
 }

@@ -181,6 +181,10 @@ function createPhone(initial) {
     const plans = state.plans.filter(plan => monday(plan.date) === week).sort(orderByDate);
     const shown = selectedDay ? plans.filter(plan => plan.date === selectedDay) : plans;
     const done = plans.filter(plan => status(state, plan) === 'done').length;
+    const range = dateLabel(week) + '–' + dateLabel(end);
+    const { year, number } = isoWeek(week);
+    const weekTitle = usesGlass ? `<button type="button" class="week-trigger" data-action="pick-week" aria-haspopup="dialog">
+      <strong>${year} 年第 ${number} 周 ${icon('arrow', 15)}</strong><span>${range}</span></button>` : `<h3>${range}</h3>`;
     const strip = Array.from({ length: 7 }, (_, index) => {
       const date = dayPlus(week, index);
       const slots = plans.filter(plan => plan.date === date);
@@ -189,7 +193,7 @@ function createPhone(initial) {
         <small>${'一二三四五六日'[index]}</small><strong>${Number(date.slice(8))}</strong><span>${marks}</span></button>`;
     }).join('');
     return head('训练计划', '周一至周日', round('plus', '新增训练', 'new')) +
-      `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}<h3>${dateLabel(week)}–${dateLabel(end)}</h3>${round('arrow', '下一周', 'next')}</div>
+      `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}${weekTitle}${round('arrow', '下一周', 'next')}</div>
       <div class="week-days" aria-label="筛选训练日期">${strip}</div>
       <div class="week-total"><span>本周已完成</span><strong>${done}<span> / ${plans.length}</span></strong></div></section>
       <section class="plan-list"><div class="section-heading"><h3>${selectedDay ? weekday(selectedDay) + '的安排' : '本周安排'}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
@@ -293,6 +297,36 @@ function createPhone(initial) {
       <p class="form-error" role="alert"></p><button type="submit" class="primary full">${plan ? '保存改期' : '保存计划'}</button></form>`);
   }
 
+  function weekPicker(date) {
+    const [year, month] = date.split('-');
+    const yearStart = Math.min(1900, Number(year));
+    const yearEnd = Math.max(2100, Number(year));
+    const options = (values, current, suffix) => values.map(value =>
+      `<option value="${value}" ${value === current ? 'selected' : ''}>${Number(value)}${suffix}</option>`
+    ).join('');
+    const yearValues = Array.from({ length: yearEnd - yearStart + 1 }, (_, index) => String(yearStart + index));
+    const monthValues = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
+    const monthKey = year + '-' + month;
+    const start = monthKey + '-01';
+    const leading = (bj(start) - bj(monday(start))) / DAY;
+    const dates = Array.from({ length: daysInMonth(monthKey) }, (_, index) => {
+      const value = dayPlus(start, index);
+      return `<button type="button" class="picker-day" aria-label="${year}年${dateLabel(value)}" aria-pressed="${value === date}"
+        ${value === today() ? 'aria-current="date"' : ''} data-action="pick-date" data-value="${value}">${index + 1}</button>`;
+    }).join('');
+    return sheet('选择日期', `<form class="week-picker" data-form="pick-week">
+      <div class="form-pair">
+        ${field('年份', `<select name="year">${options(yearValues, year, '年')}</select>`)}
+        ${field('月份', `<select name="month">${options(monthValues, month, '月')}</select>`)}
+      </div>
+      <div class="picker-calendar" role="group" aria-label="${year}年${Number(month)}月">
+        ${[...'一二三四五六日'].map(day => `<span class="picker-weekday">周${day}</span>`).join('')}
+        ${'<span aria-hidden="true"></span>'.repeat(leading)}${dates}
+      </div>
+      <button class="primary full" type="submit">确认日期</button>
+    </form>`);
+  }
+
   function matchForm(record, targetId, merge = false) {
     const choices = state.plans.filter(plan => eligible(state, plan, record));
     return sheet('确认关联', `<p class="sheet-note">${escape(record.title)} · ${dateLabel(record.date)} ${record.start} · ${record.minutes} 分钟</p><form data-form="match">
@@ -325,6 +359,7 @@ function createPhone(initial) {
     const plan = getPlan(overlay.value);
     switch (overlay.type) {
       case 'detail': return detail(plan);
+      case 'pick-week': return weekPicker(overlay.date);
       case 'manual': return trainingForm(plan);
       case 'new': return dateForm();
       case 'reschedule': return dateForm(plan);
@@ -475,6 +510,15 @@ function createPhone(initial) {
     adopt: () => open('adopt'),
     link: value => open('match', '', { record: getRecord(value) }),
     close,
+    'pick-week'() {
+      const date = selectedDay ?? (week === monday(today()) ? today() : week);
+      open('pick-week', '', { date });
+    },
+    'pick-date'(date) {
+      overlay.date = date;
+      render({ preserve: true });
+      layers.querySelector('.picker-day[aria-pressed="true"]').focus({ preventScroll: true });
+    },
     previous() { week = dayPlus(week, -7); selectedDay = null; render(); outlet.querySelector('[data-action="previous"]').focus(); },
     next() { week = dayPlus(week, 7); selectedDay = null; render(); outlet.querySelector('[data-action="next"]').focus(); },
     day(value) { selectedDay = value === selectedDay ? null : (value || null); render({ preserve: true }); },
@@ -537,11 +581,26 @@ function createPhone(initial) {
       items[0]?.focus();
     }
   });
+  outlet.addEventListener('change', event => {
+    const input = event.target;
+    const picker = input.closest('.week-picker');
+    if (!picker || input.tagName !== 'SELECT') return;
+    const month = picker.elements.year.value + '-' + picker.elements.month.value;
+    const day = Math.min(Number(overlay.date.slice(8)), daysInMonth(month));
+    overlay.date = month + '-' + String(day).padStart(2, '0');
+    render({ preserve: true });
+    layers.querySelector(`.week-picker select[name="${input.name}"]`)?.focus({ preventScroll: true });
+  });
   outlet.addEventListener('submit', event => {
     const form = event.target;
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form));
     switch (form.dataset.form) {
+      case 'pick-week':
+        selectedDay = overlay.date;
+        week = monday(selectedDay);
+        close();
+        break;
       case 'manual': {
         const record = { ...data, minutes: Number(data.minutes), source: 'manual' };
         if (bj(record.date, record.start) + record.minutes * 60_000 > state.now) {

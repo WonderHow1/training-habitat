@@ -360,6 +360,7 @@ async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
   await verifyPrototypePalette();
   await verifyOpenSurfaces();
+  await verifyWeekPicker();
   const { x, y } = await habitatPoint();
   const wheel = deltaY => cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY });
   await wheel(42);
@@ -429,6 +430,36 @@ async function verifyGlass() {
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length`), 0);
   await clickLead('close');
   await cmd('Emulation.setEmulatedMedia', { features: [] });
+}
+
+async function verifyWeekPicker() {
+  const week = selector => '[data-phone="week"] ' + selector;
+  await includes(week('.week-trigger'), '2026 年第 47 周');
+  await includes(week('.week-trigger'), '11月16日–11月22日');
+  assert.ok(await evaluate(`(() => {
+    const add = document.querySelector(${JSON.stringify(week('.section-add'))}).getBoundingClientRect();
+    const tabs = document.querySelector(${JSON.stringify(week('.tabbar'))}).getBoundingClientRect();
+    return tabs.top - add.bottom >= 10;
+  })()`));
+  await click(week('.week-trigger'));
+  await includes(week('.sheet h3'), '选择日期');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(week('.picker-day[aria-pressed="true"]'))}).dataset.value`), '2026-11-16');
+  await change(week('.week-picker select[name="year"]'), '2024');
+  await change(week('.week-picker select[name="month"]'), '02');
+  await click(week(act('pick-date', '2024-02-29')));
+  await change(week('.week-picker select[name="year"]'), '2025');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(week('.picker-day[aria-pressed="true"]'))}).dataset.value`), '2025-02-28');
+  await change(week('.week-picker select[name="year"]'), '2024');
+  await click(week(act('pick-date', '2024-02-29')));
+  await screenshot('ios-prototype-week-picker');
+  await click(week('.week-picker button[type="submit"]'));
+  await includes(week('.week-trigger'), '2024 年第 9 周');
+  await includes(week('.week-trigger'), '2月26日–3月3日');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(week('.week-days [aria-pressed="true"]'))}).dataset.value`), '2024-02-29');
+  await click(week('.week-trigger'));
+  await includes(week('.sheet h3'), '选择日期');
+  await click(week(act('close')));
+  await includes(week('.week-trigger'), '2024 年第 9 周');
 }
 
 async function verifyPrototypePalette() {
