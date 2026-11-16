@@ -175,10 +175,10 @@ async function demoDirection(index, glass = false) {
       const attributes = growth.nextElementSibling.children;
       return attributes.length === 2 && [growth, ...attributes].every(element => {
         const pill = getComputedStyle(element);
-        return pill.backgroundColor === 'rgba(255, 255, 255, 0.8)' &&
+        return pill.backgroundColor === 'rgba(255, 255, 255, 0.2)' &&
           pill.backgroundImage === 'none' && pill.borderRadius === '20px';
       });
-    })()`), 'The full-screen experience, age and weight pills have matching 80% opaque white fills');
+    })()`), 'The full-screen experience, age and weight pills have matching 20% opaque white fills');
     await assertPetCentered(lead('.habitat-landscape'));
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
