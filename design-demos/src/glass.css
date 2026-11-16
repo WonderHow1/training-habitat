@@ -297,7 +297,7 @@
   image-rendering: pixelated;
 }
 .habitat-entry-header {
-  --habitat-pill: #fff3;
+  --habitat-pill: rgb(255 255 255 / 35%);
   position: absolute;
   top: 78px;
   left: clamp(22px, 2.4vw, 32px);
