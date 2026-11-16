@@ -436,14 +436,14 @@ async function verifyPrototypePalette() {
     const habitat = '[data-phone="home"] .habitat-landscape';
     const card = '[data-phone="home"] .habitat-art canvas';
     const sky = pixel(habitat, 0, 0);
-    return background('[data-phone="log"] .heatmap') === 'rgb(255, 255, 255)' &&
-      isPaleBlue(colorChannels(background('.ios-screen'))) &&
-      isPaleBlue(colorChannels(background('body'))) &&
+    const white = 'rgb(255, 255, 255)';
+    return ['body', '.ios-screen', '[data-phone="log"] .heatmap'].every(selector => background(selector) === white) &&
+      isPaleBlue(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
       face[0] < face[1] && face[1] < face[2] && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
       isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
-  })()`), 'The interface uses white and blue while the habitat has green grass and trees');
+  })()`), 'Main surfaces are white, secondary controls are pale blue, and the habitat has green grass and trees');
 }
 let failed = false;
 try {
