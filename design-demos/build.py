@@ -30,46 +30,52 @@ def chrome(title, css):
 <title>{escape(title)}</title><style>{css}</style></head>"""
 
 
-def build_direction(index, direction, *, glass=False):
+def build_direction(index, direction, *, glass=False, new_user=False):
     theme, name, lead, view_name = direction
     links = "".join(
         f'<span aria-current="page">{label}</span>' if number == index else f'<a href="dir-{number}.html">{label}</a>'
         for number, (_, label, _, _) in enumerate(DIRECTIONS, 1)
     )
     if glass:
-        links = '<span aria-current="page">Liquid Glass</span><a href="dir-1.html">A 版方向稿</a>'
+        links = '<span aria-current="page">Liquid Glass</span><a href="new-user.html">新用户引导原型</a><a href="dir-1.html">A 版方向稿</a>'
         lead = "上滑进入今天的训练，滚到顶部后下滑回到栖息地。"
+    if new_user:
+        name = "新用户引导"
+        links = '<a href="ios-prototype.html">日常使用原型</a><span aria-current="page">新用户引导</span>'
     elif index == 1:
         links = '<a href="ios-prototype.html">试用 Liquid Glass</a>' + links
     css = STYLE + ((SRC / "glass.css").read_text() if glass else "")
-    variant = " data-glass" if glass else ""
+    variant = (' data-glass' if glass else '') + (' data-new-user' if new_user else '')
     caption = "iOS 原型" if glass else "iOS 方向稿"
     footer = "" if glass else f"{view_name}是这一版的视觉重点。"
-    devices = (("home", "今天"), ("week", "一周计划"), ("log", "训练记录"), ("pet", "宠物与成长"))
+    devices = (("home", "今天"),) if new_user else (("home", "今天"), ("week", "一周计划"), ("log", "训练记录"), ("pet", "宠物与成长"))
     phones = "".join(
         f'<section class="device" id="view-{tab}" data-phone="{tab}"><h2>{label}</h2></section>'
         for tab, label in devices
     )
+    controls = '<div class="board-tools"><button type="button" id="reset">重置新用户演示</button></div>' if new_user else f"""
+<div class="board-tools">
+  <div><p>{lead}</p><p id="demo-feedback" role="status"></p></div>
+  <div class="board-controls">
+    <label>场景<select id="demo-scene" aria-label="场景">
+      <option value="standard">日常训练</option>{'' if glass else '<option value="onboarding">首次领养</option>'}
+      <option value="death">宠物离世</option><option value="no-plan">无计划日</option>
+    </select></label>
+    <label>北京时间<input id="demo-time" type="datetime-local" value="2026-11-16T20:00" min="2026-11-16T20:00"></label>
+    <button type="button" id="advance">推进时间</button><button type="button" id="reset">重置</button>
+  </div>
+</div>"""
+    feature_scripts = "\n".join((SRC / name).read_text() for name in ("heatmap.js", "onboarding.js") if glass and (name == "heatmap.js" or new_user))
     return chrome(f"{name}｜像素宠物健身", css) + f"""
 <body data-theme="{theme}"{variant}>
 <header class="board-header">
   <div class="board-identity"><div class="board-mark">{MARK}</div><div><p>像素宠物健身 · {caption}</p><h1>{name}</h1></div></div>
   <nav class="board-nav" aria-label="设计方向">{links}{'' if glass else '<a href="thumbs.html">六稿总览</a>'}</nav>
 </header>
-<div class="board-tools">
-  <div><p>{lead}</p><p id="demo-feedback" role="status"></p></div>
-  <div class="board-controls">
-    <label>场景<select id="demo-scene" aria-label="场景">
-      <option value="standard">日常训练</option><option value="onboarding">{'新用户引导' if glass else '首次领养'}</option>
-      <option value="death">宠物离世</option><option value="no-plan">无计划日</option>
-    </select></label>
-    <label>北京时间<input id="demo-time" type="datetime-local" value="2026-11-16T20:00" min="2026-11-16T20:00"></label>
-    <button type="button" id="advance">推进时间</button><button type="button" id="reset">重置</button>
-  </div>
-</div>
+{controls}
 <main id="board">{phones}</main>
-<footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。{footer}</p></footer>
-<script>{(SRC / "heatmap.js").read_text() + (SRC / "onboarding.js").read_text() if glass else ""}
+{'' if new_user else f'<footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。{footer}</p></footer>'}
+<script>{feature_scripts}
 {JS}</script></body></html>
 """
 
@@ -136,6 +142,7 @@ document.querySelectorAll('canvas').forEach(drawScene);</script></body></html>
 
 if __name__ == "__main__":
     (ROOT / "ios-prototype.html").write_text(build_direction(1, DIRECTIONS[0], glass=True))
+    (ROOT / "new-user.html").write_text(build_direction(1, DIRECTIONS[0], glass=True, new_user=True))
     for index, direction in enumerate(DIRECTIONS, 1):
         (ROOT / f"dir-{index}.html").write_text(build_direction(index, direction))
     (ROOT / "thumbs.html").write_text(build_thumbs())

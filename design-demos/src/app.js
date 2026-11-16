@@ -1,6 +1,7 @@
 const root = document.querySelector('#board');
 const theme = document.body.dataset.theme;
 const usesGlass = document.body.hasAttribute('data-glass');
+const newUserPreview = document.body.hasAttribute('data-new-user');
 const habitatPalette = usesGlass ? 'blueGarden' : theme;
 const icons = {
   home: 'M3 10.5 12 3l9 7.5V20H3z M9 20v-6h6v6', week: 'M4 6h16v14H4z M4 10h16 M8 4v4 M16 4v4',
@@ -97,25 +98,25 @@ function createPhone(container) {
   let notice = '';
   let restoreFocus = null;
   let clickTrigger = null;
-  const onboarding = usesGlass && initial === 'home' ? createOnboarding(phoneScreen, {
-    palette: habitatPalette, speciesPicker, habitatPicker,
-    finish({ minutes, name, species, habitat }) {
-      if (scenario !== 'onboarding') load('onboarding', { startOnboarding: false });
-      if (!adopt(state, name.trim(), species, habitat)) return;
-      state.dailyGoal = Number(minutes);
-      scenario = 'standard';
-      tab = 'home';
-      showHabitat = true;
+  const onboarding = newUserPreview ? createOnboarding(phoneScreen, {
+    palette: habitatPalette, habitatPicker,
+    finish(profile) {
+      if (!applyOnboardingProfile(profile)) return;
+      storeOnboardingProfile(profile);
       onboarding.stop();
       render();
       habitatEntry.querySelector('.habitat-continue').focus({ preventScroll: true });
-    },
-    cancel() {
-      onboarding.stop();
-      render({ preserve: true });
-      habitatEntry.querySelector('[data-action="open-onboarding"]')?.focus({ preventScroll: true });
     }
   }) : null;
+
+  function applyOnboardingProfile({ minutes, name, species, habitat }) {
+    if (!adopt(state, name.trim(), species, habitat)) return false;
+    state.dailyGoal = Number(minutes);
+    scenario = 'standard';
+    tab = 'home';
+    showHabitat = true;
+    return true;
+  }
 
   const current = () => state.pets.find(pet => pet.id === state.active) ??
     state.pets.reduce((last, pet) => !last || pet.spans.at(-1)[1] >= last.spans.at(-1)[1] ? pet : last, null);
@@ -203,8 +204,7 @@ function createPhone(container) {
         ${petGrowth(details)}
         ${petOptions(pet)}
         ${petTimeline(pet, awards)}
-      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>
-        ${onboarding ? button('新用户引导', 'open-onboarding', 'habitat-onboarding') : ''}`}`;
+      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     drawScene(habitatEntry.querySelector('canvas'));
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
@@ -640,9 +640,8 @@ function createPhone(container) {
     }, 3000);
   }
 
-  function load(nextScenario, { startOnboarding = true } = {}) {
+  function load(nextScenario, profile = null) {
     onboarding?.stop();
-    if (usesGlass && !onboarding && nextScenario === 'onboarding') nextScenario = 'standard';
     scenario = nextScenario;
     state = demoState(nextScenario === 'no-plan' ? 'standard' : nextScenario);
     if (nextScenario === 'no-plan') {
@@ -658,7 +657,7 @@ function createPhone(container) {
     overlay = null;
     restoreFocus = null;
     notice = '';
-    if (nextScenario === 'onboarding' && onboarding && startOnboarding) onboarding.start();
+    if (nextScenario === 'onboarding' && onboarding && !(profile && applyOnboardingProfile(profile))) onboarding.start();
     render();
     if (nextScenario === 'onboarding' && !onboarding && initial === 'home') open('adopt');
   }
@@ -687,10 +686,6 @@ function createPhone(container) {
       tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
     },
     habitat() { setHabitat(true); },
-    'open-onboarding'() {
-      onboarding.start({ canExit: true });
-      render({ preserve: true });
-    },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),
@@ -921,8 +916,9 @@ function createPhone(container) {
     }
   });
 
-  render();
+  if (!onboarding) render();
   container.append(phone);
+  if (onboarding) load('onboarding', readOnboardingProfile());
   positionHeatmap();
   return { load, advance(date) {
     const time = bj(...clocks(date));
@@ -944,17 +940,22 @@ const demoScene = document.querySelector('#demo-scene');
 const demoTime = document.querySelector('#demo-time');
 const demoHint = document.querySelector('#demo-feedback');
 
-demoScene.addEventListener('change', () => {
+demoScene?.addEventListener('change', () => {
   phones.forEach(app => app.load(demoScene.value));
   demoTime.value = demoScene.value === 'no-plan' ? '2026-11-17T20:00' : DEMO_AT;
   demoHint.textContent = '';
 });
 document.querySelector('#reset').addEventListener('click', () => {
+  if (newUserPreview) {
+    storeOnboardingProfile(null);
+    lead.load('onboarding');
+    return;
+  }
   demoScene.value = 'standard';
   demoScene.dispatchEvent(new Event('change'));
   demoHint.textContent = '已重置演示。';
 });
-document.querySelector('#advance').addEventListener('click', () => {
+document.querySelector('#advance')?.addEventListener('click', () => {
   if (!lead.advance(demoTime.value)) {
     demoHint.textContent = '请选择当前演示时间或之后的时间。';
     return;

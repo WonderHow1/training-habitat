@@ -162,6 +162,8 @@ async function demoDirection(index, glass = false) {
   assert.ok(await evaluate('document.querySelector("canvas").getContext("2d").getImageData(70,55,1,1).data[3] === 255'));
   await screenshot(name);
   if (glass) {
+    await includes('.board-nav a[href="new-user.html"]', '新用户引导原型');
+    assert.equal(await evaluate('document.querySelectorAll(".onboarding, [data-action=open-onboarding], #demo-scene option[value=onboarding]").length'), 0);
     assert.equal(await inHabitat(), true);
     await includes(lead('.habitat-entry-header'), '团团');
     await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
@@ -330,29 +332,21 @@ async function demoDirection(index, glass = false) {
     await clickLead('restore', 'moss');
     await clickLead('confirm-restore', 'moss');
     await includes(petSummary, '团团');
-    await change('#demo-scene', 'onboarding');
-    if (glass) {
-      await verifyOnboarding();
-      await enterToday();
-      await includes(lead('.app-head .kicker'), '目标 121 分钟');
-      await includes(lead('.today-remaining'), '你距离目标还有121分钟');
-      await click(lead('.today-task [data-action="new"]'));
-    } else await submit();
-    await change(lead('input[name="title"]'), '校园夜跑');
-    await change(lead('input[name="date"]'), '2026-11-17');
-    await submit();
-    if (glass) {
-      await includes(lead(act('detail', 'plan-3')), '11月17日');
-    } else {
+    if (!glass) {
+      await change('#demo-scene', 'onboarding');
+      await submit();
+      await change(lead('input[name="title"]'), '校园夜跑');
+      await change(lead('input[name="date"]'), '2026-11-17');
+      await submit();
       await click(lead('.sheet [data-action="onboard-finish"].secondary'));
       await includes(lead('.following'), '11月17日');
+      await change('#demo-time', '2026-11-19T01:00');
+      await click('#advance');
+      await includes('#demo-feedback', '已按北京时间更新结算');
+      await clickLead('tab', 'week');
+      await clickLead('detail', 'plan-3');
+      await includes(lead('.sheet .sheet-status'), '已漏练');
     }
-    await change('#demo-time', '2026-11-19T01:00');
-    await click('#advance');
-    await includes('#demo-feedback', '已按北京时间更新结算');
-    await clickLead('tab', 'week');
-    await clickLead('detail', 'plan-3');
-    await includes(lead('.sheet .sheet-status'), '已漏练');
   }
 
   await navigate(name + '.html', 390, glass ? 760 : 1120);
@@ -408,9 +402,9 @@ async function assertGardenPetCentered(selector) {
   })()`), 'The grass scene centers the pet sprite in ' + selector);
 }
 
-async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
+async function verifyOnboarding() {
+  await navigate('new-user.html', 320, 700);
   const screen = JSON.stringify(lead('.onboarding'));
-  const background = () => evaluate(`document.querySelector(${screen}).style.backgroundColor`);
   const heading = lead('.onboarding h2');
   const submitStep = () => click(lead('.onboarding button[type="submit"]'));
   const goal = lead('.onboarding input[name="minutes"]');
@@ -421,9 +415,24 @@ async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
     const rect = view.getBoundingClientRect();
     return !view.hidden && rect.height === phone.getBoundingClientRect().height &&
       rect.width === phone.getBoundingClientRect().width && getComputedStyle(view).backgroundImage === 'none' &&
-      phone.querySelector('.tabbar').inert && view.scrollWidth === view.clientWidth;
+      phone.querySelector('.tabbar').inert && view.scrollWidth === view.clientWidth && document.documentElement.scrollHeight === innerHeight &&
+      view.querySelector('h2').getBoundingClientRect().top - rect.top >= 120 &&
+      getComputedStyle(view.querySelector('.onboarding-goal')).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+      getComputedStyle(view.querySelector('input')).backgroundColor === 'rgba(0, 0, 0, 0)';
   })()`), 'Onboarding covers the phone with a solid color');
-  const goalColor = await background();
+  await screenshot('new-user-goal');
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const view = document.querySelector(${screen});
+    const initial = view.style.backgroundColor;
+    const interval = setInterval(() => {
+      if (view.style.backgroundColor !== initial) {
+        clearInterval(interval);
+        resolve(onboardingColorInterval === 2000 && onboardingColors.length === 7 &&
+          getComputedStyle(view).transitionProperty === 'background-color' && parseFloat(getComputedStyle(view).transitionDuration) > 0);
+      }
+    }, 25);
+    setTimeout(() => { clearInterval(interval); resolve(false); }, 2300);
+  })`), 'The rainbow advances automatically with an animated transition');
   const warning = lead('.onboarding-warning');
   await change(goal, '9');
   await includes(warning, '至少 10 分钟');
@@ -435,25 +444,37 @@ async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(warning)}).textContent`), '');
   await change(goal, '121');
   await includes(warning, '超过 2 小时');
-  await screenshot(screenshotPrefix + '-goal');
   await submitStep();
   await includes(heading, '领养宠物');
-  assert.notEqual(await background(), goalColor);
-  await click(lead('.onboarding .species-choice:has(input[value="rabbit"])'));
+  const petPreview = JSON.stringify(lead('.onboarding-pet-preview'));
+  const cat = await evaluate(`document.querySelector(${petPreview}).toDataURL()`);
+  await click(lead('.onboarding-choice:has(input[value="rabbit"])'));
+  assert.notEqual(await evaluate(`document.querySelector(${petPreview}).toDataURL()`), cat);
+  assert.ok(await evaluate(`(() => {
+    const preview = document.querySelector(${petPreview});
+    return preview.dataset.species === 'rabbit' && preview.getBoundingClientRect().bottom <=
+      preview.nextElementSibling.getBoundingClientRect().top;
+  })()`), 'Changing species updates the preview above the choices');
   await change(lead('.onboarding input[name="name"]'), '小栗');
   await click(lead('.onboarding [data-back]'));
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(goal)}).value`), '121');
   await includes(warning, '避免过度训练');
   await submitStep();
-  await screenshot(screenshotPrefix + '-pet');
+  await screenshot('new-user-pet');
   assert.equal(await evaluate(`document.querySelector(${screen}).querySelector('input[name="species"]:checked').value`), 'rabbit');
   await submitStep();
   await includes(heading, '选择栖息地');
-  const preview = JSON.stringify(lead('.onboarding-preview canvas'));
+  const preview = JSON.stringify(lead('.onboarding-habitat-art'));
+  assert.ok(await evaluate(`(() => {
+    const canvas = document.querySelector(${preview});
+    const rect = canvas.getBoundingClientRect();
+    const screen = canvas.closest('.ios-screen').getBoundingClientRect();
+    return rect.x === screen.x && rect.y === screen.y && rect.width === screen.width && rect.height === screen.height;
+  })()`), 'The habitat preview fills the phone screen');
   const grass = await evaluate(`document.querySelector(${preview}).toDataURL()`);
   await change(lead('.onboarding select[name="habitat"]'), 'running-track');
   assert.notEqual(await evaluate(`document.querySelector(${preview}).toDataURL()`), grass);
-  await screenshot(screenshotPrefix + '-habitat');
+  await screenshot('new-user-habitat');
   await submitStep();
   assert.equal(await evaluate(`document.querySelector(${screen}).hidden`), true);
   assert.equal(await inHabitat(), true);
@@ -461,6 +482,14 @@ async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
   await includes(lead('.habitat-entry-header .pet-attributes'), '年龄0 天');
   await includes(lead('.habitat-entry-header .pet-attributes'), '体重1.8 公斤');
   assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.habitat-landscape[data-species="rabbit"][data-habitat="running-track"]'))}))`));
+  await navigate('new-user.html', 320, 700);
+  assert.equal(await evaluate(`document.querySelector(${screen}).hidden`), true);
+  assert.equal(await inHabitat(), true);
+  await includes(lead('.habitat-entry-header'), '小栗');
+  await enterToday();
+  await includes(lead('.today-remaining'), '你距离目标还有121分钟');
+  await click('#reset');
+  await includes(heading, '设定每日训练目标');
 }
 
 async function habitatPoint() {
@@ -976,14 +1005,6 @@ async function verifyOpenSurfaces() {
 
 async function verifyNarrowTrainingSummary() {
   await navigate('ios-prototype.html', 320, 700);
-  const onboardingEntry = lead(act('open-onboarding'));
-  const onboardingExit = lead('.onboarding [data-exit]');
-  await includes(onboardingEntry, '新用户引导');
-  assert.ok(await evaluate(`(() => {
-    const entry = document.querySelector(${JSON.stringify(onboardingEntry)});
-    const rect = entry.getBoundingClientRect();
-    return rect.top >= 0 && rect.bottom <= innerHeight && entry.closest('.habitat-entry').hasAttribute('data-active');
-  })()`), 'The new-user shortcut is visible on the first screen');
   await enterToday();
   await settleHabitatAnimation();
   assert.equal(await todayHeadline(), '今天已经锻炼0小时');
@@ -1018,22 +1039,6 @@ async function verifyNarrowTrainingSummary() {
   await waitForHeatScroll(`weeks.scrollLeft < ${latest - 40}`);
   assert.equal(await evaluate('document.documentElement.scrollLeft'), 0);
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
-  await clickLead('tab', 'home');
-  await clickLead('detail', 'today');
-  await clickLead('manual', 'today');
-  await submit();
-  await clickLead('habitat');
-  await click(onboardingEntry);
-  await includes(lead('.onboarding h2'), '设定每日训练目标');
-  await click(onboardingExit);
-  await enterToday();
-  assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
-  await clickLead('habitat');
-  await click(onboardingEntry);
-  await verifyOnboarding('ios-prototype-mobile-onboarding');
-  await enterToday();
-  assert.equal(await todayHeadline(), '今天已经锻炼0小时');
-  await includes(lead('.today-remaining'), '你距离目标还有121分钟');
 }
 let failed = false;
 try {
@@ -1047,6 +1052,7 @@ try {
   await verifyCustomProjects();
   await verifyTrainingManagement();
   await verifyNarrowTrainingSummary();
+  await verifyOnboarding();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb] a").length'), 3);
