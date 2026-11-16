@@ -28,6 +28,7 @@ const orderByDate = (a, b) => a.date.localeCompare(b.date);
 const orderPlans = (a, b) => orderByDate(a, b) || (a.start || '24:00').localeCompare(b.start || '24:00');
 const planDateLabel = plan => dateLabel(plan.date) + (plan.start ? ' ' + plan.start : '');
 const clocks = date => date.split('T');
+const elapsedSeconds = started => Math.floor((performance.now() - started) / 1000);
 const trainingHours = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 const projectHistoryKey = 'pixel-fitness.training-projects';
 let projectHistory = [];
@@ -103,6 +104,7 @@ function createPhone(container) {
   let adoptionDatePet = null;
   let restoreFocus = null;
   let clickTrigger = null;
+  let timerTick;
   const onboarding = newUserPreview ? createOnboarding(phoneScreen, {
     palette: habitatPalette, habitatPicker,
     finish(profile) {
@@ -229,10 +231,10 @@ function createPhone(container) {
     target.focus({ preventScroll: true });
   }
 
-  function workoutRow(contents, detailAction, id, actions) {
+  function workoutRow(contents, detailAction, id, actions, quick = '') {
     if (!actions) return button(contents, detailAction, 'list-row', id);
     return `<div class="swipe-workout" data-workout="${id}">
-      <button type="button" class="list-row" data-action="${detailAction}" data-value="${id}" aria-keyshortcuts="ArrowLeft ArrowRight">${contents}</button>
+      <div class="workout-face"><button type="button" class="list-row" data-action="${detailAction}" data-value="${id}" aria-keyshortcuts="ArrowLeft ArrowRight">${contents}</button>${quick}</div>
       <div class="swipe-actions" inert>${actions}</div></div>`;
   }
 
@@ -243,14 +245,20 @@ function createPhone(container) {
 
   function planRow(plan, showDate = true, actions = '') {
     const stage = status(state, plan);
+    const quick = !showDate && actions ? `<div class="quick-record">
+      <button type="button" class="secondary quick-record-toggle" data-action="quick-record" data-value="${plan.id}"
+        aria-label="记录训练：${escape(plan.title)}" aria-expanded="false">记录</button>
+      <div class="quick-record-options" inert>
+        ${button('计时', 'start-timer', 'secondary', plan.id)}${button('直接记录', 'quick-manual', 'secondary', plan.id)}
+      </div></div>` : '';
     const schedule = weekday(plan.date) + ' · ' + planDateLabel(plan);
     const hint = stage === 'grace' ? (showDate && plan.start ? schedule + ' · ' : '') + '补记至 ' + stamp(deadline(plan) + DAY) :
       showDate ? schedule : '目标 ' + plan.minutes + ' 分钟' +
       (plan.start ? ' · ' + plan.start : actions && stage === 'upcoming' ? ' · 今日结束前' : '');
     return workoutRow(`
       <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
-      <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${icon('arrow', 14)}
-    `, 'detail', plan.id, actions);
+      <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${quick ? '' : icon('arrow', 14)}
+    `, 'detail', plan.id, actions, quick);
   }
 
   function home() {
@@ -427,15 +435,17 @@ function createPhone(container) {
       ${stage === 'missed' && state.now < deadline(plan) + 7 * DAY ? button('导入设备记录', 'import', 'primary', plan.id) : ''}</div>`);
   }
 
-  function trainingForm(target, editing = false) {
-    const date = target ? target.date : today();
+  function trainingForm(target, editing = false, measured = null) {
+    const workout = measured ?? target;
+    const date = workout?.date ?? today();
+    const latest = measured ? dateAt(Math.max(state.now, overlay.timedEnd)) : today();
     return sheet(editing ? '编辑训练记录' : '手动记录', `<form data-form="${editing ? 'edit-record' : 'manual'}">
       ${projectField(target?.title)}
-      <div class="form-pair">${field('实际日期', `<input type="date" name="date" value="${date}" max="${today()}" required>`)}
-      ${field('开始时间', `<input type="time" name="start" value="${target?.start ?? '18:30'}" required>`)}</div>
-      ${field('实际时长（分钟）', `<input type="number" name="minutes" min="1" max="1440" value="${target?.minutes ?? 25}" required>`)}
+      <div class="form-pair">${field('实际日期', `<input type="date" name="date" value="${date}" max="${latest}" required>`)}
+      ${field('开始时间', `<input type="time" name="start" value="${workout?.start || '18:30'}" required>`)}</div>
+      ${field('实际时长（分钟）', `<input type="number" name="minutes" min="1" max="1440" value="${workout?.minutes ?? 25}" required>`)}
       ${editing && target.plan ? '<p class="sheet-note">若修改后的记录不再满足原计划，系统会重新结算该计划。</p>' : ''}
-      ${usesGlass && !editing && target ? `<p class="sheet-note">符合计划要求时，保存后会计入「${escape(target.title)}」。</p>` : ''}
+      ${usesGlass && !editing && target && !state.finished[target.id] ? `<p class="sheet-note">符合计划要求时，保存后会计入「${escape(target.title)}」。</p>` : ''}
       <p class="form-error" role="alert"></p><button class="primary full" type="submit">${editing || usesGlass ? '保存记录' : '下一步：确认关联'}</button></form>`);
   }
 
@@ -556,7 +566,10 @@ function createPhone(container) {
       case 'pick-week': return weekPicker(overlay.date);
       case 'review-add': return sheet('补录或导入', `<div class="sheet-buttons">
         ${button(icon('plus', 20) + '手动记录', 'manual', 'secondary full')}${button(icon('watch', 20) + '导入设备', 'import', 'secondary full')}</div>`);
-      case 'manual': return trainingForm(plan);
+      case 'manual': return trainingForm(plan, false, overlay.measured);
+      case 'workout-timer': return sheet('训练计时', `<div class="workout-timer">
+        <p>${escape(plan.title)}</p><time class="timer-elapsed" aria-label="已用时间">00:00</time></div>
+        <p class="sheet-note">计满 1 分钟后可记录训练。</p>${button('结束并记录', 'finish-timer', 'primary full', plan.id, true)}`);
       case 'new': return dateForm();
       case 'reschedule': return dateForm(plan);
       case 'edit-plan': return dateForm(plan, true);
@@ -625,6 +638,19 @@ function createPhone(container) {
     tabbar.style.setProperty('--tab-index', index);
     layers.hidden = Boolean(onboarding?.active);
     layers.innerHTML = `${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}`;
+    clearInterval(timerTick);
+    if (overlay?.type === 'workout-timer') {
+      const timer = layers.querySelector('.timer-elapsed');
+      const finish = layers.querySelector('[data-action="finish-timer"]');
+      const started = overlay.started;
+      const updateTimer = () => {
+        const seconds = elapsedSeconds(started);
+        timer.textContent = [Math.floor(seconds / 60), seconds % 60].map(part => String(part).padStart(2, '0')).join(':');
+        finish.disabled = seconds < 60;
+      };
+      updateTimer();
+      timerTick = setInterval(updateTimer, 250);
+    }
     outlet.querySelectorAll('canvas').forEach(drawScene);
     scrollArea.scrollTop = offset;
     renderHabitat(preserve);
@@ -667,7 +693,8 @@ function createPhone(container) {
       const target = [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
         button.dataset.action === focus.action && button.dataset.value === focus.value
       );
-      const accessibleTarget = target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target ?? scrollArea.querySelector('.app-head h2');
+      const accessibleTarget = target?.closest('.quick-record')?.querySelector('.quick-record-toggle') ??
+        target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target ?? scrollArea.querySelector('.app-head h2');
       if (accessibleTarget?.tagName === 'H2') accessibleTarget.tabIndex = -1;
       accessibleTarget?.focus({ preventScroll: true });
     }
@@ -722,6 +749,15 @@ function createPhone(container) {
     if (logDay && !state.records.some(record => record.date === logDay && (logFilter === 'all' || logFilter === record.source))) logDay = null;
   }
 
+  function expandQuickRecord(group, expanded) {
+    const toggle = group.querySelector('.quick-record-toggle');
+    const options = group.querySelector('.quick-record-options');
+    group.toggleAttribute('data-expanded', expanded);
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.inert = expanded;
+    options.inert = !expanded;
+  }
+
   function stepWeek(days, action) {
     week = dayPlus(week, days);
     const date = today();
@@ -751,6 +787,20 @@ function createPhone(container) {
     },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
+    'quick-record'() {
+      const group = clickTrigger.closest('.quick-record');
+      expandQuickRecord(group, true);
+      group.querySelector('[data-action="start-timer"]').focus({ preventScroll: true });
+    },
+    'quick-manual': value => open('manual', value),
+    'start-timer': value => open('workout-timer', value, { started: performance.now(), at: state.now }),
+    'finish-timer'(value) {
+      const minutes = Math.min(1440, Math.floor(elapsedSeconds(overlay.started) / 60));
+      if (minutes < 1) return;
+      const at = overlay.at;
+      const start = new Date(at + 8 * 3_600_000).toISOString().slice(11, 16);
+      open('manual', value, { measured: { date: dateAt(at), start, minutes }, timedEnd: at + minutes * 60_000 });
+    },
     reschedule: value => open('reschedule', value),
     record: value => open('record', value),
     'edit-plan': value => open('edit-plan', value),
@@ -829,6 +879,8 @@ function createPhone(container) {
   if (usesGlass) bindWorkoutSwipe(scrollArea);
 
   function handleClick(event) {
+    const expanded = scrollArea.querySelector('.quick-record[data-expanded]');
+    if (expanded && !expanded.contains(event.target)) expandQuickRecord(expanded, false);
     const control = event.target.closest('[data-action]');
     if (control) {
       clickTrigger = control;
@@ -839,7 +891,15 @@ function createPhone(container) {
   outlet.addEventListener('click', handleClick);
   habitatEntry?.addEventListener('click', handleClick);
   outlet.addEventListener('keydown', event => {
-    if (!overlay) return;
+    if (!overlay) {
+      const expanded = event.target.closest('.quick-record[data-expanded]');
+      if (expanded && event.key === 'Escape') {
+        event.preventDefault();
+        expandQuickRecord(expanded, false);
+        expanded.querySelector('.quick-record-toggle').focus({ preventScroll: true });
+      }
+      return;
+    }
     if (event.key === 'Escape') {
       event.stopPropagation();
       close();
@@ -897,7 +957,8 @@ function createPhone(container) {
       case 'manual': {
         const record = { ...data, minutes: Number(data.minutes), source: 'manual' };
         const end = bj(record.date, record.start) + record.minutes * 60_000;
-        if (!Number.isFinite(end) || end > state.now) {
+        const now = Math.max(state.now, overlay.timedEnd ?? state.now);
+        if (!Number.isFinite(end) || end > now) {
           form.querySelector('.form-error').textContent = '请填写已结束的训练。';
           return;
         }
@@ -905,11 +966,15 @@ function createPhone(container) {
           open('match', overlay.value, { record });
           break;
         }
+        if (now > state.now) {
+          state.now = now;
+          refresh(state);
+        }
         const plan = getPlan(overlay.value);
         const saved = saveRecord(state, record);
         rememberProject(saved.title);
         if (plan && match(state, plan, saved)) feedback('训练计划已完成');
-        else feedback(plan ? '已保存训练记录，计划尚未完成' : '训练记录已保存');
+        else feedback(plan && !state.finished[plan.id] ? '已保存训练记录，计划尚未完成' : '训练记录已保存');
         break;
       }
       case 'match': {

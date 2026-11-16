@@ -136,7 +136,7 @@ async function swipeWorkout(id, direction = 'left', touch = false) {
     await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: endX, y }] });
     assert.ok(await evaluate(`(() => {
       const row = document.querySelector(${selector});
-      const face = row.querySelector('.list-row');
+      const face = row.querySelector('.workout-face');
       const offset = ${left ? '-102' : '102 - row.querySelector(".swipe-actions").offsetWidth'};
       return row.hasAttribute('data-swiping') && Math.abs(face.getBoundingClientRect().left - row.getBoundingClientRect().left - offset) < 1;
     })()`), 'The workout row tracks the touch before release');
@@ -146,7 +146,7 @@ async function swipeWorkout(id, direction = 'left', touch = false) {
     await cmd('Input.dispatchMouseEvent', { type: 'mouseMoved', x: endX, y, buttons: 1 });
     await cmd('Input.dispatchMouseEvent', { type: 'mouseReleased', x: endX, y, button: 'left', clickCount: 1 });
   }
-  await evaluate(`Promise.allSettled(document.querySelector(${selector} + ' .list-row').getAnimations().map(animation => animation.finished)).then(() => true)`);
+  await evaluate(`Promise.allSettled(document.querySelector(${selector} + ' .workout-face').getAnimations().map(animation => animation.finished)).then(() => true)`);
   assert.equal(await workoutOpen(id), left, `Swiping ${direction} changes actions for ${id}`);
   assert.equal(await evaluate(`document.querySelector(${selector} + ' .swipe-actions').inert`), !left);
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.sheet'))}))`), false);
@@ -215,9 +215,10 @@ async function demoDirection(index, glass = false) {
     await includes(workout('today') + ' .swipe-actions', '编辑删除');
     await screenshot(name + '-workout-swipe');
     await swipeWorkout('today', 'right');
-    await clickLead('detail', 'today');
-  }
-  await clickLead('manual', 'today');
+    await clickLead('quick-record', 'today');
+    await includes(workout('today') + ' .quick-record-options', '计时直接记录');
+    await clickLead('quick-manual', 'today');
+  } else await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
   if (glass) {
     await includes(lead('.sheet button[type="submit"]'), '保存记录');
@@ -1003,9 +1004,48 @@ async function verifyTrainingManagement() {
   await navigate('ios-prototype.html', 390, 760);
   await enterToday();
   await settleHabitatAnimation();
-  await clickLead('detail', 'today');
-  await clickLead('manual', 'today');
+  const quick = JSON.stringify(workout('today') + ' .quick-record');
+  const options = () => evaluate(`document.querySelector(${quick}).querySelector('.quick-record-options').inert`);
+  assert.equal(await options(), true);
+  await clickLead('quick-record', 'today');
+  assert.equal(await options(), false);
+  await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  assert.equal(await options(), true);
+  assert.equal(await evaluate('document.activeElement.dataset.action'), 'quick-record');
+  await clickLead('quick-record', 'today');
+  assert.ok(await evaluate(`(async () => {
+    const group = document.querySelector(${quick});
+    await Promise.allSettled(group.getAnimations({ subtree: true }).map(animation => animation.finished));
+    const row = group.closest('.workout-face').getBoundingClientRect();
+    return group.offsetWidth === 112 && group.getBoundingClientRect().right <= row.right;
+  })()`));
+  await evaluate(`(() => {
+    window.workoutTestClock = performance.now();
+    performance.now = () => window.workoutTestClock;
+  })()`);
+  await clickLead('start-timer', 'today');
+  await includes(lead('.sheet h3'), '训练计时');
+  await includes(lead('.timer-elapsed'), '00:00');
+  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead(act('finish-timer', 'today')))}).disabled`));
+  await evaluate('window.workoutTestClock += (20 * 60 + 13) * 1000');
+  await evaluate(`new Promise((resolve, reject) => {
+    const finish = document.querySelector(${JSON.stringify(lead(act('finish-timer', 'today')))});
+    const deadline = Date.now() + 1500;
+    function check() {
+      if (!finish.disabled) resolve(true);
+      else if (Date.now() >= deadline) reject(new Error('Workout timer did not advance'));
+      else setTimeout(check, 25);
+    }
+    check();
+  })`);
+  await includes(lead('.timer-elapsed'), '20:13');
+  await clickLead('finish-timer', 'today');
+  await evaluate('delete performance.now; delete window.workoutTestClock');
+  await includes(lead('.sheet h3'), '手动记录');
+  await includes(lead('.sheet-note'), '校园夜跑');
+  assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll(${JSON.stringify(lead('.sheet :is(input[name="start"], input[name="minutes"])'))}), field => field.value)`), ['20:00', '20']);
   await submit();
+  await includes(lead('.today-task'), '已完成');
   await swipeWorkout('today');
   await clickLead('delete-plan', 'today');
   await includes(lead('.sheet h3'), '删除训练计划？');

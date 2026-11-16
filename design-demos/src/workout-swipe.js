@@ -2,7 +2,7 @@ function bindWorkoutSwipe(scroller) {
   let openRow = null;
   let gesture = null;
   let suppressClick = null;
-  const rowFor = target => target.closest('.swipe-workout > .list-row')?.parentElement;
+  const rowFor = target => target.closest('.swipe-workout > .workout-face')?.parentElement;
 
   function reveal(row, visible) {
     if (openRow && openRow !== row) reveal(openRow, false);
@@ -10,6 +10,8 @@ function bindWorkoutSwipe(scroller) {
     row.style.setProperty('--swipe-offset', visible ? -actions.offsetWidth + 'px' : '0px');
     row.toggleAttribute('data-open', visible);
     actions.inert = !visible;
+    const quick = row.querySelector('.quick-record');
+    if (quick) quick.inert = visible;
     openRow = visible ? row : null;
   }
 
@@ -50,7 +52,7 @@ function bindWorkoutSwipe(scroller) {
     suppressClick = row;
     const moved = event.clientX - x;
     const show = event.type === 'pointerup' ? (wasOpen ? moved < 42 : moved <= -42) : wasOpen;
-    void getComputedStyle(row.querySelector('.list-row')).transform;
+    void getComputedStyle(row.querySelector('.workout-face')).transform;
     row.removeAttribute('data-swiping');
     reveal(row, show);
   }
@@ -65,6 +67,7 @@ function bindWorkoutSwipe(scroller) {
     suppressClick = null;
   }, true);
   scroller.addEventListener('keydown', event => {
+    if (!event.target.closest('.list-row')) return;
     const row = rowFor(event.target);
     if (!row || !['ArrowLeft', 'ArrowRight', 'Escape'].includes(event.key)) return;
     event.preventDefault();

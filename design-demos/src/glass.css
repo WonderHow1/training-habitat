@@ -84,17 +84,21 @@
   border-radius: 10px;
   touch-action: pan-y;
 }
-.swipe-workout > .list-row {
+.workout-face {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   background: var(--layer);
   transform: translateX(var(--swipe-offset, 0px));
   transition: transform 200ms var(--glass-ease);
   user-select: none;
 }
-.swipe-workout > .list-row:focus-visible { outline-offset: -3px; }
+.workout-face > .list-row { flex: 1; }
+.workout-face > .list-row:focus-visible { outline-offset: -3px; }
 .swipe-workout .list-copy { overflow-wrap: anywhere; }
-.swipe-workout[data-swiping] > .list-row { transition: none; }
+.swipe-workout[data-swiping] > .workout-face { transition: none; }
 .swipe-actions {
   position: absolute;
   inset: 0 0 0 auto;
@@ -110,6 +114,29 @@
 }
 .swipe-actions > .primary { flex: 1; }
 .swipe-actions > .destructive { flex: 1; }
+.quick-record {
+  position: relative;
+  flex: none;
+  inline-size: 48px;
+  min-height: 44px;
+  transition: inline-size 240ms var(--glass-ease);
+}
+.quick-record[data-expanded] { inline-size: 112px; }
+.quick-record :is(.quick-record-toggle, .quick-record-options) {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  transition: opacity 180ms var(--glass-ease), transform 240ms var(--glass-ease);
+}
+.quick-record button.secondary { min-height: 44px; padding-inline: 7px; font-size: 12px; white-space: nowrap; }
+.quick-record .quick-record-toggle { width: 48px; }
+.quick-record-options { display: flex; gap: 4px; opacity: 0; transform: scale(.8); transform-origin: right; }
+.quick-record-options button:first-child { width: 44px; }
+.quick-record-options button:last-child { width: 64px; }
+.quick-record[data-expanded] .quick-record-toggle { opacity: 0; transform: scale(.8); }
+.quick-record[data-expanded] .quick-record-options { opacity: 1; transform: none; }
+.workout-timer { text-align: center; padding-block: 14px; }
+.workout-timer time { display: block; margin-top: 4px; font-size: 48px; font-weight: 730; font-variant-numeric: tabular-nums; }
 [data-glass] button.destructive { color: #932f42; }
 [data-glass] :is(.sheet dl div, .choice) { padding-block: 11px; }
 [data-glass] .app-scroll {
@@ -787,6 +814,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
   [data-glass] .tabbar::before { background: var(--accent); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .quick-record, .quick-record :is(.quick-record-toggle, .quick-record-options) { transition: none; }
   [data-glass] :is(.tabbar button, .round, .phone-app :is(.primary, .secondary, .day, .picker-day,
     .week-trigger, .segments button, .text-button)):active { transform: none; }
   .ios-screen:has(.habitat-entry) :is(.habitat-entry, .app-scroll) { transform: none; }
