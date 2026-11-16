@@ -144,8 +144,8 @@ async function demoDirection(index, glass = false) {
     assert.ok(await evaluate(`(() => {
       const reminder = document.querySelector(${JSON.stringify(lead('.attention .notice-link'))}).getBoundingClientRect();
       const upcoming = document.querySelector(${JSON.stringify(lead('.following h3'))}).getBoundingClientRect();
-      return upcoming.top - reminder.bottom >= 24;
-    })()`), 'The next workout has breathing room below the reminder');
+      return Math.abs(upcoming.top - reminder.bottom - 29) < .5;
+    })()`), 'There are 29 CSS pixels between the reminder and the next workout');
     await evaluate('window.scrollTo(0, 0)');
     await screenshot(name + '-today');
   }
@@ -481,7 +481,7 @@ async function verifyPrototypePalette() {
     const card = '[data-phone="home"] .habitat-art canvas';
     const sky = pixel(habitat, 0, 0);
     const white = 'rgb(255, 255, 255)';
-    return ['body', '.ios-screen', '[data-phone="log"] .heatmap'].every(selector => background(selector) === white) &&
+    return ['html', 'body', '.ios-screen', '.app-scroll', '[data-phone="log"] .heatmap'].every(selector => background(selector) === white) &&
       isPaleBlue(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
       face[0] < face[1] && face[1] < face[2] && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&

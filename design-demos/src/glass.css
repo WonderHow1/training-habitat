@@ -1,4 +1,8 @@
 /* Floating controls sample the content behind them. Cards and form fields keep solid surfaces. */
+:root:has(body[data-glass]) {
+  background: #fff;
+  color-scheme: light;
+}
 [data-glass] {
   --board: #fff;
   --board-ink: #142f4a;
@@ -28,7 +32,7 @@
 [data-glass] :is(.habitat, .today-task, .week-card, .primary, .secondary, .day, .toast) { border: 0; }
 [data-glass] :is(.board-header, .board-footer p, .week-total, .list-row, .sheet dl div, .choice) { border-block: 0; }
 [data-glass] :is(.today-task, .week-card) { padding-inline: 0; }
-[data-glass] .following { margin-block-start: 26px; }
+[data-glass] .following { margin-block-start: 29px; }
 [data-glass] .week-card { margin-bottom: 21px; }
 [data-glass] .week-days { gap: 3px; margin-block: 12px 8px; }
 [data-glass] .week-total { padding-top: 11px; }
@@ -51,6 +55,7 @@
 [data-glass] .list-row { padding-block: 13px; gap: 10px; border-radius: 10px; }
 [data-glass] :is(.sheet dl div, .choice) { padding-block: 11px; }
 [data-glass] .app-scroll {
+  background: var(--surface);
   padding-bottom: 111px;
   scroll-padding-block: 77px 111px;
 }
