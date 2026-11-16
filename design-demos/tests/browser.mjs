@@ -164,7 +164,8 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.equal(await inHabitat(), true);
     await includes(lead('.habitat-entry-header'), '团团');
-    await includes(habitatGrowth, '成长 1 次');
+    await includes(habitatGrowth, 'Lv.1');
+    await includes(habitatGrowth, '0 / 100 XP');
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
       const rect = entry.getBoundingClientRect();
@@ -183,7 +184,10 @@ async function demoDirection(index, glass = false) {
     await evaluate('window.scrollTo(0, 0)');
     await screenshot(name + '-today');
     await swipeWorkout('today');
+    await includes(workout('today') + ' .swipe-actions', '编辑删除');
     await screenshot(name + '-workout-swipe');
+    await swipeWorkout('today', 'right');
+    await clickLead('detail', 'today');
   }
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
@@ -193,7 +197,7 @@ async function demoDirection(index, glass = false) {
     assert.ok(await evaluate(`(() => {
       const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
       const field = sheet.querySelector('input[name="title"]');
-      return sheet.contains(document.activeElement) && sheet.getAnimations().length > 0 &&
+      return sheet.contains(document.activeElement) &&
         getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px' &&
         getComputedStyle(field).backdropFilter.includes('blur') && getComputedStyle(field).backgroundImage.includes('linear-gradient');
     })()`));
@@ -207,14 +211,14 @@ async function demoDirection(index, glass = false) {
     await submit();
   }
   await includes(lead('.today-task'), '已完成');
-  await includes(lead('.habitat'), '成长 2 次');
   if (glass) {
+    await includes(lead('.habitat .growth'), '0 / 100 XP');
     assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
     await includes(lead('.today-remaining'), '你距离目标还有10分钟');
     await clickLead('habitat');
     assert.equal(await inHabitat(), true);
-    await includes(habitatGrowth, '成长 2 次');
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar i')}).style.width`), '40%');
+    await includes(habitatGrowth, '0 / 100 XP');
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar i')}).style.width`), '0%');
     await enterToday();
     await includes('[data-phone="week"] .week-summary dd', '0 / 3');
     await clickLead('tab', 'week');
@@ -222,7 +226,10 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
     await clickLead('day', '2026-11-19');
     await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
-  } else await includes('[data-phone="week"] .week-total strong', '0 / 3');
+  } else {
+    await includes(lead('.habitat'), '成长 2 次');
+    await includes('[data-phone="week"] .week-total strong', '0 / 3');
+  }
   await clickLead('tab', 'log');
   await includes(lead('.record-feed'), '校园夜跑');
   if (glass) await verifyHeatmapAfterSaving();
@@ -252,17 +259,17 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.equal(await inHabitat(), true);
     await enterToday();
-    await swipeWorkout('today');
+    await clickLead('detail', 'today');
     await clickLead('manual', 'today');
     await change(lead('.sheet input[name="minutes"]'), '10');
     await submit();
     await includes(lead('.toast'), '已保存训练记录，计划尚未完成');
     await includes(lead('.today-task'), '待训练');
-    await includes(lead('.habitat'), '成长 1 次');
+    await includes(lead('.habitat .growth'), '0 / 100 XP');
     await clickLead('tab', 'log');
     await includes(lead(act('record', 'record-2')), '仅训练记录');
     await clickLead('tab', 'home');
-    await swipeWorkout('today');
+    await clickLead('detail', 'today');
   }
   await clickLead('reschedule', 'today');
   await change(lead('input[name="date"]'), '2026-11-17');
@@ -347,7 +354,7 @@ async function demoDirection(index, glass = false) {
   await screenshot(name + '-mobile');
   if (glass) {
     await verifySwipe();
-    await swipeWorkout('today');
+    await clickLead('detail', 'today');
   }
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
@@ -356,7 +363,7 @@ async function demoDirection(index, glass = false) {
   assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
   if (glass) {
     await clickLead('tab', 'pet');
-    await includes(lead('.pet-scene-panel'), '成长 1 次');
+    await includes(lead('.pet-scene-panel'), '0 / 100 XP');
     await settleHabitatAnimation();
     assert.ok(await evaluate(`(() => {
       const petScene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
@@ -385,6 +392,12 @@ async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
   })()`), 'Onboarding covers the phone with a solid color');
   const goalColor = await background();
   const warning = lead('.onboarding-warning');
+  await change(goal, '9');
+  await includes(warning, '至少 10 分钟');
+  await submitStep();
+  await includes(heading, '设定每日训练目标');
+  await change(goal, '10');
+  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(goal)}).checkValidity()`));
   await change(goal, '120');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(warning)}).textContent`), '');
   await change(goal, '121');
@@ -557,7 +570,7 @@ async function verifySwipe() {
   await swipeWorkout(another, 'left', true);
   assert.equal(await workoutOpen('today'), false, 'Only one workout can reveal actions at a time');
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
-  await click(workout(another) + ' ' + act('manual', another));
+  await click(workout(another) + ' ' + act('edit-plan', another));
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))}).value`), '游泳');
   await clickLead('close');
   assert.equal(await evaluate('document.activeElement.closest(".swipe-workout").dataset.workout'), another);
@@ -648,7 +661,7 @@ async function verifyGlass() {
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
   await includes(lead('.habitat-entry-header'), '我的宠物');
   await includes(lead('.habitat-entry-header'), '领养于 11月9日');
-  await includes(lead('.pet-scene-panel'), '成长与血量');
+  await includes(lead('.pet-scene-panel'), '经验与血量');
   assert.ok(await evaluate(`(() => {
     const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
     const scroll = document.querySelector(${JSON.stringify(lead('.app-scroll'))});
@@ -672,6 +685,7 @@ async function verifyGlass() {
   assert.equal(await inHabitat(), true, 'The pet image opens the full-screen view');
   await enterToday();
   await clickLead('settings');
+  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length > 0`), 'Opening a sheet from the page animates');
   const toggle = lead('[role="switch"]');
   await click(toggle);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(toggle)}).getAttribute('aria-checked')`), 'false');
@@ -686,8 +700,8 @@ async function verifyGlass() {
   await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowLeft', code: 'ArrowLeft', windowsVirtualKeyCode: 37 });
   assert.equal(await workoutOpen('today'), true);
   await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
-  assert.equal(await evaluate('document.activeElement.dataset.action'), 'manual');
-  await clickLead('manual', 'today');
+  assert.equal(await evaluate('document.activeElement.dataset.action'), 'edit-plan');
+  await clickLead('edit-plan', 'today');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length`), 0);
   assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backdropFilter`), 'none');
   await clickLead('close');
@@ -780,9 +794,13 @@ async function verifyTrainingManagement() {
   await navigate('ios-prototype.html', 390, 760);
   await enterToday();
   await settleHabitatAnimation();
-  await swipeWorkout('today');
+  await clickLead('detail', 'today');
   await clickLead('manual', 'today');
   await submit();
+  await swipeWorkout('today');
+  await clickLead('delete-plan', 'today');
+  await includes(lead('.sheet h3'), '删除训练计划？');
+  await clickLead('close');
 
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '1 / 3');
@@ -812,12 +830,20 @@ async function verifyTrainingManagement() {
   await clickLead('edit-record', 'record-2');
   await includes(lead('.sheet h3'), '编辑训练记录');
   await change(lead('.sheet input[name="title"]'), '晚间慢跑');
-  await change(lead('.sheet input[name="minutes"]'), '35');
+  await change(lead('.sheet input[name="start"]'), '18:00');
+  await change(lead('.sheet input[name="minutes"]'), '105');
   await submit();
-  const changedRecord = lead(act('record', 'record-2'));
-  for (const content of ['晚间慢跑', '35 分钟', '已匹配计划']) await includes(changedRecord, content);
+  const changedRecord = lead('.record-feed ' + act('record', 'record-2'));
+  for (const content of ['晚间慢跑', '105 分钟', '已匹配计划']) await includes(changedRecord, content);
   await clickLead('tab', 'home');
   await includes(lead('.today-remaining'), '你距离目标还有0分钟');
+  await includes(lead('.habitat .growth'), 'Lv.2');
+  await includes(lead('.habitat .growth'), '5 / 100 XP');
+  await clickLead('tab', 'pet');
+  await includes(lead('.pet-scene-panel'), '经验 +105 XP');
+  await clickLead('record', 'record-2');
+  await includes(lead('.sheet h3'), '晚间慢跑');
+  await clickLead('close');
   await clickLead('tab', 'log');
   await clickLead('log-day', '2026-11-16');
   await swipeWorkout('record-2');
@@ -832,7 +858,8 @@ async function verifyTrainingManagement() {
   await clickLead('tab', 'home');
   assert.equal(await todayHeadline(), '今天已经锻炼0小时');
   await includes(lead('.today-remaining'), '你距离目标还有30分钟');
-  await includes(lead('.habitat'), '成长 1 次');
+  await includes(lead('.habitat .growth'), 'Lv.1');
+  await includes(lead('.habitat .growth'), '0 / 100 XP');
 }
 
 async function verifyPrototypePalette() {

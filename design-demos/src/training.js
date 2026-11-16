@@ -1,6 +1,8 @@
 const DAY = 86_400_000;
 const DEMO_AT = '2026-11-16T20:00';
 const DEFAULT_DAILY_GOAL = 30;
+const MIN_DAILY_GOAL = 10;
+const XP_PER_LEVEL = 100;
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
 const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
@@ -89,6 +91,24 @@ function seed(scenario = 'standard') {
 
 function petAt(state, time) {
   return state.pets.find(pet => pet.spans.some(([start, end]) => start <= time && (end === null || time < end)))?.id ?? null;
+}
+
+function petExperienceRecords(state, petId) {
+  if (!petId) return [];
+  const goal = state.dailyGoal ?? DEFAULT_DAILY_GOAL;
+  const dailyTotals = new Map();
+  const workouts = [];
+  for (const record of state.records) {
+    const end = bj(record.date, record.start) + record.minutes * 60_000;
+    if (!Number.isFinite(end) || end > state.now || record.minutes <= 0) continue;
+    dailyTotals.set(record.date, (dailyTotals.get(record.date) ?? 0) + record.minutes);
+    workouts.push({ record, end });
+  }
+  return workouts.filter(({ record, end }) => dailyTotals.get(record.date) >= goal && petAt(state, end) === petId);
+}
+
+function experienceProgress(xp) {
+  return { level: Math.floor(xp / XP_PER_LEVEL) + 1, progress: xp % XP_PER_LEVEL };
 }
 
 function points(state, petId) {

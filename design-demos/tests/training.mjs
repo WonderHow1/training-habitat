@@ -6,10 +6,10 @@ import vm from 'node:vm';
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
   adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-  editPlan, editRecord, deletePlan, deleteRecord } = vm.runInNewContext(model + `
+  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
      adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-     editPlan, editRecord, deletePlan, deleteRecord })`);
+     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -44,6 +44,45 @@ test('training duration counts saved records by their dates, across the week and
   assert.equal(trainingMinutes(records, '2025-12-30'), 0);
   assert.equal(trainingMinutes(records, '2025-12-29'), 25);
   assert.equal(trainingMinutes(records, '2025-12-29', '2026-01-05'), 55);
+});
+
+test('meeting the daily goal counts all of that day’s minutes once, and deletion rechecks the goal', () => {
+  const state = seed();
+  const plan = find(state, 'today');
+  const total = () => petExperienceRecords(state, 'moss').reduce((xp, { record }) => xp + record.minutes, 0);
+  const manual = saveRecord(state, recordFor(plan));
+  assert.equal(match(state, plan, manual), true);
+  assert.equal(total(), 0);
+  const sameWorkout = recordFor(plan, { source: 'device', deviceId: 'same-workout' });
+  assert.equal(saveRecord(state, sameWorkout, true), manual);
+  assert.equal(total(), 0);
+  const later = saveRecord(state, recordFor(plan, { start: '19:00', minutes: 10 }));
+  assert.equal(total(), 30);
+  assert.equal(total(), 30);
+  assert.equal(deletePlan(state, plan.id), true);
+  assert.equal(total(), 30);
+  assert.equal(deleteRecord(state, later.id), true);
+  assert.equal(total(), 0);
+});
+
+test('experience uses the chosen goal and goes to the pet present when each workout ended', () => {
+  const state = seed('onboarding');
+  state.dailyGoal = 10;
+  state.now = bj('2026-11-16', '12:00');
+  assert.equal(adopt(state, '小栗'), true);
+  const pet = state.active;
+  state.now = bj('2026-11-16', '20:00');
+  saveRecord(state, { date: '2026-11-16', start: '10:00', minutes: 9 });
+  assert.equal(petExperienceRecords(state, pet).length, 0);
+  const afternoon = saveRecord(state, { date: '2026-11-16', start: '15:00', minutes: 5 });
+  saveRecord(state, { date: '2026-11-16', start: '20:00', minutes: 50 });
+  assert.deepEqual(Array.from(petExperienceRecords(state, pet), ({ record }) => record.id), [afternoon.id]);
+});
+
+test('each 100 experience points advances the level and carries over the remainder', () => {
+  assert.deepEqual({ ...experienceProgress(0) }, { level: 1, progress: 0 });
+  assert.deepEqual({ ...experienceProgress(100) }, { level: 2, progress: 0 });
+  assert.deepEqual({ ...experienceProgress(205) }, { level: 3, progress: 5 });
 });
 
 test('adoption records the pet species and chosen habitat independently of health', () => {

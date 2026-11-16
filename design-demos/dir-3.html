@@ -410,6 +410,8 @@ a { color: inherit; }
 const DAY = 86_400_000;
 const DEMO_AT = '2026-11-16T20:00';
 const DEFAULT_DAILY_GOAL = 30;
+const MIN_DAILY_GOAL = 10;
+const XP_PER_LEVEL = 100;
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
 const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
@@ -498,6 +500,24 @@ function seed(scenario = 'standard') {
 
 function petAt(state, time) {
   return state.pets.find(pet => pet.spans.some(([start, end]) => start <= time && (end === null || time < end)))?.id ?? null;
+}
+
+function petExperienceRecords(state, petId) {
+  if (!petId) return [];
+  const goal = state.dailyGoal ?? DEFAULT_DAILY_GOAL;
+  const dailyTotals = new Map();
+  const workouts = [];
+  for (const record of state.records) {
+    const end = bj(record.date, record.start) + record.minutes * 60_000;
+    if (!Number.isFinite(end) || end > state.now || record.minutes <= 0) continue;
+    dailyTotals.set(record.date, (dailyTotals.get(record.date) ?? 0) + record.minutes);
+    workouts.push({ record, end });
+  }
+  return workouts.filter(({ record, end }) => dailyTotals.get(record.date) >= goal && petAt(state, end) === petId);
+}
+
+function experienceProgress(xp) {
+  return { level: Math.floor(xp / XP_PER_LEVEL) + 1, progress: xp % XP_PER_LEVEL };
 }
 
 function points(state, petId) {
@@ -1526,29 +1546,36 @@ function createPhone(container) {
   }
 
   function petDetails(pet) {
-    const count = pet ? points(state, pet.id) : 0;
+    const count = !usesGlass && pet ? points(state, pet.id) : 0;
+    const awards = usesGlass ? petExperienceRecords(state, pet?.id) : [];
+    const xp = awards.reduce((total, { record }) => total + record.minutes, 0);
+    const { level: rank, progress } = experienceProgress(xp);
     const species = pet?.species ?? 'cat';
     const habitat = pet?.habitat ?? 'garden';
-    const level = count >= 5 ? 3 : count >= 2 ? 2 : 1;
+    const level = usesGlass ? Math.min(3, rank) : count >= 5 ? 3 : count >= 2 ? 2 : 1;
     const hp = pet ? health(state, pet.id) : 0;
     const name = pet ? escape(pet.name) : '待领养';
     const stage = pet ? (hp ? ['幼苗期', '成长期', '成熟期'][level - 1] : '已离世') : '还没有在养宠物';
     const lives = `<div class="hearts" role="img" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
-    return { count, level, hp, name, stage, lives, species, habitat };
+    return { count, rank, progress, awards, level, hp, name, stage, lives, species, habitat };
   }
 
-  function petGrowth(count) {
+  function petGrowth({ count, rank, progress }) {
+    if (usesGlass) return `<div class="growth experience">
+      <strong>Lv.${rank}</strong><div class="growth-bar" role="progressbar" aria-label="升级经验" aria-valuenow="${progress}" aria-valuemax="${XP_PER_LEVEL}">
+        <i style="width:${progress / XP_PER_LEVEL * 100}%"></i></div><span>${progress} / ${XP_PER_LEVEL} XP</span></div>`;
     return `<div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>`;
   }
 
   function profile(pet, full = false) {
-    const { count, level, hp, name, stage, lives, species, habitat } = petDetails(pet);
+    const details = petDetails(pet);
+    const { level, hp, name, stage, lives, species, habitat } = details;
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
       <div class="habitat-art">${petCanvas(habitatPalette, level, !hp, false, species, habitat)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
-      ${petGrowth(count)}
+      ${petGrowth(details)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
     </section>`;
   }
@@ -1563,7 +1590,8 @@ function createPhone(container) {
     habitatEntry.inert = !active || Boolean(overlay);
     if (tab !== 'home' && !petTab) return;
     const pet = current();
-    const { name, stage, lives, hp, level, count, species, habitat } = petDetails(pet);
+    const details = petDetails(pet);
+    const { name, stage, lives, hp, level, species, habitat, awards } = details;
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
@@ -1572,14 +1600,14 @@ function createPhone(container) {
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
         ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
-        ${!petTab && pet ? petGrowth(count) : ''}
+        ${!petTab && pet ? petGrowth(details) : ''}
       </header>
-      ${petTab ? `<section class="pet-scene-panel" aria-label="成长与血量">
-        <header class="pet-panel-header"><h3>成长与血量</h3>
+      ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">
+        <header class="pet-panel-header"><h3>经验与血量</h3>
           ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
-        ${petGrowth(count)}
+        ${petGrowth(details)}
         ${petOptions(pet)}
-        ${petTimeline(pet)}
+        ${petTimeline(pet, awards)}
       </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     drawScene(habitatEntry.querySelector('canvas'));
     const panel = habitatEntry.querySelector('.pet-scene-panel');
@@ -1611,16 +1639,11 @@ function createPhone(container) {
     const stage = status(state, plan);
     const hint = stage === 'grace' ? '补记至 ' + stamp(deadline(plan) + DAY) :
       showDate ? weekday(plan.date) + ' · ' + dateLabel(plan.date) :
-      '目标 ' + plan.minutes + ' 分钟' + (actions ? ' · 今日结束前' : '');
+      '目标 ' + plan.minutes + ' 分钟' + (actions && stage === 'upcoming' ? ' · 今日结束前' : '');
     return workoutRow(`
       <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
       <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${icon('arrow', 14)}
     `, 'detail', plan.id, actions);
-  }
-
-  function todaysPlanRow(plan) {
-    if (status(state, plan) !== 'upcoming') return planRow(plan, false);
-    return planRow(plan, false, button('记录训练', 'manual', 'primary', plan.id) + button('改期', 'reschedule', 'secondary', plan.id));
   }
 
   function home() {
@@ -1641,7 +1664,7 @@ function createPhone(container) {
     const empty = `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`;
     if (usesGlass) return intro + profile(pet) + `<section class="today-task">
       <div class="task-heading"><h3>今日训练</h3></div>
-      ${now.length ? now.map(todaysPlanRow).join('') : empty}</section>` + pulse;
+      ${now.length ? now.map(plan => planRow(plan, false, managementActions('plan', plan.id))).join('') : empty}</section>` + pulse;
     const next = state.plans.filter(plan => plan.date > today()).sort(orderByDate)[0];
     const task = `<section class="today-task"><div class="task-heading"><h3>今日训练</h3>${todayPlan ? chip(stage) : ''}</div>
       ${todayPlan ? `<div class="task-main"><span class="activity">${icon(activity(todayPlan.title), 24)}</span><div><h4>${escape(todayPlan.title)}</h4><p>目标 ${todayPlan.minutes} 分钟 <span>·</span> 今日结束前</p></div></div>
@@ -1714,17 +1737,25 @@ function createPhone(container) {
       ${pet && !state.active ? '<p class="empty-copy">仍可继续训练。原计划和记录会保留。</p>' : ''}</section>`;
   }
 
-  function petTimeline(pet) {
+  function petTimeline(pet, awards = []) {
+    const gains = usesGlass ? awards.map(({ record, end }) => ({
+      id: record.id, action: 'record', at: end, date: record.date, name: record.title, title: `经验 +${record.minutes} XP`, cls: 'done'
+    })) : Object.entries(state.finished).filter(([, event]) => event.pet === pet?.id).map(([id, event]) => {
+      const plan = getPlan(id);
+      return { id, action: 'detail', at: event.at, date: plan.date, name: plan.title, title: '成长 +1', cls: 'done' };
+    });
     const effects = [
-      ...Object.entries(state.finished).filter(([, event]) => event.pet === pet?.id)
-        .map(([id, event]) => ({ id, date: event.at, title: '成长 +1', cls: 'done' })),
+      ...gains,
       ...Object.entries(state.misses).filter(([id, owner]) => owner === pet?.id && !state.finished[id])
-        .map(([id]) => ({ id, date: deadline(getPlan(id)) + DAY, title: '血量 −1', cls: 'missed' }))
-    ].sort((a, b) => b.date - a.date);
-    return effects.map(event => `<button type="button" class="list-row" data-action="detail" data-value="${event.id}">
+        .map(([id]) => {
+          const plan = getPlan(id);
+          return { id, action: 'detail', at: deadline(plan) + DAY, date: plan.date, name: plan.title, title: '血量 −1', cls: 'missed' };
+        })
+    ].sort((a, b) => b.at - a.at);
+    return effects.map(event => `<button type="button" class="list-row" data-action="${event.action}" data-value="${event.id}">
       <span class="activity ${event.cls}">${event.cls === 'done' ? icon('check') : heart(true)}</span><span class="list-copy"><strong>${event.title}</strong>
-      <small>${dateLabel(getPlan(event.id).date)} · ${escape(getPlan(event.id).title)}</small></span>${icon('arrow', 14)}</button>`).join('') ||
-      '<p class="empty-copy">完成训练后，成长记录会出现在这里。</p>';
+      <small>${dateLabel(event.date)} · ${escape(event.name)}</small></span>${icon('arrow', 14)}</button>`).join('') ||
+      `<p class="empty-copy">${usesGlass ? '达到每日训练目标后会获得经验。' : '完成训练后，成长记录会出现在这里。'}</p>`;
   }
 
   function petScreen() {
@@ -1744,12 +1775,15 @@ function createPhone(container) {
     const done = state.finished[plan.id];
     const record = done && getRecord(done.record);
     let reason;
-    if (stage === 'upcoming') reason = '在计划日内完成一场达标训练，并确认关联。';
+    if (stage === 'upcoming') reason = usesGlass ? '在计划日内完成一场达标训练并保存记录。' : '在计划日内完成一场达标训练，并确认关联。';
     if (stage === 'grace') reason = '补记期间暂不扣血。请补记在原计划日完成的训练。';
     if (stage === 'missed') reason = state.misses[plan.id] ? '补记期满仍无达标记录，已扣 1 格血。' : '补记期满仍无达标记录。截止时没有在养宠物。';
-    if (stage === 'done') reason = Object.hasOwn(state.misses, plan.id) ?
-      (state.misses[plan.id] ? '已用设备记录更正，撤销本次扣血并补记成长。' : '已用设备记录更正。截止时没有在养宠物。') :
-      (done.pet ? '本次训练已计入成长。' : '训练已经计入计划。训练结束时没有在养宠物。');
+    if (stage === 'done') {
+      if (state.misses[plan.id]) reason = usesGlass ? '已用设备记录更正，撤销本次扣血。' : '已用设备记录更正，撤销本次扣血并补记成长。';
+      else if (Object.hasOwn(state.misses, plan.id)) reason = '已用设备记录更正。截止时没有在养宠物。';
+      else if (usesGlass) reason = '本次训练已计入计划。';
+      else reason = done.pet ? '本次训练已计入成长。' : '训练已经计入计划。训练结束时没有在养宠物。';
+    }
     return sheet(escape(plan.title), `<div class="sheet-status">${chip(stage)}<span>目标 ${plan.minutes} 分钟</span></div>
       <dl><div><dt>计划日期</dt><dd>${dateLabel(plan.date)} ${weekday(plan.date)}</dd></div>
       <div><dt>训练截止</dt><dd>${stamp(deadline(plan))}</dd></div>
@@ -1838,7 +1872,7 @@ function createPhone(container) {
       ${usesGlass ? `${speciesPicker()}
         ${habitatPicker('garden')}
         <div class="habitat-choice-preview">${petCanvas(habitatPalette)}</div>` : `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>`}
-      <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
+      <p class="sheet-note">${usesGlass ? '它有 3 格血。达成每日目标后，训练每分钟可获得 1 XP。确认漏练会扣 1 格血。' : '它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。'}</p>
       ${field('宠物名字', '<input name="name" value="团团" maxlength="12" required>')}
       <button type="submit" class="primary full">确认领养</button>
     </form>`);
@@ -1895,8 +1929,8 @@ function createPhone(container) {
       case 'delete-record': {
         const isPlan = overlay.type === 'delete-plan';
         const item = isPlan ? plan : getRecord(overlay.value);
-        const note = isPlan ? '关联的训练记录会保留。这项计划带来的成长或扣血会撤销。' :
-          item.plan ? '删除后会重新结算关联计划和对应的宠物成长。' : '';
+        const note = isPlan ? '关联的训练记录会保留。这项计划造成的扣血会撤销。' :
+          `删除后会重新计算宠物经验。${item.plan ? '关联计划也会重新结算。' : ''}`;
         return sheet(isPlan ? '删除训练计划？' : '删除训练记录？', `<p class="sheet-note">「${escape(item.title)}」将被删除。</p>
           ${note ? `<p class="sheet-note">${note}</p>` : ''}<div class="sheet-buttons">
             ${button('取消', 'close', 'secondary')}${button('确认删除', 'confirm-delete', 'primary destructive')}

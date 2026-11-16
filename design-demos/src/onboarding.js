@@ -20,7 +20,10 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
 
   function updateWarning() {
     const warning = view.querySelector('.onboarding-warning');
-    if (warning) warning.textContent = Number(draft.minutes) > 120 ? dailyGoalWarning : '';
+    if (!warning) return;
+    const minutes = Number(draft.minutes);
+    warning.textContent = draft.minutes && minutes < MIN_DAILY_GOAL ? `每日目标至少 ${MIN_DAILY_GOAL} 分钟。` :
+      minutes > 120 ? dailyGoalWarning : '';
   }
 
   function show(index) {
@@ -29,7 +32,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
     const titles = ['设定每日训练目标', '领养宠物', '选择栖息地'];
     const contents = [
       () => `<label class="onboarding-goal"><span class="goal-caption">每日目标</span><span class="goal-entry">
-        <input type="number" name="minutes" min="1" max="1440" step="1" inputmode="numeric" value="${escape(draft.minutes)}" required aria-describedby="onboarding-warning"><span>分钟</span>
+        <input type="number" name="minutes" min="${MIN_DAILY_GOAL}" max="1440" step="1" inputmode="numeric" value="${escape(draft.minutes)}" required aria-describedby="onboarding-warning"><span>分钟</span>
       </span></label><p class="onboarding-warning" id="onboarding-warning" role="status"></p>`,
       () => speciesPicker(draft.species) + field('宠物名字', `<input name="name" value="${escape(draft.name)}" maxlength="12" required>`),
       () => `<div class="onboarding-preview habitat-choice-preview">${petCanvas(palette, 1, false, false, draft.species, draft.habitat)}</div>` + habitatPicker(draft.habitat)

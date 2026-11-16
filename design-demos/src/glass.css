@@ -317,6 +317,9 @@
   margin-top: 11px;
   padding-inline: 0;
 }
+.experience strong { font-size: 12px; white-space: nowrap; }
+.experience span { font-variant-numeric: tabular-nums; }
+.habitat-entry-header .growth.experience { width: 212px; }
 .habitat-entry-header .growth-bar { background: #5e5e5e3e; }
 .habitat-entry-header .growth span { color: inherit; font-weight: 650; }
 .habitat-entry-header .pet-born {
