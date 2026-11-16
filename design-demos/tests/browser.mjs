@@ -570,6 +570,17 @@ async function verifyHeatmapAfterSaving() {
   assert.ok(allRows > 4, 'The heatmap has a populated sample history');
   await includes(lead('.heatmap-head p'), '近 52 周');
   await includes(lead('.heatmap-head strong'), String(allRows));
+  assert.ok(await evaluate(`(() => {
+    const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
+    const legend = [...heatmap.querySelectorAll('.heat-legend i')];
+    const colors = legend.map((swatch, index) => {
+      const cell = heatmap.querySelector('.heat-cell.heat-' + index);
+      const color = getComputedStyle(swatch).backgroundColor;
+      return cell && color === getComputedStyle(cell).backgroundColor ? color.match(/[0-9]+/g).map(Number) : [];
+    });
+    return colors.length === 4 && colors.every(([red, green, blue], index) =>
+      green > red && green > blue && (index === 0 || green < colors[index - 1][1]));
+  })()`), 'The heatmap and legend share four progressively darker shades of green');
   const heatmapSize = () => evaluate(`(() => {
     const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
     const calendar = heatmap.querySelector('.heat-calendar');
