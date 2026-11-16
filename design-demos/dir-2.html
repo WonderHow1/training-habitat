@@ -1540,7 +1540,7 @@ function createPhone(container) {
   let overlay = null;
   let scenario = 'standard';
   let week = monday(dateAt(state.now));
-  let selectedDay = null;
+  let selectedDay = usesGlass ? dateAt(state.now) : null;
   let logFilter = 'all';
   let logDay = null;
   let notice = '';
@@ -1732,6 +1732,7 @@ function createPhone(container) {
   }
 
   function calendar() {
+    const currentDate = today();
     const end = dayPlus(week, 6);
     const plans = state.plans.filter(plan => monday(plan.date) === week).sort(orderPlans);
     const shown = selectedDay ? plans.filter(plan => plan.date === selectedDay) : plans;
@@ -1744,7 +1745,7 @@ function createPhone(container) {
       const date = dayPlus(week, index);
       const slots = plans.filter(plan => plan.date === date);
       const marks = slots.length ? slots.slice(0, 3).map(plan => `<i class="mark ${status(state, plan)}"></i>`).join('') : '<i></i>';
-      return `<button type="button" class="day ${date === today() ? 'actual' : ''}" aria-pressed="${selectedDay === date}" data-action="day" data-value="${date}">
+      return `<button type="button" class="day ${date === currentDate ? 'actual' : ''}" aria-pressed="${selectedDay === date}" ${date === currentDate ? 'aria-current="date"' : ''} data-action="day" data-value="${date}">
         <small>${'一二三四五六日'[index]}</small><strong>${Number(date.slice(8))}</strong><span>${marks}</span></button>`;
     }).join('');
     const completed = `${done}<span> / ${plans.length}</span>`;
@@ -1752,12 +1753,15 @@ function createPhone(container) {
       <div><dt>本周已完成</dt><dd>${completed}</dd></div>
       <div><dt>本周训练时长</dt><dd>${trainingMinutes(state.records, week, dayPlus(week, 7))}<span> 分钟</span></dd></div>
     </dl>` : `<div class="week-total"><span>本周已完成</span><strong>${completed}</strong></div>`;
+    const showingToday = selectedDay === currentDate;
+    const heading = showingToday ? '今日安排' : selectedDay ? weekday(selectedDay) + '的安排' : '本周安排';
+    const empty = showingToday ? '今天暂无计划训练' : '这段时间暂无计划训练';
     return head('训练计划', usesGlass ? '' : '周一至周日', round('plus', '新增计划', 'new')) +
       `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}${weekTitle}${round('arrow', '下一周', 'next')}</div>
       <div class="week-days" aria-label="筛选训练日期">${strip}</div>
       ${summary}</section>
-      <section class="plan-list"><div class="section-heading"><h3>${selectedDay ? weekday(selectedDay) + '的安排' : '本周安排'}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
-      ${shown.map(plan => planRow(plan, true, managementActions('plan', plan.id))).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增计划', 'new', 'primary section-add');
+      <section class="plan-list"><div class="section-heading"><h3>${heading}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
+      ${shown.map(plan => planRow(plan, true, managementActions('plan', plan.id))).join('') || `<p class="empty-copy">${empty}</p>`}</section>` + button('新增计划', 'new', 'primary section-add');
   }
 
   function logged() {
@@ -1880,10 +1884,11 @@ function createPhone(container) {
   }
 
   function dateForm(plan, editing = false) {
-    const start = plan ? monday(plan.date) : monday(selectedDay ?? today());
+    const preferredDay = usesGlass && tab !== 'week' ? today() : selectedDay ?? today();
+    const start = monday(plan?.date ?? preferredDay);
     const min = today() > start ? today() : start;
     const max = dayPlus(start, 6);
-    const picked = plan?.date ?? (selectedDay && selectedDay >= min ? selectedDay : min);
+    const picked = plan?.date ?? (preferredDay >= min ? preferredDay : min);
     const rescheduling = plan && !editing;
     const fixedDate = editing && status(state, plan) !== 'upcoming';
     const dateLimit = fixedDate ? 'readonly' : `min="${min}" ${plan ? `max="${max}"` : ''}`;
@@ -2132,7 +2137,7 @@ function createPhone(container) {
       refresh(state);
     }
     week = monday(today());
-    selectedDay = null;
+    selectedDay = usesGlass ? today() : null;
     logFilter = 'all';
     logDay = null;
     tab = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
@@ -2161,8 +2166,20 @@ function createPhone(container) {
     if (logDay && !state.records.some(record => record.date === logDay && (logFilter === 'all' || logFilter === record.source))) logDay = null;
   }
 
+  function stepWeek(days, action) {
+    week = dayPlus(week, days);
+    const date = today();
+    selectedDay = usesGlass && week === monday(date) ? date : null;
+    render();
+    outlet.querySelector(`[data-action="${action}"]`).focus();
+  }
+
   const handle = {
     tab(value) {
+      if (usesGlass && value === 'week' && tab !== 'week') {
+        selectedDay = today();
+        week = monday(selectedDay);
+      }
       if (tab !== value) showHabitat = false;
       tab = value;
       notice = '';
@@ -2215,9 +2232,12 @@ function createPhone(container) {
       render({ preserve: true });
       layers.querySelector('.picker-day[aria-pressed="true"]').focus({ preventScroll: true });
     },
-    previous() { week = dayPlus(week, -7); selectedDay = null; render(); outlet.querySelector('[data-action="previous"]').focus(); },
-    next() { week = dayPlus(week, 7); selectedDay = null; render(); outlet.querySelector('[data-action="next"]').focus(); },
-    day(value) { selectedDay = value === selectedDay ? null : (value || null); render({ preserve: true }); },
+    previous() { stepWeek(-7, 'previous'); },
+    next() { stepWeek(7, 'next'); },
+    day(value) {
+      selectedDay = !usesGlass && value === selectedDay ? null : (value || null);
+      render({ preserve: true });
+    },
     filter(value) {
       logFilter = value;
       logDay = null;
@@ -2386,7 +2406,7 @@ function createPhone(container) {
         state.plans.push(plan);
         rememberProject(plan.title);
         week = monday(plan.date);
-        selectedDay = null;
+        if (usesGlass && (selectedDay || tab !== 'week')) selectedDay = plan.date;
         if (scenario === 'onboarding') open('health');
         else { tab = 'week'; feedback('已保存训练计划'); }
         break;
@@ -2418,7 +2438,12 @@ function createPhone(container) {
   return { load, advance(date) {
     const time = bj(...clocks(date));
     if (!Number.isFinite(time) || time < state.now) return false;
+    const followingToday = usesGlass && selectedDay === today();
     state.now = time;
+    if (followingToday) {
+      selectedDay = today();
+      week = monday(selectedDay);
+    }
     if (logDay && logDay < heatmapStart(today())) logDay = null;
     refresh(state);
     overlay = null;

@@ -311,6 +311,7 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.today-task'), '今天无计划训练');
   if (glass) {
     await clickLead('tab', 'week');
+    await clickLead('day', '2026-11-17');
     await includes(lead(act('detail', 'today')), '11月17日 19:45');
   } else await includes(lead('.following'), '11月17日 19:45');
 
@@ -862,9 +863,19 @@ async function verifyGlass() {
   assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backdropFilter`), 'none');
   await clickLead('close');
   await cmd('Emulation.setEmulatedMedia', { features: [] });
-  await clickLead('tab', 'pet');
+  await clickLead('tab', 'week');
+  await includes(lead('.plan-list h3'), '今日安排');
   await change('#demo-time', '2026-11-17T00:00');
   await click('#advance');
+  await includes(lead('.plan-list .empty-copy'), '今天暂无计划训练');
+  assert.ok(await evaluate(`document.querySelector('[data-phone="home"] .day[data-value="2026-11-17"][aria-pressed="true"]') !== null`));
+  await includes('[data-phone="week"] .week-trigger', '2024 年第 9 周');
+  await clickLead('day', '2026-11-19');
+  await includes(lead('.plan-list'), '下肢力量');
+  await clickLead('tab', 'log');
+  await clickLead('tab', 'week');
+  await includes(lead('.plan-list .empty-copy'), '今天暂无计划训练');
+  await clickLead('tab', 'pet');
   await includes(lead('.pet-attributes'), '8 天');
   await includes(lead('.pet-attributes'), '3.2 公斤');
   await clickLead('tab', 'home');
@@ -875,10 +886,20 @@ async function verifyGlass() {
 
 async function verifyWeekPicker() {
   const week = selector => '[data-phone="week"] ' + selector;
+  const planIds = () => evaluate(`[...document.querySelectorAll(${JSON.stringify(week('.plan-list .swipe-workout'))})].map(row => row.dataset.workout)`);
   await includes(week('.week-trigger'), '2026 年第 47 周');
   await includes(week('.week-trigger'), '11月16日–11月22日');
   await includes(week('.week-summary > div:nth-child(2) dt'), '本周训练时长');
   await includes(week('.week-summary > div:nth-child(2) dd'), '0 分钟');
+  await includes(week('.plan-list h3'), '今日安排');
+  assert.deepEqual(await planIds(), ['today']);
+  await click(week(act('day', '2026-11-19')));
+  assert.deepEqual(await planIds(), ['next']);
+  await includes(week('.plan-list .section-heading button'), '显示全周');
+  await click(week('.plan-list .section-heading button'));
+  assert.deepEqual(await planIds(), ['today', 'next', 'last']);
+  await click(week(act('day', '2026-11-16')));
+  assert.deepEqual(await planIds(), ['today']);
   assert.ok(await evaluate(`(() => {
     const controls = document.querySelectorAll(${JSON.stringify(week('.week-card :is(.week-trigger, .round, .round > svg, .day)'))});
     return controls.length === 12 && [...controls].every(control => {
@@ -992,6 +1013,7 @@ async function verifyTrainingManagement() {
 
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '1 / 3');
+  await clickLead('day', '2026-11-19');
   await swipeWorkout('next');
   await clickLead('edit-plan', 'next');
   await includes(lead('.sheet h3'), '编辑训练计划');
