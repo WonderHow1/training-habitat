@@ -1152,7 +1152,7 @@ function createPhone(initial) {
   const isPetHabitat = () => Boolean(habitatEntry) && tab === 'pet';
 
   function head(title, sub, action = '') {
-    return `<header class="app-head"><div><p class="kicker">${sub}</p><h2>${title}</h2></div>${action}</header>`;
+    return `<header class="app-head"><div>${sub ? `<p class="kicker">${sub}</p>` : ''}<h2>${title}</h2></div>${action}</header>`;
   }
 
   function petDetails(pet) {
@@ -1273,7 +1273,7 @@ function createPhone(initial) {
       return `<button type="button" class="day ${date === today() ? 'actual' : ''}" aria-pressed="${selectedDay === date}" data-action="day" data-value="${date}">
         <small>${'一二三四五六日'[index]}</small><strong>${Number(date.slice(8))}</strong><span>${marks}</span></button>`;
     }).join('');
-    return head('训练计划', '周一至周日', round('plus', '新增训练', 'new')) +
+    return head('训练计划', usesGlass ? '' : '周一至周日', round('plus', '新增训练', 'new')) +
       `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}${weekTitle}${round('arrow', '下一周', 'next')}</div>
       <div class="week-days" aria-label="筛选训练日期">${strip}</div>
       <div class="week-total"><span>本周已完成</span><strong>${done}<span> / ${plans.length}</span></strong></div></section>
@@ -1294,7 +1294,7 @@ function createPhone(initial) {
       <span class="list-copy"><strong>${escape(record.title)}</strong><small>${date}${record.start}<span class="record-source"> · ${sourceLabel(record.source)}</span></small></span>
       <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span></button>`;
     }).join('');
-    return head('训练记录', '训练历史', round('plus', '手动记录', 'manual')) +
+    return head('训练记录', usesGlass ? '' : '训练历史', round('plus', '手动记录', 'manual')) +
       (usesGlass ? trainingHeatmap(records, today(), logDay, initial) : '') +
       `<div class="record-actions">${button(icon('plus', 20) + '手动记录', 'manual', 'secondary')}${button(icon('watch', 20) + '导入设备', 'import', 'primary')}</div>
       <div class="segments" aria-label="按来源筛选">${options.map(([value, label]) => `<button type="button" data-action="filter" data-value="${value}" aria-pressed="${value === logFilter}">${label}</button>`).join('')}</div>

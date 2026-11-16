@@ -358,6 +358,10 @@ const settleHabitatAnimation = () => evaluate(`Promise.allSettled(document.query
 
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
+  for (const [tab, title] of [['week', '训练计划'], ['log', '训练记录']]) {
+    const selector = `[data-phone="${tab}"] .app-head`;
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).textContent.trim()`), title);
+  }
   await verifyPrototypePalette();
   await verifyOpenSurfaces();
   await verifyWeekPicker();
@@ -466,7 +470,7 @@ async function verifyPrototypePalette() {
   assert.ok(await evaluate(`(() => {
     const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
     const colorChannels = color => color.match(/[0-9]+/g).slice(0, 3).map(Number);
-    const isPaleBlue = ([red, green, blue]) => red >= 215 && red < green && green < blue;
+    const isPaleTan = ([red, green, blue]) => red >= 215 && red > green && green > blue;
     const luminance = channels => channels.map(value => {
       const srgb = value / 255;
       return srgb <= .04045 ? srgb / 12.92 : ((srgb + .055) / 1.055) ** 2.4;
@@ -474,7 +478,7 @@ async function verifyPrototypePalette() {
     const button = document.querySelector('[data-phone="log"] .record-actions .primary');
     const face = colorChannels(getComputedStyle(button).backgroundColor);
     const text = colorChannels(getComputedStyle(button).color);
-    const contrast = (luminance(text) + .05) / (luminance(face) + .05);
+    const contrast = (luminance(face) + .05) / (luminance(text) + .05);
     const pixel = (selector, x, y) => document.querySelector(selector).getContext('2d').getImageData(x, y, 1, 1).data;
     const isGreen = ([red, green, blue]) => green > red && green > blue;
     const habitat = '[data-phone="home"] .habitat-landscape';
@@ -482,13 +486,13 @@ async function verifyPrototypePalette() {
     const sky = pixel(habitat, 0, 0);
     const white = 'rgb(255, 255, 255)';
     return ['html', 'body', '.ios-screen', '.app-scroll', '.week-card', '.heatmap'].every(selector => background(selector) === white) &&
-      isPaleBlue(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
-      isPaleBlue(colorChannels(background('[data-phone="week"] .day.actual'))) &&
-      face[0] < face[1] && face[1] < face[2] && contrast >= 4.5 &&
+      isPaleTan(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
+      isPaleTan(colorChannels(background('[data-phone="week"] .day.actual'))) &&
+      isPaleTan(colorChannels(background('.tabbar'))) && isPaleTan(face) && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
       isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
-  })()`), 'Main surfaces are white, secondary controls are pale blue, and the habitat has green grass and trees');
+  })()`), 'Main surfaces are white, controls use pale tan, and the habitat has green grass and trees');
 }
 
 async function verifyOpenSurfaces() {
