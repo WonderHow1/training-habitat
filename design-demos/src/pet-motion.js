@@ -30,7 +30,7 @@ function wanderingPet(canvas, target, limit, elapsed) {
   return { x: Math.min(x, rightEdge), y, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0, scale };
 }
 
-function animatePet(canvas, target, { roam = false } = {}) {
+function animatePet(canvas, target, { roam = false, previewOffset = null } = {}) {
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const limit = roam ? canvas.parentElement.querySelector('.pet-scene-panel, .habitat-continue') : null;
   let species = canvas.dataset.species;
@@ -53,7 +53,11 @@ function animatePet(canvas, target, { roam = false } = {}) {
       previousPose = '';
     }
     const reduced = motion.matches;
-    const frame = reactionFrame(petReactions[species], Math.max(0, now - touchedAt), reduced);
+    const reaction = petReactions[species];
+    const elapsed = Math.max(0, now - touchedAt);
+    const idle = Math.max(0, now - idleSince + (previewOffset ?? 0));
+    const preview = previewOffset !== null && !reduced && elapsed > 2400;
+    const frame = reactionFrame(reaction, elapsed, reduced) ?? (preview ? reactionFrame(reaction, idle % 7800, false) : null);
     const moving = roam && !reduced;
     if (moving && !frame) walked += Math.min(100, Math.max(0, now - lastPaint));
     lastPaint = now;
@@ -70,7 +74,7 @@ function animatePet(canvas, target, { roam = false } = {}) {
     const footstep = frame ? 0 : walk.step;
     const y = frame?.y ?? (footstep === 2 ? -1 : 0);
     const flip = moving && (!frame || species === 'cat') ? walkFlip : Boolean(frame?.flip);
-    const blink = frame?.blink ?? (!frame && !reduced && (now - idleSince) % 3000 >= 2750);
+    const blink = frame?.blink ?? (!frame && !reduced && idle % 3000 >= 2750);
     const offsetX = walks ? walk.x * walk.scale : 0;
     const offsetY = walks ? walk.y * walk.scale : 0;
     const pose = `${offsetX},${offsetY},${walk.x},${walk.y},${x},${y},${flip},${blink},${footstep}`;

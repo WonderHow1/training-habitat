@@ -918,6 +918,7 @@ async function verifyGlass() {
   })()`), 'The full-screen scene contains the pet controls and leaves the tabs accessible');
   await settleHabitatAnimation();
   await screenshot('ios-prototype-pet');
+  await includes(lead(act('pet-guide')), '图鉴');
   await clickLead('detail', 'old');
   await includes(lead('.sheet h3'), '校园夜跑');
   await clickLead('close');
@@ -1350,6 +1351,49 @@ async function verifyNarrowTrainingSummary() {
       top.height === bottom.height && top.bottom < bottom.top && singleLine(manual) && singleLine(device);
   })()`), 'Both recording options are equal-width rows with single-line labels at 320px');
   await clickLead('close');
+
+  await clickLead('tab', 'pet');
+  await settleHabitatAnimation();
+  await clickLead('pet-guide');
+  await includes(lead('.sheet h3'), '宠物图鉴');
+  const guide = JSON.stringify(lead('.pet-guide-grid'));
+  assert.ok(await evaluate(`(() => {
+    const grid = document.querySelector(${guide});
+    const species = [...grid.querySelectorAll('canvas')].map(canvas => canvas.dataset.species);
+    return species.join(',') === Object.keys(petSpecies).join(',') && species.length === 10 &&
+      grid.scrollWidth === grid.clientWidth && grid.closest('.sheet').scrollWidth === grid.closest('.sheet').clientWidth;
+  })()`), 'The guide fits all ten species at 320px');
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const fish = document.querySelector(${guide}).querySelector('[data-species="goldfish"]');
+    const rest = fish.cloneNode();
+    drawScene(rest);
+    const still = rest.toDataURL();
+    const end = performance.now() + 2200;
+    function check() {
+      if (fish.toDataURL() !== still) resolve(true);
+      else if (performance.now() >= end) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'A catalog portrait animates without a tap');
+  await click(lead('.pet-guide-preview:has([data-species="turtle"])'));
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const turtle = document.querySelector(${guide}).querySelector('[data-species="turtle"]');
+    const expected = turtle.cloneNode();
+    drawScene(expected, petReactions.turtle.frames[1]);
+    const shell = expected.toDataURL();
+    const end = performance.now() + 800;
+    function check() {
+      if (turtle.toDataURL() === shell) resolve(true);
+      else if (performance.now() >= end) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'Tapping a catalog pet triggers its own reaction');
+  await screenshot('ios-prototype-pet-guide');
+  await clickLead('close');
+  assert.equal(await evaluate('document.activeElement.dataset.action'), 'pet-guide');
+  assert.equal(await inHabitat(), true);
 }
 let failed = false;
 try {
