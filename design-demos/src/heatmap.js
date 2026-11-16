@@ -1,4 +1,4 @@
-const HEATMAP_WEEKS = 16;
+const HEATMAP_WEEKS = 52;
 
 function sampleTrainingHistory() {
   const anchor = DEMO_AT.split('T')[0];
@@ -7,7 +7,8 @@ function sampleTrainingHistory() {
     [-102, 1], [-94, 2], [-86, 1], [-79, 2],
     [-74, 1], [-72, 1], [-69, 2], [-64, 1], [-60, 2], [-56, 1], [-51, 3],
     [-45, 1], [-42, 2], [-39, 1], [-35, 1], [-32, 2], [-29, 1], [-26, 1],
-    [-23, 1], [-21, 2], [-19, 1], [-18, 3], [-16, 1], [-13, 2], [-10, 1], [-8, 1]
+    [-23, 1], [-21, 2], [-19, 1], [-18, 3], [-16, 1], [-13, 2], [-10, 1], [-8, 1],
+    [-350, 1], [-306, 1], [-259, 2], [-210, 1], [-178, 2], [-142, 2], [-128, 1]
   ];
   return sampleDays.flatMap(([offset, count], index) => Array.from({ length: count }, (_, session) => ({
     id: 'history-' + index + '-' + session,
@@ -36,7 +37,7 @@ function trainingHeatmap(records, today, selection, id) {
   const weeks = Array.from({ length: HEATMAP_WEEKS }, (_, week) => {
     const weekStart = dayPlus(start, week * 7);
     const month = dayPlus(weekStart, 3).slice(5, 7);
-    const showMonth = week === 0 || month !== dayPlus(weekStart, -4).slice(5, 7);
+    const showMonth = week === 0 ? month === dayPlus(weekStart, 10).slice(5, 7) : month !== dayPlus(weekStart, -4).slice(5, 7);
     const cells = Array.from({ length: 7 }, (_, weekday) => {
       const date = dayPlus(weekStart, weekday);
       if (date > today) return '<span class="heat-cell heat-future" aria-hidden="true"></span>';
@@ -52,12 +53,12 @@ function trainingHeatmap(records, today, selection, id) {
   const titleId = id + '-heatmap-title';
   return `<section class="heatmap" aria-labelledby="${titleId}">
     <header class="heatmap-head"><h3 id="${titleId}">训练热力图</h3><p>近 ${HEATMAP_WEEKS} 周 <span>·</span> <strong>${total}</strong> 次</p></header>
-    <div class="heat-calendar" style="--heatmap-weeks: ${HEATMAP_WEEKS}">
+    <div class="heat-calendar">
       <div class="heat-week heat-weekdays" aria-hidden="true"><span></span><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span></span></div>
-      ${weeks}
+      <div class="heat-weeks" tabindex="0" role="group" aria-label="训练日期，左右滚动查看更多月份">${weeks}</div>
     </div>
     <footer class="heatmap-footer">
-      <p>${selection ? dateLabel(selection) + ' · ' + counts.get(selection) + ' 次' : '点击有训练的日期'}</p>
+      <p>${selection ? dateLabel(selection) + ' · ' + counts.get(selection) + ' 次' : '左右滑动 · 点日期筛选'}</p>
       ${selection ? button('查看全部日期', 'log-day', 'text-button') :
         '<div class="heat-legend" aria-label="颜色由浅到深表示训练次数由少到多"><span>少</span><i class="heat-0"></i><i class="heat-1"></i><i class="heat-2"></i><i class="heat-3"></i><span>多</span></div>'}
     </footer>

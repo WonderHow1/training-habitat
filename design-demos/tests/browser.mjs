@@ -191,7 +191,8 @@ async function demoDirection(index, glass = false) {
       const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
       const field = sheet.querySelector('input[name="title"]');
       return sheet.contains(document.activeElement) && sheet.getAnimations().length > 0 &&
-        getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px';
+        getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px' &&
+        getComputedStyle(field).backdropFilter.includes('blur') && getComputedStyle(field).backgroundImage.includes('linear-gradient');
     })()`));
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().map(animation => animation.finished))`);
     await screenshot(name + '-record');
@@ -350,13 +351,47 @@ async function habitatPoint() {
   })()`);
 }
 
+const heatWeeks = JSON.stringify(lead('.heat-weeks'));
+const heatScrollLeft = () => evaluate(`document.querySelector(${heatWeeks}).scrollLeft`);
+const heatScrollMax = () => evaluate(`(() => {
+  const weeks = document.querySelector(${heatWeeks});
+  return weeks.scrollWidth - weeks.clientWidth;
+})()`);
+
+async function heatPoint() {
+  const point = await evaluate(`(() => {
+    const weeks = document.querySelector(${heatWeeks});
+    weeks.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    const rect = weeks.getBoundingClientRect();
+    const x = Math.round(rect.left + 60);
+    const y = Math.round(rect.top + 36);
+    return { x, y, hittable: weeks.contains(document.elementFromPoint(x, y)) };
+  })()`);
+  assert.ok(point.hittable, 'The swipe starts on the visible heatmap');
+  return point;
+}
+
+async function waitForHeatScroll(condition) {
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const end = performance.now() + 1000;
+    function check() {
+      const weeks = document.querySelector(${heatWeeks});
+      if (${condition}) resolve(true);
+      else if (performance.now() > end) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'The heatmap scrolls to the expected dates');
+}
+
 async function verifyHeatmapAfterSaving() {
+  await settleHabitatAnimation();
   const cell = lead(act('log-day', '2026-11-16'));
   const feed = lead('.record-feed .list-row');
   const countRows = () => evaluate(`document.querySelectorAll(${JSON.stringify(feed)}).length`);
   const allRows = await countRows();
   assert.ok(allRows > 4, 'The heatmap has a populated sample history');
-  await includes(lead('.heatmap-head p'), '近 16 周');
+  await includes(lead('.heatmap-head p'), '近 52 周');
   await includes(lead('.heatmap-head strong'), String(allRows));
   const heatmapSize = () => evaluate(`(() => {
     const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
@@ -364,10 +399,20 @@ async function verifyHeatmapAfterSaving() {
     return { height: heatmap.offsetHeight, width: calendar.offsetWidth };
   })()`);
   const size = await heatmapSize();
-  assert.ok(size.height <= 172 && size.width === 253, 'The heatmap adds four week columns at the same height');
-  assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(lead('.heat-calendar .heat-cell'))}).length`), 16 * 7);
+  assert.ok(size.height <= 172 && size.width === 253, 'More weeks keep the existing heatmap viewport size');
+  assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(lead('.heat-calendar .heat-cell'))}).length`), 52 * 7);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).offsetWidth`), 14);
-  const months = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.heat-month'))})].map(label => label.textContent).filter(Boolean)`);
+  const latest = await heatScrollMax();
+  assert.ok(latest > 0);
+  assert.equal(await heatScrollLeft(), latest, 'The heatmap initially shows the latest week');
+  const months = await evaluate(`(() => {
+    const weeks = document.querySelector(${heatWeeks});
+    const viewport = weeks.getBoundingClientRect();
+    return [...weeks.querySelectorAll('.heat-month')].filter(month => {
+      const rect = month.getBoundingClientRect();
+      return month.textContent && rect.left >= viewport.left && rect.right <= viewport.right;
+    }).map(month => month.textContent);
+  })()`);
   assert.deepEqual(months, ['8月', '9月', '10月', '11月']);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).title`), '11月16日 · 1 次训练');
   assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead('.heatmap'))}).nextElementSibling.classList.contains('record-actions')`));
@@ -377,9 +422,20 @@ async function verifyHeatmapAfterSaving() {
   await includes(feed, '校园夜跑');
   await click(lead('.heatmap-footer [data-action="log-day"]'));
   assert.equal(await countRows(), allRows);
-  await clickLead('log-day', '2026-08-06');
-  assert.equal(await countRows(), 1, 'Dates in the newly visible month can be selected');
-  await includes(lead('.heatmap-footer'), '8月6日 · 1 次');
+  const { x, y } = await heatPoint();
+  const wheel = deltaX => cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX, deltaY: 0 });
+  await wheel(-220);
+  await waitForHeatScroll(`weeks.scrollLeft < ${latest - 180}`);
+  const earlier = await heatScrollLeft();
+  await clickLead('log-day', '2026-07-11');
+  assert.equal(await countRows(), 1, 'Dates in an earlier month can be selected');
+  await includes(lead('.heatmap-footer'), '7月11日 · 1 次');
+  assert.equal(await heatScrollLeft(), earlier, 'Selecting a date preserves the horizontal position');
+  await click(lead('.heatmap-footer [data-action="log-day"]'));
+  assert.equal(await countRows(), allRows);
+  assert.equal(await heatScrollLeft(), earlier);
+  await wheel(600);
+  await waitForHeatScroll('weeks.scrollLeft === weeks.scrollWidth - weeks.clientWidth');
   await clickLead('filter', 'device');
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(cell)}))`), false);
   await clickLead('log-day', '2026-11-14');
@@ -478,6 +534,10 @@ const settleHabitatAnimation = () => evaluate(`Promise.allSettled(document.query
 
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
+  assert.ok(await evaluate(`(() => {
+    const weeks = document.querySelector('[data-phone="log"] .heat-weeks');
+    return weeks.scrollWidth > weeks.clientWidth && weeks.scrollLeft === weeks.scrollWidth - weeks.clientWidth;
+  })()`), 'The standalone record preview opens on the latest week');
   for (const [tab, title] of [['week', '训练计划'], ['log', '训练记录']]) {
     const selector = `[data-phone="${tab}"] .app-head`;
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).textContent.trim()`), title);
@@ -558,6 +618,7 @@ async function verifyGlass() {
   assert.equal(await evaluate('document.activeElement.dataset.action'), 'manual');
   await clickLead('manual', 'today');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length`), 0);
+  assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backdropFilter`), 'none');
   await clickLead('close');
   await cmd('Emulation.setEmulatedMedia', { features: [] });
 }
@@ -662,6 +723,13 @@ async function verifyPrototypePalette() {
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
       isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
   })()`), 'Main surfaces are white, controls use light gray, and the habitat has green grass and trees');
+  assert.ok(await evaluate(`(() => {
+    return ['.record-actions .primary', '.record-actions .secondary', '.segments', '.week-trigger',
+      '.week-days .day', '.scene-control', '.today-task .list-row'].every(selector => {
+      const style = getComputedStyle(document.querySelector(selector));
+      return style.backgroundImage.includes('linear-gradient') && style.backdropFilter.includes('blur');
+    });
+  })()`), 'Internal controls use glass highlights and backdrop blur');
 }
 
 async function verifyOpenSurfaces() {
@@ -713,12 +781,22 @@ async function verifyNarrowTrainingSummary() {
   await clickLead('tab', 'log');
   assert.ok(await evaluate(`(() => {
     const calendar = document.querySelector(${JSON.stringify(lead('.heat-calendar'))});
-    const weeks = calendar.querySelectorAll('.heat-week:not(.heat-weekdays)');
+    const weeks = calendar.querySelector('.heat-weeks');
     const grid = calendar.getBoundingClientRect();
-    const first = weeks[0].getBoundingClientRect();
-    const last = weeks[weeks.length - 1].getBoundingClientRect();
-    return weeks.length === 16 && first.top === last.top && last.right <= grid.right && calendar.scrollWidth === calendar.clientWidth;
-  })()`), 'All 16 weeks fit in a 320px viewport');
+    return weeks.children.length === 52 && grid.width === 253 && calendar.scrollWidth === calendar.clientWidth &&
+      weeks.lastElementChild.getBoundingClientRect().right <= grid.right;
+  })()`), 'The heatmap opens on the newest week within the 320px viewport');
+  const latest = await heatScrollLeft();
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  const { x, y } = await heatPoint();
+  await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (const distance of [30, 64, 110]) {
+    await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + distance, y }] });
+  }
+  await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await waitForHeatScroll(`weeks.scrollLeft < ${latest - 40}`);
+  assert.equal(await evaluate('document.documentElement.scrollLeft'), 0);
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
 }
 let failed = false;
 try {

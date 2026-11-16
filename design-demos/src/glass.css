@@ -1,4 +1,3 @@
-/* Floating controls sample the content behind them. Cards and form fields keep solid surfaces. */
 :root:has(body[data-glass]) {
   background: #fff;
   color-scheme: light;
@@ -25,6 +24,10 @@
   --glass-tint: #f7f7f7eb;
   --glass-shadow: 0 7px 20px #2727271a, 0 1px 3px #24242416;
   --glass-ease: cubic-bezier(.2, .75, .25, 1);
+  --control-tint: #f4f4f4dd;
+  --control-selected: #eaeaeae8;
+  --control-glint: linear-gradient(155deg, #fffc, #fff1 50%, #d7d7d729);
+  --control-shadow: inset 0 1px 0 #fff, 0 2px 5px #24242412;
 }
 
 [data-glass] .ios-screen > div:has(> .ios-content) { bottom: 0 !important; }
@@ -162,10 +165,7 @@
 [data-glass] .week-heading .round {
   width: 34px;
   height: 34px;
-  background: var(--wash);
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  box-shadow: var(--control-shadow);
 }
 
 [data-glass] .tabbar {
@@ -217,10 +217,6 @@
 [data-glass] .sheet header .round {
   width: 44px;
   height: 44px;
-}
-[data-glass] .sheet .field :is(input, select) {
-  border: 0;
-  background: var(--wash);
 }
 .picker-calendar {
   display: grid;
@@ -428,11 +424,21 @@
   --weekday-width: 13px;
   --week-gap: 1px;
   display: grid;
-  grid-template-columns: var(--weekday-width) repeat(var(--heatmap-weeks), minmax(0, 1fr));
+  grid-template-columns: var(--weekday-width) minmax(0, 1fr);
   column-gap: var(--week-gap);
-  max-width: calc(var(--weekday-width) + var(--heatmap-weeks) * (var(--heat-size) + var(--week-gap)));
+  max-width: calc(var(--weekday-width) + 16 * (var(--heat-size) + var(--week-gap)));
   margin: 5px auto 2px;
 }
+.heat-weeks {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--heat-size);
+  gap: var(--week-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.heat-weeks:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .heat-week {
   display: grid;
   grid-template-rows: 14px repeat(7, var(--heat-size));
@@ -472,6 +478,50 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 .heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
 .heat-legend i { --heat-size: 8px; }
 
+/* Use the same material on the controls inside each screen and sheet. */
+[data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
+  .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select)) {
+  border: 0;
+  background-color: var(--control-tint);
+  background-image: var(--control-glint);
+  box-shadow: var(--control-shadow);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+  backdrop-filter: blur(10px) saturate(135%);
+}
+[data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .day[aria-pressed="true"], .picker-day[aria-pressed="true"],
+  .species-choice:has(input:checked), .switch-row[aria-checked="true"] .switch) {
+  background-color: var(--control-selected);
+}
+[data-glass] :is(.phone-app, .habitat-entry) :is(.day:not(.actual, [aria-pressed="true"]),
+  .picker-day:not([aria-current], [aria-pressed="true"]), .text-button) {
+  background-color: #f7f7f752;
+  box-shadow: none;
+}
+[data-glass] :is(.phone-app, .habitat-entry) :is(.list-row, .choice, .switch-row) {
+  background-image: linear-gradient(145deg, #ffffffb3, #fff0 66%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  backdrop-filter: blur(8px) saturate(120%);
+}
+[data-glass] .phone-app .choice:has(input:checked) {
+  background-color: var(--control-tint);
+  border-radius: 10px;
+}
+[data-glass] .phone-app .segments button[aria-pressed="true"] {
+  background-color: #ffffffe0;
+  background-image: var(--control-glint);
+  box-shadow: var(--control-shadow);
+}
+[data-glass] .phone-app :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button) {
+  transition: transform 160ms var(--glass-ease), box-shadow 160ms var(--glass-ease);
+}
+[data-glass] .phone-app :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button):active {
+  transform: scale(.96);
+}
+.heat-weeks button.heat-cell { background-image: linear-gradient(150deg, #ffffff33, #fff0 65%, #25252512); }
+.heat-weeks button.heat-cell[aria-pressed="true"] {
+  background-image: radial-gradient(circle, var(--ink) 1.6px, transparent 2px), linear-gradient(150deg, #ffffff33, #fff0 65%, #25252512);
+}
+
 @media (min-width: 731px) {
   [data-glass] .device[data-phone="week"] .ios-screen { height: 734px !important; }
 }
@@ -501,15 +551,23 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 }
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  [data-glass] { --control-glint: none; --control-tint: #f4f4f4; --control-selected: #eaeaea; --control-shadow: none; }
   [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel) {
     background: var(--layer);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  [data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
+    .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select),
+    .list-row, .choice, .switch-row) {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
   [data-glass] .tabbar::before { background: var(--accent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-glass] .tabbar button:active, [data-glass] .round:active { transform: none; }
+  [data-glass] :is(.tabbar button, .round, .phone-app :is(.primary, .secondary, .day, .picker-day,
+    .week-trigger, .segments button, .text-button)):active { transform: none; }
   .ios-screen:has(.habitat-entry) :is(.habitat-entry, .app-scroll) { transform: none; }
   .ios-screen:has(.habitat-entry) { --habitat-progress: 0; }
   .ios-screen[data-habitat] { --habitat-progress: 1; }

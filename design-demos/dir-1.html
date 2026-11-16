@@ -1411,7 +1411,8 @@ function demoState(scenario) {
   return state;
 }
 
-function createPhone(initial) {
+function createPhone(container) {
+  const initial = container.dataset.phone;
   const phone = iosFrame();
   const outlet = phone.querySelector('.ios-content');
   outlet.innerHTML = `<div class="phone-app"><div class="app-scroll"></div>
@@ -1825,9 +1826,16 @@ function createPhone(initial) {
 
   const screens = { home, week: calendar, log: logged, pet: petScreen };
 
+  function positionHeatmap(offset) {
+    const heatmap = scrollArea.querySelector('.heat-weeks');
+    if (heatmap) heatmap.scrollLeft = offset ?? heatmap.scrollWidth;
+  }
+
   function render({ preserve = false, focusSheet = false } = {}) {
     const offset = preserve ? scrollArea.scrollTop : 0;
+    const heatmapOffset = preserve ? scrollArea.querySelector('.heat-weeks')?.scrollLeft : undefined;
     scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
+    positionHeatmap(heatmapOffset);
     scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay);
     tabbar.inert = Boolean(overlay) || showHabitat;
     const index = tabButtons.findIndex(button => button.dataset.value === tab);
@@ -2123,7 +2131,9 @@ function createPhone(initial) {
   });
 
   render();
-  return { phone, load, advance(date) {
+  container.append(phone);
+  positionHeatmap();
+  return { load, advance(date) {
     const time = bj(...clocks(date));
     if (!Number.isFinite(time) || time < state.now) return false;
     state.now = time;
@@ -2136,11 +2146,7 @@ function createPhone(initial) {
   } };
 }
 
-const phones = [...root.querySelectorAll('[data-phone]')].map(container => {
-  const app = createPhone(container.dataset.phone);
-  container.append(app.phone);
-  return app;
-});
+const phones = [...root.querySelectorAll('[data-phone]')].map(createPhone);
 
 const lead = phones.find((_, index) => root.querySelectorAll('[data-phone]')[index].dataset.phone === 'home');
 const demoScene = document.querySelector('#demo-scene');
