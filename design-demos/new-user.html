@@ -1090,7 +1090,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 [data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.day, .picker-day, .segments button)[aria-pressed="true"] {
   background: var(--training-selected);
 }
-[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.day:not(.actual, [aria-pressed="true"]), .picker-day:not([aria-current], [aria-pressed="true"])) {
+[data-glass] .phone-app[data-screen="week"] .picker-day:not([aria-current], [aria-pressed="true"]) {
   background: #f3f3f3;
 }
 [data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.segments, .list-row, .choice) {
@@ -1107,6 +1107,21 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
   border-radius: 50%;
   color: #fff;
   background: #21262d;
+}
+[data-glass] .phone-app[data-screen="week"] .week-card {
+  --training-control: transparent;
+  --training-selected: transparent;
+}
+[data-glass] .phone-app[data-screen="week"] .week-heading .round > svg {
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  color: var(--ink);
+  background: none;
+}
+[data-glass] .phone-app[data-screen="week"] .day[aria-pressed="true"] strong {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .heat-weeks button.heat-cell { background-image: linear-gradient(150deg, #ffffff33, #fff0 65%, #25252512); }
 .heat-weeks button.heat-cell[aria-pressed="true"] {

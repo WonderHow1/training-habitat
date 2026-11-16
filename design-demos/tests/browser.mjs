@@ -831,6 +831,13 @@ async function verifyWeekPicker() {
   await includes(week('.week-summary > div:nth-child(2) dt'), '本周训练时长');
   await includes(week('.week-summary > div:nth-child(2) dd'), '0 分钟');
   assert.ok(await evaluate(`(() => {
+    const controls = document.querySelectorAll(${JSON.stringify(week('.week-card :is(.week-trigger, .round, .round > svg, .day)'))});
+    return controls.length === 12 && [...controls].every(control => {
+      const style = getComputedStyle(control);
+      return style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.backgroundImage === 'none' && style.boxShadow === 'none';
+    });
+  })()`), 'The weekly calendar uses bare text and icons');
+  assert.ok(await evaluate(`(() => {
     const add = document.querySelector(${JSON.stringify(week('.section-add'))}).getBoundingClientRect();
     const tabs = document.querySelector(${JSON.stringify(week('.tabbar'))}).getBoundingClientRect();
     return tabs.top - add.bottom >= 10;
@@ -852,6 +859,11 @@ async function verifyWeekPicker() {
   await includes(week('.week-trigger'), '2月26日–3月3日');
   await includes(week('.week-summary > div:nth-child(2) dd'), '0 分钟');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(week('.week-days [aria-pressed="true"]'))}).dataset.value`), '2024-02-29');
+  assert.ok(await evaluate(`(() => {
+    const active = document.querySelector(${JSON.stringify(week('.week-days [aria-pressed="true"]'))});
+    return getComputedStyle(active).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+      getComputedStyle(active.querySelector('strong')).textDecorationLine === 'underline';
+  })()`), 'The selected day uses an underline without a gray block');
   await click(week('.week-trigger'));
   await includes(week('.sheet h3'), '选择日期');
   await click(week(act('close')));
@@ -1000,7 +1012,6 @@ async function verifyPrototypePalette() {
     const white = 'rgb(255, 255, 255)';
     return ['html', 'body', '.ios-screen', '.app-scroll', '.week-card', '.heatmap'].every(selector => background(selector) === white) &&
       isLightGray(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
-      isLightGray(colorChannels(background('[data-phone="week"] .day.actual'))) &&
       isLightGray(colorChannels(background('.tabbar'))) && isLightGray(face) && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
@@ -1014,8 +1025,8 @@ async function verifyPrototypePalette() {
   })()`), 'Today, Pet, and navigation still use glass highlights and backdrop blur');
   assert.ok(await evaluate(`(() => {
     const styles = selectors => selectors.map(selector => getComputedStyle(document.querySelector(selector)));
-    const pills = styles(['.record-actions .primary', '.record-actions .secondary', '.segments button[aria-pressed="false"]', '.week-trigger', '.section-add']);
-    const tiles = styles(['.week-days .day.actual', '.record-feed .activity', '.plan-list .activity']);
+    const pills = styles(['.record-actions .primary', '.record-actions .secondary', '.segments button[aria-pressed="false"]', '.section-add']);
+    const tiles = styles(['.record-feed .activity', '.plan-list .activity']);
     const icon = getComputedStyle(document.querySelector('.record-actions button > svg'));
     const flatGray = style => style.backgroundColor === 'rgb(232, 232, 232)' && style.backgroundImage === 'none' &&
       style.boxShadow === 'none' && style.backdropFilter === 'none';
