@@ -5,9 +5,11 @@ import vm from 'node:vm';
 
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes } = vm.runInNewContext(model + `
+  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
+  editPlan, editRecord, deletePlan, deleteRecord } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes })`);
+     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
+     editPlan, editRecord, deletePlan, deleteRecord })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -169,4 +171,61 @@ test('pending deductions belong to the pet active at the original deadline (A12,
   refresh(state);
   assert.equal(state.misses.grace, null);
   assert.equal(health(state, state.active), 3);
+});
+
+test('editing a plan preserves its ID and updates an invalidated completion', () => {
+  const state = seed();
+  const future = find(state, 'next');
+  assert.equal(editPlan(state, future, { title: '深蹲', date: '2026-11-23', minutes: 35 }), false);
+  assert.equal(future.title, '下肢力量');
+  assert.equal(editPlan(state, future, { title: '深蹲', date: '2026-11-20', minutes: 35 }), true);
+  assert.equal(future.id, 'next');
+  assert.equal(future.effective, state.now);
+  const done = find(state, 'first');
+  assert.equal(editPlan(state, done, { title: '核心', date: '2026-11-11', minutes: 25 }), false);
+  assert.equal(status(state, done), 'done');
+  assert.equal(editPlan(state, done, { title: '核心', minutes: 25 }), true);
+  assert.equal(status(state, done), 'missed');
+  assert.equal(state.records.find(record => record.id === 'sample').plan, undefined);
+  assert.equal(points(state, 'moss'), 0);
+});
+
+test('editing a linked record maintains the link only while it still meets the plan', () => {
+  const state = seed();
+  const record = state.records.find(entry => entry.id === 'sample');
+  assert.equal(editRecord(state, record, { ...record, title: '核心', minutes: 17 }), true);
+  assert.equal(record.plan, 'first');
+  assert.equal(editRecord(state, record, { ...record, date: '2026-11-17' }), false);
+  assert.equal(record.date, '2026-11-10');
+  assert.equal(editRecord(state, record, { ...record, minutes: 10 }), true);
+  assert.equal(status(state, find(state, 'first')), 'missed');
+  assert.equal(record.plan, undefined);
+});
+
+test('deleting a plan retains its workout and removes its growth or deduction', () => {
+  const state = seed('death');
+  assert.equal(deletePlan(state, 'old'), true);
+  assert.equal(deletePlan(state, 'old'), false);
+  assert.equal(health(state, 'moss'), 1);
+  assert.equal(restore(state, 'moss'), true);
+  assert.equal(deletePlan(state, 'first'), true);
+  assert.equal(points(state, 'moss'), 0);
+  const actual = state.records.find(record => record.id === 'sample');
+  assert.equal(actual.minutes, 18);
+  assert.equal(actual.plan, undefined);
+});
+
+test('deleting a correction reapplies its original deduction without rewriting pet history', () => {
+  const state = seed('death');
+  const plan = find(state, 'old');
+  const correction = saveRecord(state, recordFor(plan, { source: 'device', deviceId: 'correction' }));
+  assert.equal(match(state, plan, correction), true);
+  assert.equal(restore(state, 'moss'), true);
+  const pet = state.pets[0];
+  assert.equal(deleteRecord(state, correction.id), true);
+  assert.equal(deleteRecord(state, correction.id), false);
+  assert.equal(status(state, plan), 'missed');
+  assert.equal(health(state, 'moss'), 0);
+  assert.equal(state.active, null);
+  assert.deepEqual([...pet.spans.at(-1)], [state.now, state.now]);
 });

@@ -749,6 +749,62 @@ async function verifyCustomProjects() {
   await clickLead('close');
 }
 
+async function verifyTrainingManagement() {
+  await navigate('ios-prototype.html', 390, 760);
+  await enterToday();
+  await settleHabitatAnimation();
+  await swipeWorkout('today');
+  await clickLead('manual', 'today');
+  await submit();
+  await submit();
+
+  await clickLead('tab', 'week');
+  await includes(lead('.week-summary dd'), '1 / 3');
+  await swipeWorkout('next');
+  await clickLead('edit-plan', 'next');
+  await includes(lead('.sheet h3'), '编辑训练计划');
+  await change(lead('.sheet input[name="title"]'), '负重深蹲');
+  await change(lead('.sheet input[name="date"]'), '2026-11-20');
+  await change(lead('.sheet input[name="minutes"]'), '35');
+  await submit();
+  const changedPlan = lead(act('detail', 'next'));
+  for (const content of ['负重深蹲', '11月20日', '35 分钟']) await includes(changedPlan, content);
+  await swipeWorkout('next');
+  await clickLead('delete-plan', 'next');
+  await includes(lead('.sheet h3'), '删除训练计划？');
+  await click(lead('.sheet-buttons [data-action="close"]'));
+  await includes(changedPlan, '负重深蹲');
+  await swipeWorkout('next');
+  await clickLead('delete-plan', 'next');
+  await clickLead('confirm-delete');
+  await includes(lead('.week-summary dd'), '1 / 2');
+
+  await clickLead('tab', 'log');
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await swipeWorkout('record-2', 'left', true);
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await clickLead('edit-record', 'record-2');
+  await includes(lead('.sheet h3'), '编辑训练记录');
+  await change(lead('.sheet input[name="title"]'), '晚间慢跑');
+  await change(lead('.sheet input[name="minutes"]'), '25');
+  await submit();
+  const changedRecord = lead(act('record', 'record-2'));
+  for (const content of ['晚间慢跑', '25 分钟', '已匹配计划']) await includes(changedRecord, content);
+  await clickLead('log-day', '2026-11-16');
+  await swipeWorkout('record-2');
+  await clickLead('delete-record', 'record-2');
+  await includes(lead('.sheet h3'), '删除训练记录？');
+  await clickLead('confirm-delete');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(changedRecord)})`), null);
+  await includes(lead('.heatmap-footer'), '左右滑动');
+  await clickLead('tab', 'week');
+  await includes(lead('.week-summary dd'), '0 / 2');
+  await includes(lead('.week-summary > div:nth-child(2) dd'), '0 分钟');
+  await clickLead('tab', 'home');
+  assert.equal(await todayHeadline(), '今天已经锻炼0小时');
+  await includes(lead('.habitat'), '成长 1 次');
+}
+
 async function verifyPrototypePalette() {
   assert.ok(await evaluate(`(() => {
     const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
@@ -863,6 +919,7 @@ try {
   await demoDirection(1, true);
   await verifyGlass();
   await verifyCustomProjects();
+  await verifyTrainingManagement();
   await verifyNarrowTrainingSummary();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);

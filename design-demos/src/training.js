@@ -99,16 +99,22 @@ function health(state, petId) {
   return Math.max(0, 3 - Object.entries(state.misses).filter(([id, pet]) => pet === petId && !state.finished[id]).length);
 }
 
-function refresh(state) {
+function settlePetDeath(state, at) {
+  if (!state.active || health(state, state.active) > 0) return;
+  const pet = state.pets.find(entry => entry.id === state.active);
+  const span = pet.spans.at(-1);
+  span[1] = Math.max(span[0], at);
+  pet.needsRecovery = true;
+  state.active = null;
+}
+
+function refresh(state, revisedAt) {
   const pending = state.plans.filter(plan => !state.finished[plan.id] && !Object.hasOwn(state.misses, plan.id) && deadline(plan) + DAY <= state.now);
   pending.sort((a, b) => deadline(a) - deadline(b));
   for (const plan of pending) {
     const petId = petAt(state, deadline(plan));
     state.misses[plan.id] = petId;
-    if (petId && state.active === petId && health(state, petId) === 0) {
-      state.pets.find(pet => pet.id === petId).spans.at(-1)[1] = deadline(plan) + DAY;
-      state.active = null;
-    }
+    if (petId === state.active) settlePetDeath(state, revisedAt ?? deadline(plan) + DAY);
   }
 }
 
@@ -127,11 +133,15 @@ function changeDate(state, plan, date) {
   return true;
 }
 
-function eligible(state, plan, record) {
-  if (!plan || state.finished[plan.id] || record.plan || record.date !== plan.date) return false;
+function fitsPlan(plan, record, now) {
+  if (record.date !== plan.date) return false;
   const start = bj(record.date, record.start);
   const end = start + record.minutes * 60_000;
-  if (!Number.isFinite(end) || start < plan.effective || end >= deadline(plan) || end > state.now || record.minutes < plan.minutes) return false;
+  return Number.isFinite(end) && start >= plan.effective && end < deadline(plan) && end <= now && record.minutes >= plan.minutes;
+}
+
+function eligible(state, plan, record) {
+  if (!plan || state.finished[plan.id] || record.plan || !fitsPlan(plan, record, state.now)) return false;
   return state.now < deadline(plan) + DAY || ((record.source === 'device' || Boolean(record.deviceId)) && state.now < deadline(plan) + 7 * DAY);
 }
 
@@ -165,6 +175,51 @@ function similarRecord(state, input) {
   );
 }
 
+function unlinkTraining(state, record) {
+  if (!record?.plan) return;
+  delete state.finished[record.plan];
+  delete record.plan;
+  refresh(state, state.now);
+  settlePetDeath(state, state.now);
+}
+
+function editPlan(state, plan, { title, date = plan?.date, minutes }) {
+  if (!plan || !title || !Number.isInteger(minutes) || minutes < 1 || minutes > 1439) return false;
+  if (date !== plan.date && (!Number.isFinite(bj(date)) || !changeDate(state, plan, date))) return false;
+  Object.assign(plan, { title, minutes });
+  const record = state.records.find(entry => entry.plan === plan.id);
+  if (record && !fitsPlan(plan, record, state.now)) unlinkTraining(state, record);
+  return true;
+}
+
+function editRecord(state, record, { title, date, start, minutes }) {
+  const end = bj(date, start) + minutes * 60_000;
+  if (!record || !title || !Number.isInteger(minutes) || minutes < 1 || minutes > 1440 || !Number.isFinite(end) || end > state.now) return false;
+  Object.assign(record, { title, date, start, minutes });
+  const plan = state.plans.find(entry => entry.id === record.plan);
+  if (plan && !fitsPlan(plan, record, state.now)) unlinkTraining(state, record);
+  return true;
+}
+
+function deletePlan(state, id) {
+  const index = state.plans.findIndex(plan => plan.id === id);
+  if (index < 0) return false;
+  state.plans.splice(index, 1);
+  const record = state.records.find(entry => entry.plan === id);
+  if (record) delete record.plan;
+  delete state.finished[id];
+  delete state.misses[id];
+  return true;
+}
+
+function deleteRecord(state, id) {
+  const index = state.records.findIndex(record => record.id === id);
+  if (index < 0) return false;
+  const [record] = state.records.splice(index, 1);
+  unlinkTraining(state, record);
+  return true;
+}
+
 function switchPet(state, pet) {
   const active = state.pets.find(entry => entry.id === state.active);
   if (active) active.spans.at(-1)[1] = state.now;
@@ -190,7 +245,7 @@ function setPetHabitat(state, habitat) {
 function recoverable(state) {
   return state.pets.filter(pet =>
     pet.id !== state.active && health(state, pet.id) > 0 &&
-    Object.entries(state.misses).some(([id, owner]) => owner === pet.id && state.finished[id])
+    (pet.needsRecovery || Object.entries(state.misses).some(([id, owner]) => owner === pet.id && state.finished[id]))
   );
 }
 
@@ -198,5 +253,6 @@ function restore(state, petId) {
   const pet = recoverable(state).find(entry => entry.id === petId);
   if (!pet) return false;
   switchPet(state, pet);
+  delete pet.needsRecovery;
   return true;
 }

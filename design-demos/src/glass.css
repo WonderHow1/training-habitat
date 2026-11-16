@@ -109,6 +109,8 @@
   white-space: nowrap;
 }
 .swipe-actions > .primary { flex: 1; }
+.swipe-actions > .destructive { flex: 1; }
+[data-glass] button.destructive { color: #932f42; }
 [data-glass] :is(.sheet dl div, .choice) { padding-block: 11px; }
 [data-glass] .app-scroll {
   background: var(--surface);

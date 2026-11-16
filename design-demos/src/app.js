@@ -193,24 +193,32 @@ function createPhone(container) {
     target.focus({ preventScroll: true });
   }
 
-  function planRow(plan, showDate = true, swipeable = false) {
+  function workoutRow(contents, detailAction, id, actions) {
+    if (!actions) return button(contents, detailAction, 'list-row', id);
+    return `<div class="swipe-workout" data-workout="${id}">
+      <button type="button" class="list-row" data-action="${detailAction}" data-value="${id}" aria-keyshortcuts="ArrowLeft ArrowRight">${contents}</button>
+      <div class="swipe-actions" inert>${actions}</div></div>`;
+  }
+
+  function managementActions(kind, id) {
+    if (!usesGlass) return '';
+    return button('编辑', 'edit-' + kind, 'primary', id) + button('删除', 'delete-' + kind, 'secondary destructive', id);
+  }
+
+  function planRow(plan, showDate = true, actions = '') {
     const stage = status(state, plan);
     const hint = stage === 'grace' ? '补记至 ' + stamp(deadline(plan) + DAY) :
       showDate ? weekday(plan.date) + ' · ' + dateLabel(plan.date) :
-      '目标 ' + plan.minutes + ' 分钟' + (swipeable ? ' · 今日结束前' : '');
-    return `<button type="button" class="list-row" data-action="detail" data-value="${plan.id}"${swipeable ? ' aria-keyshortcuts="ArrowLeft ArrowRight"' : ''}>
+      '目标 ' + plan.minutes + ' 分钟' + (actions ? ' · 今日结束前' : '');
+    return workoutRow(`
       <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
       <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${icon('arrow', 14)}
-    </button>`;
+    `, 'detail', plan.id, actions);
   }
 
   function todaysPlanRow(plan) {
     if (status(state, plan) !== 'upcoming') return planRow(plan, false);
-    return `<div class="swipe-workout" data-workout="${plan.id}">${planRow(plan, false, true)}
-      <div class="swipe-actions" inert>
-        ${button('记录训练', 'manual', 'primary', plan.id)}
-        ${button('改期', 'reschedule', 'secondary', plan.id)}
-      </div></div>`;
+    return planRow(plan, false, button('记录训练', 'manual', 'primary', plan.id) + button('改期', 'reschedule', 'secondary', plan.id));
   }
 
   function home() {
@@ -270,7 +278,7 @@ function createPhone(container) {
       <div class="week-days" aria-label="筛选训练日期">${strip}</div>
       ${summary}</section>
       <section class="plan-list"><div class="section-heading"><h3>${selectedDay ? weekday(selectedDay) + '的安排' : '本周安排'}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
-      ${shown.map(plan => planRow(plan)).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增训练', 'new', 'primary section-add');
+      ${shown.map(plan => planRow(plan, true, managementActions('plan', plan.id))).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增训练', 'new', 'primary section-add');
   }
 
   function logged() {
@@ -282,9 +290,10 @@ function createPhone(container) {
     const rows = entries.map((record, index) => {
       const diaryDate = theme === 'diary' && entries[index - 1]?.date !== record.date ? `<h3>${dateLabel(record.date)} ${weekday(record.date)}</h3>` : '';
       const date = theme === 'diary' ? '' : record.date.slice(5).replace('-', '/') + ' ';
-      return diaryDate + `<button type="button" class="list-row" data-action="record" data-value="${record.id}"><span class="activity">${icon(activity(record.title))}</span>
+      return diaryDate + workoutRow(`<span class="activity">${icon(activity(record.title))}</span>
       <span class="list-copy"><strong>${escape(record.title)}</strong><small>${date}${record.start}<span class="record-source"> · ${sourceLabel(record.source)}</span></small></span>
-      <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span></button>`;
+      <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span>`,
+      'record', record.id, managementActions('record', record.id));
     }).join('');
     return head('训练记录', usesGlass ? '' : '训练历史', round('plus', '手动记录', 'manual')) +
       (usesGlass ? trainingHeatmap(records, today(), logDay, initial) : '') +
@@ -347,27 +356,31 @@ function createPhone(container) {
       ${stage === 'missed' && state.now < deadline(plan) + 7 * DAY ? button('导入设备记录', 'import', 'primary', plan.id) : ''}</div>`);
   }
 
-  function trainingForm(target) {
+  function trainingForm(target, editing = false) {
     const date = target ? target.date : today();
-    return sheet('手动记录', `<form data-form="manual">
+    return sheet(editing ? '编辑训练记录' : '手动记录', `<form data-form="${editing ? 'edit-record' : 'manual'}">
       ${projectField(target?.title)}
       <div class="form-pair">${field('实际日期', `<input type="date" name="date" value="${date}" max="${today()}" required>`)}
-      ${field('开始时间', '<input type="time" name="start" value="18:30" required>')}</div>
+      ${field('开始时间', `<input type="time" name="start" value="${target?.start ?? '18:30'}" required>`)}</div>
       ${field('实际时长（分钟）', `<input type="number" name="minutes" min="1" max="1440" value="${target?.minutes ?? 25}" required>`)}
-      <p class="form-error" role="alert"></p><button class="primary full" type="submit">下一步：确认关联</button></form>`);
+      ${editing && target.plan ? '<p class="sheet-note">若修改后的记录不再满足原计划，系统会重新结算该计划。</p>' : ''}
+      <p class="form-error" role="alert"></p><button class="primary full" type="submit">${editing ? '保存记录' : '下一步：确认关联'}</button></form>`);
   }
 
-  function dateForm(plan) {
+  function dateForm(plan, editing = false) {
     const start = plan ? monday(plan.date) : monday(selectedDay ?? today());
     const min = today() > start ? today() : start;
     const max = dayPlus(start, 6);
     const picked = plan?.date ?? (selectedDay && selectedDay >= min ? selectedDay : min);
-    return sheet(plan ? '改期' : '新增训练', `<form data-form="${plan ? 'reschedule' : 'new'}">
-      ${plan ? `<p class="sheet-note">${escape(plan.title)} · ${plan.minutes} 分钟。请选择同一周内的日期。</p>` :
-        projectField()}
-      ${field('计划日期', `<input type="date" name="date" min="${min}" ${plan ? `max="${max}"` : ''} value="${picked}" required>`)}
-      ${plan ? '' : field('目标时长（分钟）', '<input type="number" name="minutes" min="1" max="1439" value="20" required>')}
-      <p class="form-error" role="alert"></p><button type="submit" class="primary full">${plan ? '保存改期' : '保存计划'}</button></form>`);
+    const rescheduling = plan && !editing;
+    const fixedDate = editing && status(state, plan) !== 'upcoming';
+    const dateLimit = fixedDate ? 'readonly' : `min="${min}" ${plan ? `max="${max}"` : ''}`;
+    return sheet(editing ? '编辑训练计划' : plan ? '改期' : '新增训练', `<form data-form="${editing ? 'edit-plan' : plan ? 'reschedule' : 'new'}">
+      ${rescheduling ? `<p class="sheet-note">${escape(plan.title)} · ${plan.minutes} 分钟。请选择同一周内的日期。</p>` : projectField(plan?.title)}
+      ${field('计划日期', `<input type="date" name="date" ${dateLimit} value="${picked}" required>`)}
+      ${rescheduling ? '' : field('目标时长（分钟）', `<input type="number" name="minutes" min="1" max="1439" value="${plan?.minutes ?? 20}" required>`)}
+      ${fixedDate && state.finished[plan.id] ? '<p class="sheet-note">若新目标超过关联记录的时长，系统会重新结算该计划。</p>' : ''}
+      <p class="form-error" role="alert"></p><button type="submit" class="primary full">${rescheduling ? '保存改期' : '保存计划'}</button></form>`);
   }
 
   function weekPicker(date) {
@@ -470,6 +483,19 @@ function createPhone(container) {
       case 'manual': return trainingForm(plan);
       case 'new': return dateForm();
       case 'reschedule': return dateForm(plan);
+      case 'edit-plan': return dateForm(plan, true);
+      case 'edit-record': return trainingForm(getRecord(overlay.value), true);
+      case 'delete-plan':
+      case 'delete-record': {
+        const isPlan = overlay.type === 'delete-plan';
+        const item = isPlan ? plan : getRecord(overlay.value);
+        const note = isPlan ? '关联的训练记录会保留。这项计划带来的成长或扣血会撤销。' :
+          item.plan ? '删除后会重新结算关联计划和对应的宠物成长。' : '';
+        return sheet(isPlan ? '删除训练计划？' : '删除训练记录？', `<p class="sheet-note">「${escape(item.title)}」将被删除。</p>
+          ${note ? `<p class="sheet-note">${note}</p>` : ''}<div class="sheet-buttons">
+            ${button('取消', 'close', 'secondary')}${button('确认删除', 'confirm-delete', 'primary destructive')}
+          </div>`);
+      }
       case 'import': return deviceList(overlay.value);
       case 'match': return matchForm(overlay.record, overlay.value, overlay.merge);
       case 'duplicate': return sheet('可能是同一场训练', `<p class="sheet-note">有同日期、同开始时间和时长的手填记录。</p><div class="sheet-buttons">
@@ -560,7 +586,8 @@ function createPhone(container) {
       const target = [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
         button.dataset.action === focus.action && button.dataset.value === focus.value
       );
-      const accessibleTarget = target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target;
+      const accessibleTarget = target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target ?? scrollArea.querySelector('.app-head h2');
+      if (accessibleTarget?.tagName === 'H2') accessibleTarget.tabIndex = -1;
       accessibleTarget?.focus({ preventScroll: true });
     }
   }
@@ -610,6 +637,10 @@ function createPhone(container) {
     }
   }
 
+  function updateLogSelection() {
+    if (logDay && !state.records.some(record => record.date === logDay && (logFilter === 'all' || logFilter === record.source))) logDay = null;
+  }
+
   const handle = {
     tab(value) {
       if (tab !== value) showHabitat = false;
@@ -623,6 +654,17 @@ function createPhone(container) {
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),
     record: value => open('record', value),
+    'edit-plan': value => open('edit-plan', value),
+    'edit-record': value => open('edit-record', value),
+    'delete-plan': value => open('delete-plan', value),
+    'delete-record': value => open('delete-record', value),
+    'confirm-delete'() {
+      if (overlay.type === 'delete-plan' && deletePlan(state, overlay.value)) feedback('已删除训练计划');
+      if (overlay?.type === 'delete-record' && deleteRecord(state, overlay.value)) {
+        updateLogSelection();
+        feedback('已删除训练记录');
+      }
+    },
     import: value => open('import', value),
     restore: value => open('restore', value),
     new: () => open('new'),
@@ -735,7 +777,7 @@ function createPhone(container) {
     const form = event.target;
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form));
-    if (form.dataset.form === 'manual' || form.dataset.form === 'new') {
+    if (Object.hasOwn(data, 'title')) {
       data.title = data.title.trim();
       if (!data.title) {
         form.querySelector('.form-error').textContent = '请输入训练项目。';
@@ -774,6 +816,29 @@ function createPhone(container) {
           return;
         }
         feedback('已改期，截止时间已更新');
+        break;
+      }
+      case 'edit-plan': {
+        const plan = getPlan(overlay.value);
+        const originalDate = plan.date;
+        if (!editPlan(state, plan, { ...data, minutes: Number(data.minutes) })) {
+          form.querySelector('.form-error').textContent = '请选择原计划同一周内的有效日期，并核对目标时长。';
+          return;
+        }
+        if (selectedDay === originalDate) selectedDay = plan.date;
+        rememberProject(plan.title);
+        feedback('已更新训练计划');
+        break;
+      }
+      case 'edit-record': {
+        const record = getRecord(overlay.value);
+        if (!editRecord(state, record, { ...data, minutes: Number(data.minutes) })) {
+          form.querySelector('.form-error').textContent = '请填写已结束的训练，并核对日期、时间和时长。';
+          return;
+        }
+        rememberProject(record.title);
+        updateLogSelection();
+        feedback('已更新训练记录');
         break;
       }
       case 'new': {
