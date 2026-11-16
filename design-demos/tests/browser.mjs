@@ -120,6 +120,7 @@ async function change(selector, value) {
 }
 async function demoDirection(index, glass = false) {
   const name = glass ? 'ios-prototype' : `dir-${index}`;
+  const habitatGrowth = lead('.habitat-entry-header .growth');
   await navigate(name + '.html', 1440, 1100);
   assert.equal(await evaluate('document.querySelectorAll(".phone-app").length'), 4);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
@@ -129,6 +130,7 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.equal(await inHabitat(), true);
     await includes(lead('.habitat-entry-header'), '团团');
+    await includes(habitatGrowth, '成长 1 次');
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
       const rect = entry.getBoundingClientRect();
@@ -156,6 +158,13 @@ async function demoDirection(index, glass = false) {
   await submit();
   await includes(lead('.today-task'), '已完成');
   await includes(lead('.habitat'), '成长 2 次');
+  if (glass) {
+    await clickLead('habitat');
+    assert.equal(await inHabitat(), true);
+    await includes(habitatGrowth, '成长 2 次');
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar i')}).style.width`), '40%');
+    await enterToday();
+  }
   assert.equal(await evaluate('document.querySelector(\'[data-phone="week"] .week-total strong\').textContent.trim()'), '0 / 3');
   await clickLead('tab', 'log');
   await includes(lead('.record-feed'), '校园夜跑');
@@ -221,6 +230,7 @@ async function demoDirection(index, glass = false) {
   await navigate(name + '.html', 390, glass ? 760 : 1120);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-status")].every(el => { const island = el.nextElementSibling.getBoundingClientRect(); return el.children[0].getBoundingClientRect().right < island.left && el.children[1].getBoundingClientRect().left > island.right; })'));
+  if (glass) assert.ok(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar')}).getBoundingClientRect().width > 80`));
   await screenshot(name + '-mobile');
   if (glass) await verifySwipe();
   await clickLead('manual', 'today');

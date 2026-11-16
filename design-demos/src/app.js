@@ -118,6 +118,7 @@ function createPhone(initial) {
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
         ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
+        ${!petTab && pet ? petGrowth(count) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="成长与血量">
         <h3>成长与血量</h3>

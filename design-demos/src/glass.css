@@ -179,6 +179,13 @@
 }
 .habitat-entry-status { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 680; }
 .habitat-entry-status .empty { color: #55786f; }
+.habitat-entry-header .growth {
+  width: 180px;
+  margin-top: 11px;
+  padding-inline: 0;
+}
+.habitat-entry-header .growth-bar { background: #4c75664d; }
+.habitat-entry-header .growth span { color: inherit; font-weight: 650; }
 .habitat-entry-header .pet-born {
   margin-top: 8px;
   color: #324e42;
