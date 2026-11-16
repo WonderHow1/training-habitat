@@ -1811,9 +1811,8 @@ function createPhone(container) {
         ${sessions.map(record => button(`<span class="list-copy"><strong>${escape(record.title)}</strong><small>${record.start}</small></span>
           <span class="list-end"><strong>${record.minutes} 分钟</strong></span>${icon('arrow', 14)}`, 'record', 'list-row', record.id)).join('')}</section>`;
     }).join('');
-    return head('训练回顾') + trainingHeatmap(records, today(), logDay, initial) +
-      `<div class="review-actions">${button(icon('plus', 18) + '补录或导入', 'review-add', 'secondary')}</div>
-      <div class="record-feed">${groups || '<p class="empty-copy">暂无训练记录</p>'}</div>`;
+    return head('训练回顾', '', round('plus', '补录或导入', 'review-add')) + trainingHeatmap(records, today(), logDay, initial) +
+      `<div class="record-feed">${groups || '<p class="empty-copy">暂无训练记录</p>'}</div>`;
   }
 
   function petOptions(pet) {

@@ -641,8 +641,12 @@ async function verifyHeatmapAfterSaving() {
   assert.ok(await evaluate(`(() => {
     const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
     const review = heatmap.closest('.app-scroll');
+    const [add] = review.querySelectorAll('[data-action="review-add"]');
+    const header = review.querySelector('.app-head');
     const groups = Array.from(review.querySelectorAll('.review-day'), group => group.getAttribute('aria-labelledby'));
-    return heatmap.nextElementSibling.classList.contains('review-actions') && groups.length > 1 &&
+    return review.querySelectorAll('[data-action="review-add"]').length === 1 && header.lastElementChild === add &&
+      add.getAttribute('aria-label') === '补录或导入' && add.offsetWidth === 44 && add.offsetHeight === 44 &&
+      heatmap.nextElementSibling.classList.contains('record-feed') && groups.length > 1 &&
       groups.every((date, index) => index === 0 || date < groups[index - 1]) &&
       !review.querySelector('[data-action="manual"], [data-action="import"], .swipe-actions, .record-source');
   })()`), 'Review groups actual workouts by date and exposes one recording entry point');
@@ -1139,10 +1143,10 @@ async function verifyPrototypePalette() {
       const srgb = value / 255;
       return srgb <= .04045 ? srgb / 12.92 : ((srgb + .055) / 1.055) ** 2.4;
     }).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
-    const button = document.querySelector('[data-phone="log"] .review-actions .secondary');
+    const button = document.querySelector('[data-phone="log"] .app-head .round');
     const face = colorChannels(getComputedStyle(button).backgroundColor);
-    const text = colorChannels(getComputedStyle(button).color);
-    const contrast = (luminance(face) + .05) / (luminance(text) + .05);
+    const icon = getComputedStyle(button.querySelector('svg'));
+    const contrast = (luminance(colorChannels(icon.color)) + .05) / (luminance(colorChannels(icon.backgroundColor)) + .05);
     const pixel = (selector, x, y) => document.querySelector(selector).getContext('2d').getImageData(x, y, 1, 1).data;
     const isGreen = ([red, green, blue]) => green > red && green > blue;
     const habitat = '[data-phone="home"] .habitat-landscape';
@@ -1162,13 +1166,13 @@ async function verifyPrototypePalette() {
     });
   })()`), 'Today, Pet, and navigation still use glass highlights and backdrop blur');
   assert.ok(await evaluate(`(() => {
-    const styles = selectors => selectors.map(selector => getComputedStyle(document.querySelector(selector)));
-    const pills = styles(['.review-actions .secondary', '.section-add']);
+    const add = document.querySelector('[data-action="review-add"]');
+    const pill = getComputedStyle(document.querySelector('.section-add'));
     const tile = getComputedStyle(document.querySelector('.plan-list .activity'));
-    const icon = getComputedStyle(document.querySelector('.review-actions button > svg'));
+    const icon = getComputedStyle(add.querySelector('svg'));
     const flatGray = style => style.backgroundColor === 'rgb(232, 232, 232)' && style.backgroundImage === 'none' &&
       style.boxShadow === 'none' && style.backdropFilter === 'none';
-    return pills.every(style => flatGray(style) && parseFloat(style.borderRadius) >= 25) &&
+    return flatGray(pill) && parseFloat(pill.borderRadius) >= 25 && flatGray(getComputedStyle(add)) &&
       flatGray(tile) && tile.borderRadius === '13px' &&
       icon.backgroundColor === 'rgb(33, 38, 45)' && icon.borderRadius === '50%';
   })()`), 'Plan and Review controls use flat gray pills and dark icon badges');
@@ -1178,7 +1182,7 @@ async function verifyOpenSurfaces() {
   assert.ok(await evaluate(`(() => {
     const selectors = [
       '.habitat-link', '.today-task', '.week-card', '.heatmap', '.pet-scene-panel', '.tabbar',
-      '.round', '.board-controls button', '.review-actions .secondary', '.heat-cell'
+      '.round', '.board-controls button', '.heat-cell'
     ];
     const preview = document.querySelector('.habitat-link .pixel-scene');
     const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
@@ -1196,7 +1200,7 @@ async function verifyOpenSurfaces() {
       const below = document.querySelector(second).getBoundingClientRect();
       return below.top - above.bottom;
     };
-    const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.review-actions']]
+    const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.record-feed']]
       .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
     const cardFade = getComputedStyle(preview).maskImage;
     const [midpoint, start] = [...cardFade.matchAll(/([0-9.]+)%/g)].map(match => Number(match[1]));
