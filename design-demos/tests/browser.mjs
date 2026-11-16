@@ -918,7 +918,10 @@ async function verifyGlass() {
   })()`), 'The full-screen scene contains the pet controls and leaves the tabs accessible');
   await settleHabitatAnimation();
   await screenshot('ios-prototype-pet');
-  await includes(lead(act('pet-guide')), '图鉴');
+  assert.ok(await evaluate(`(() => {
+    const guide = document.querySelector(${JSON.stringify(lead(act('pet-guide')))});
+    return !guide.textContent.trim() && guide.getAttribute('aria-label') === '宠物图鉴' && guide.querySelector('svg path').getAttribute('d') === icons.paw;
+  })()`), 'The catalog entry uses an icon-only paw with an accessible name');
   await clickLead('detail', 'old');
   await includes(lead('.sheet h3'), '校园夜跑');
   await clickLead('close');
@@ -1376,9 +1379,16 @@ async function verifyNarrowTrainingSummary() {
     }
     check();
   })`), 'A catalog portrait animates without a tap');
+  const thumbnailWidth = await evaluate(`document.querySelector(${guide}).querySelector('canvas').offsetWidth`);
   await click(lead('.pet-guide-preview:has([data-species="turtle"])'));
+  await includes(lead('.sheet h3'), '宠物预览');
+  await includes(lead('.pet-guide-navigation strong'), '乌龟');
+  const carousel = JSON.stringify(lead('.pet-guide-carousel'));
+  const activePet = lead('.pet-guide-portrait[tabindex="0"]');
+  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(activePet + ' canvas')}).offsetWidth > ${thumbnailWidth} * 2`));
+  await click(activePet);
   assert.ok(await evaluate(`new Promise(resolve => {
-    const turtle = document.querySelector(${guide}).querySelector('[data-species="turtle"]');
+    const turtle = document.querySelector(${JSON.stringify(activePet + ' canvas')});
     const expected = turtle.cloneNode();
     drawScene(expected, petReactions.turtle.frames[1]);
     const shell = expected.toDataURL();
@@ -1389,8 +1399,40 @@ async function verifyNarrowTrainingSummary() {
       else requestAnimationFrame(check);
     }
     check();
-  })`), 'Tapping a catalog pet triggers its own reaction');
-  await screenshot('ios-prototype-pet-guide');
+  })`), 'Tapping the enlarged pet triggers its own reaction');
+  const waitForPet = expected => evaluate(`new Promise((resolve, reject) => {
+    const strip = document.querySelector(${carousel});
+    const end = performance.now() + 1600;
+    function check() {
+      const current = strip.querySelector('[tabindex="0"]');
+      const index = [...strip.children].indexOf(current);
+      if (current?.dataset.species === ${JSON.stringify(expected)} && Math.abs(strip.scrollLeft - index * strip.clientWidth) < 2) resolve(true);
+      else if (performance.now() >= end) reject(new Error('The pet carousel did not settle'));
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`);
+  const dragPoint = await evaluate(`(() => {
+    const strip = document.querySelector(${carousel});
+    const rect = strip.getBoundingClientRect();
+    return { left: Math.round(rect.left + 28), right: Math.round(rect.right - 28), y: Math.round(rect.top + rect.height / 2) };
+  })()`);
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: dragPoint.right, y: dragPoint.y }] });
+  for (const distance of [29, 75, 130, 178]) {
+    await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: dragPoint.right - distance, y: dragPoint.y }] });
+  }
+  await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await waitForPet('hedgehog');
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await cmd('Input.dispatchMouseEvent', { type: 'mousePressed', x: dragPoint.left, y: dragPoint.y, button: 'left', clickCount: 1 });
+  await cmd('Input.dispatchMouseEvent', { type: 'mouseMoved', x: dragPoint.left + 145, y: dragPoint.y, buttons: 1 });
+  await cmd('Input.dispatchMouseEvent', { type: 'mouseReleased', x: dragPoint.left + 145, y: dragPoint.y, button: 'left', clickCount: 1 });
+  await waitForPet('turtle');
+  await screenshot('ios-prototype-pet-preview');
+  await clickLead('close');
+  await includes(lead('.sheet h3'), '宠物图鉴');
+  assert.equal(await evaluate('document.activeElement.dataset.value'), 'turtle');
   await clickLead('close');
   assert.equal(await evaluate('document.activeElement.dataset.action'), 'pet-guide');
   assert.equal(await inHabitat(), true);

@@ -344,13 +344,11 @@
   color: var(--ink);
 }
 .ios-screen[data-habitat-tabs] .habitat-entry-header { right: clamp(22px, 2.4vw, 32px); }
-.ios-screen[data-habitat-tabs] .habitat-entry-header h2 { max-inline-size: calc(100% - 88px); overflow-wrap: anywhere; }
-.pet-guide-button {
+.ios-screen[data-habitat-tabs] .habitat-entry-header h2 { max-inline-size: calc(100% - 60px); overflow-wrap: anywhere; }
+.habitat-entry [data-action="pet-guide"] {
   position: absolute;
   top: 78px;
   right: clamp(22px, 2.4vw, 32px);
-  min-height: 44px;
-  border-radius: 999px;
 }
 .pet-guide-grid {
   display: grid;
@@ -369,6 +367,36 @@
   border-radius: 16px;
 }
 .pet-guide-preview .avatar { display: block; width: 59px; height: 59px; }
+.pet-guide-carousel {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  border-radius: 22px;
+  background: var(--wash);
+  user-select: none;
+}
+.pet-guide-carousel::-webkit-scrollbar { display: none; }
+.pet-guide-carousel[data-dragging] { scroll-snap-type: none; cursor: grabbing; }
+.pet-guide-carousel[data-dragging] button { cursor: grabbing; }
+.pet-guide-portrait {
+  flex: 0 0 100%;
+  min-width: 0;
+  min-height: clamp(186px, 33vh, 240px);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  padding: 8px;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+.pet-guide-portrait:focus-visible { outline-offset: -4px; }
+.pet-guide-portrait .avatar { display: block; width: clamp(142px, 48vw, 194px); height: auto; }
+.pet-guide-navigation { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.pet-guide-navigation strong { font-size: 18px; }
+.pet-guide-navigation button:disabled { opacity: .4; cursor: default; }
 .habitat-entry-header h2 {
   font-size: 45px;
   line-height: 1.14;

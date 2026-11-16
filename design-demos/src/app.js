@@ -8,7 +8,7 @@ const icons = {
   log: 'M5 4h14v16H5z M8 9h8 M8 13h8 M8 17h5', pet: 'M5 11V5l5 4h4l5-4v6l2 3v3l-4 3H7l-4-3v-3z M8 14h.1 M16 14h.1 M11 17h2',
   plus: 'M5 12h14 M12 5v14', arrow: 'm9 6 6 6-6 6', back: 'm15 6-6 6 6 6',
   review: 'M4 10a8 8 0 1 1 1 6 M4 5v5h5 M12 8v5l3 2',
-  book: 'M12 6C9 4 5 4 3 5v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-2-1-6-1-9 1zm0 0v14',
+  paw: 'M12 10c-2 0-3.2 2.6-5 4.3-3 3 .1 6.3 3 4.5 1.4-.7 2.6-.7 4 0 2.9 1.8 6-1.5 3-4.5-1.8-1.7-3-4.3-5-4.3z M6.4 8.9c.4 1.2 0 2.2-.9 2.5s-2-.4-2.4-1.6 0-2.2.9-2.5 2 .4 2.4 1.6z M10.4 5.6c.2 1.4-.4 2.5-1.4 2.6s-1.9-.8-2.1-2.2.4-2.5 1.4-2.6 1.9.8 2.1 2.2z M13.6 5.6c-.2 1.4.4 2.5 1.4 2.6s1.9-.8 2.1-2.2-.4-2.5-1.4-2.6-1.9.8-2.1 2.2z M17.6 8.9c-.4 1.2 0 2.2.9 2.5s2-.4 2.4-1.6 0-2.2-.9-2.5-2 .4-2.4 1.6z',
   run: 'M14 4a1.6 1.6 0 1 0 0 .1 M6 10l5-2 4 2 3 3h3 M11 8l-2 6 4 2-2 5 M9 14l-3 4H3',
   dumbbell: 'M8 5v14 M4 8v8 M16 5v14 M20 8v8 M8 12h8', stretch: 'M12 4a1.5 1.5 0 1 0 0 .1 M4 8l8 3 8-3 M12 11v4 M12 15l-5 5 M12 15l5 5',
   check: 'm5 12 4 4L19 6', watch: 'M8 6l1-4h6l1 4 M8 18l1 4h6l1-4 M7 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M12 9v3l2 1',
@@ -212,7 +212,7 @@ function createPhone(container) {
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
         ${pet ? petGrowth(details) + petAttributes(pet, species, true) : ''}
       </header>
-      ${petTab ? `${button(icon('book', 17) + '图鉴', 'pet-guide', 'secondary pet-guide-button')}
+      ${petTab ? `${round('paw', '宠物图鉴', 'pet-guide')}
       <section class="pet-scene-panel" aria-label="经验与血量">
         <header class="pet-panel-header"><h3>经验与血量</h3>
           ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
@@ -414,10 +414,24 @@ function createPhone(container) {
   }
 
   function petGuide() {
-    const entries = Object.entries(petSpecies).map(([species, name]) => `<li><button type="button" class="secondary pet-guide-preview" aria-label="摸摸${name}">
+    const entries = Object.entries(petSpecies).map(([species, name]) => `<li><button type="button" class="secondary pet-guide-preview"
+      data-action="pet-guide-view" data-value="${species}" aria-label="放大预览${name}">
       <span aria-hidden="true">${petCanvas(habitatPalette, 1, false, true, species)}</span><span>${name}</span>
     </button></li>`).join('');
     return sheet('宠物图鉴', `<ul class="pet-guide-grid">${entries}</ul>`);
+  }
+
+  function petGuideView(species) {
+    const slides = Object.entries(petSpecies).map(([key, name]) => `<button type="button" class="pet-guide-portrait"
+      aria-label="摸摸${name}" data-species="${key}" tabindex="-1" aria-hidden="true"><span aria-hidden="true">
+      ${petCanvas(habitatPalette, 1, false, true, key)}</span></button>`).join('');
+    return sheet('宠物预览', `<div class="pet-guide-view">
+      <div class="pet-guide-carousel">${slides}</div>
+      <div class="pet-guide-navigation">
+        <button type="button" class="round" data-step="-1" aria-label="上一只宠物">${icon('back', 18)}</button>
+        <strong aria-live="polite">${petSpecies[species]}</strong>
+        <button type="button" class="round" data-step="1" aria-label="下一只宠物">${icon('arrow', 18)}</button>
+      </div></div>`);
   }
 
   function detail(plan) {
@@ -617,6 +631,7 @@ function createPhone(container) {
       case 'adopt': return adoptForm();
       case 'habitat-settings': return habitatForm();
       case 'pet-guide': return petGuide();
+      case 'pet-guide-view': return petGuideView(overlay.value);
       case 'restore': {
         const pet = state.pets.find(entry => entry.id === overlay.value);
         return sheet('恢复 ' + escape(pet.name), `<p class="sheet-note">更正后剩 ${health(state, pet.id)} 格血。恢复后双方的血量和成长都会保留。</p><div class="sheet-buttons">
@@ -670,6 +685,7 @@ function createPhone(container) {
         animatePet(target.querySelector('canvas'), target, { previewOffset: index * 780 });
       });
     }
+    if (overlay?.type === 'pet-guide-view') bindPetGuideView(layers.querySelector('.pet-guide-view'), overlay.value);
     scrollArea.scrollTop = offset;
     renderHabitat(preserve);
     if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });
@@ -703,6 +719,14 @@ function createPhone(container) {
   }
 
   function close() {
+    if (overlay?.type === 'pet-guide-view') {
+      const { guideScroll, originSpecies } = overlay;
+      overlay = { type: 'pet-guide' };
+      render({ preserve: true });
+      layers.querySelector('.sheet').scrollTop = guideScroll;
+      layers.querySelector(`.pet-guide-preview[data-value="${originSpecies}"]`)?.focus({ preventScroll: true });
+      return;
+    }
     const focus = restoreFocus;
     overlay = null;
     restoreFocus = null;
@@ -840,6 +864,7 @@ function createPhone(container) {
     adopt: () => open('adopt'),
     'habitat-settings': () => open('habitat-settings'),
     'pet-guide': () => open('pet-guide'),
+    'pet-guide-view': value => open('pet-guide-view', value, { originSpecies: value, guideScroll: layers.querySelector('.sheet').scrollTop }),
     link: value => open('match', '', { record: getRecord(value) }),
     close,
     'pick-project'(value) {
