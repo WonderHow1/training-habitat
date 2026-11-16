@@ -172,12 +172,13 @@ async function demoDirection(index, glass = false) {
     await includes(habitatGrowth, '0 / 100 XP');
     assert.ok(await evaluate(`(() => {
       const growth = document.querySelector(${JSON.stringify(habitatGrowth)});
-      const pill = getComputedStyle(growth);
-      const attribute = getComputedStyle(growth.nextElementSibling.firstElementChild);
-      const [red, green, blue, alpha] = pill.backgroundColor.match(/[\\d.]+/g).map(Number);
-      return red === 255 && green === 255 && blue === 255 && alpha >= .9 &&
-        pill.borderRadius === attribute.borderRadius && parseFloat(pill.paddingLeft) > 0;
-    })()`), 'The full-screen experience row has a near-opaque white pill matching the pet attributes');
+      const attributes = growth.nextElementSibling.children;
+      return attributes.length === 2 && [growth, ...attributes].every(element => {
+        const pill = getComputedStyle(element);
+        return pill.backgroundColor === 'rgba(255, 255, 255, 0.8)' &&
+          pill.backgroundImage === 'none' && pill.borderRadius === '20px';
+      });
+    })()`), 'The full-screen experience, age and weight pills have matching 80% opaque white fills');
     await assertPetCentered(lead('.habitat-landscape'));
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});

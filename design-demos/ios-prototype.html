@@ -686,6 +686,7 @@ a { color: inherit; }
   image-rendering: pixelated;
 }
 .habitat-entry-header {
+  --habitat-pill: #fffc;
   position: absolute;
   top: 78px;
   left: clamp(22px, 2.4vw, 32px);
@@ -713,7 +714,6 @@ a { color: inherit; }
   min-height: 26px;
   padding-inline: 10px;
   border-radius: 20px;
-  background: #fffffff0;
 }
 .habitat-entry-header .growth-bar { background: #5e5e5e3e; }
 .habitat-entry-header .growth span { color: inherit; font-weight: 650; }
@@ -739,6 +739,10 @@ a { color: inherit; }
   border-radius: 20px;
   background: var(--control-tint);
   background-image: var(--control-glint);
+}
+.habitat-entry-header .growth.experience,
+.habitat-entry-header .growth.experience + .pet-attributes > div {
+  background: var(--habitat-pill);
 }
 .pet-attributes dt { color: var(--muted); }
 .pet-attributes dd { margin: 0; font-weight: 680; white-space: nowrap; }
@@ -1165,7 +1169,8 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   [data-glass] { --control-glint: none; --control-tint: #f4f4f4; --control-selected: #eaeaea; --control-shadow: none; }
-  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel, .habitat-entry-header .growth.experience) {
+  .habitat-entry-header { --habitat-pill: var(--layer); }
+  [data-glass] :is(.tabbar, .round, .sheet, .habitat-continue, .pet-scene-panel) {
     background: var(--layer);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
