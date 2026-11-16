@@ -150,6 +150,15 @@ const petMotionSource = ['pet-art.js', 'pet-growth.js', 'pet-reactions.js', 'pix
 
 test('growth changes body proportions and keeps the young chinchilla eyes even', () => {
   const sprites = vm.runInNewContext(petMotionSource + '\npetGrowthSprites');
+  for (const [species, stages] of Object.entries(sprites)) {
+    for (const [index, sprite] of stages.entries()) {
+      for (const row of sprite.pixels) {
+        for (const [ink] of row.matchAll(/[^.]{4,}/g)) {
+          assert.ok(ink.startsWith('I') && ink.endsWith('I'), `${species} stage ${index + 1} has an open pixel outline`);
+        }
+      }
+    }
+  }
   const [young, youth, adult] = sprites.cat;
   const eyeRow = sprite => sprite.pixels.findIndex(row => row.includes('E'));
   const span = row => row.trim().replace(/^\.+|\.+$/g, '').length;
@@ -163,6 +172,10 @@ test('growth changes body proportions and keeps the young chinchilla eyes even',
   const eyes = [...eyeRows[0].matchAll(/E+/g)];
   assert.deepEqual(eyes.map(eye => eye[0].length), [2, 2]);
   assert.equal(eyes[0].index + eyes[1].index + 1, eyeRows[0].indexOf('I') + eyeRows[0].lastIndexOf('I'));
+  for (const row of sprites.chinchilla[2].pixels.filter(row => row.includes('E'))) {
+    const [left, right] = row.match(/E+/g);
+    assert.equal(left.length, right.length, 'Both adult chinchilla eyes have the same width');
+  }
 });
 
 test('pet sprites face their actual movement across turns and shoreline limits', () => {

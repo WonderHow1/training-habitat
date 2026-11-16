@@ -1938,10 +1938,27 @@ function resamplePixels(values, length) {
   return Array.from({ length }, (_, index) => values[Math.floor((index + .5) * values.length / length)]);
 }
 
+function balanceEyeRow(row, width) {
+  const pixels = resamplePixels(row, width);
+  const eyes = [...row.matchAll(/E+/g)];
+  if (eyes.length === 2 && width !== row.length) {
+    const ratio = width / row.length;
+    const eyeWidth = Math.max(1, Math.round(Math.min(...eyes.map(eye => eye[0].length)) * ratio));
+    for (let index = 0; index < pixels.length; index++) {
+      if (pixels[index] === 'E') pixels[index] = 'L';
+    }
+    for (const eye of eyes) {
+      const left = Math.round((eye.index + eye[0].length / 2) * ratio - eyeWidth / 2);
+      pixels.fill('E', left, left + eyeWidth);
+    }
+  }
+  return pixels.join('');
+}
+
 function fitPixelBand(rows, widthScale, heightScale) {
   const width = Math.max(1, Math.round(rows[0].length * widthScale));
   const height = Math.max(1, Math.round(rows.length * heightScale));
-  return resamplePixels(rows, height).map(row => resamplePixels(row, width).join(''));
+  return resamplePixels(rows, height).map(row => balanceEyeRow(row, width));
 }
 
 function cropGrowthSprite(rows) {
@@ -1950,7 +1967,8 @@ function cropGrowthSprite(rows) {
   const last = rows.lastIndexOf(painted.at(-1));
   const left = Math.min(...painted.map(row => row.search(/[^.]/)));
   const right = Math.max(...painted.map(row => row.replace(/\.+$/, '').length));
-  return pixelSprite(rows.slice(first, last + 1).map(row => row.slice(left, right)).join('\n'));
+  return pixelSprite(rows.slice(first, last + 1).map(row => row.slice(left, right)
+    .replace(/[^.]+/g, ink => ink.length < 4 ? ink : 'I' + ink.slice(1, -1) + 'I')).join('\n'));
 }
 
 function growUpright(sprite, [head, legs], stage) {
@@ -1984,6 +2002,32 @@ const petGrowthSprites = Object.fromEntries(Object.entries(petSprites).map(([spe
 function petGrowthSprite(species, level) {
   const stages = petGrowthSprites[species] ?? petGrowthSprites.cat;
   return stages[Math.min(stages.length, level) - 1] ?? stages[0];
+}
+
+const growthSteps = [0, .10, .24, .38, .52, .68, .84, .94];
+
+function growthFrameAt(transition, now) {
+  const tick = Math.max(0, Math.floor((now - transition.started) / 80));
+  const stage = Math.floor(tick / growthSteps.length);
+  if (stage >= Math.abs(transition.to - transition.from)) return null;
+  const direction = Math.sign(transition.to - transition.from);
+  const from = transition.from + stage * direction;
+  return { from, to: from + direction, progress: growthSteps[tick % growthSteps.length] };
+}
+
+function growDimensions(from, to, progress) {
+  return {
+    width: Math.round(from.width + (to.width - from.width) * progress),
+    height: Math.round(from.height + (to.height - from.height) * progress)
+  };
+}
+
+function petAppearance(species, level, growth) {
+  const sprite = petGrowthSprite(species, level);
+  if (!growth) return { sprite, width: sprite.width, height: sprite.pixels.length };
+  const from = petAppearance(species, growth.from);
+  const to = petAppearance(species, growth.to);
+  return { sprite: growth.progress < .5 ? from.sprite : to.sprite, ...growDimensions(from, to, growth.progress) };
 }
 
 function patchPetSprite(species, row, column, patch) {
@@ -2212,12 +2256,12 @@ function paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose) {
 
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   const pet = petSprites[species] ?? petSprites.cat;
-  const growth = petGrowthSprite(species, level);
-  const sprite = pose?.sprite ?? growth;
+  const growth = petAppearance(species, level, pose?.growth);
+  const sprite = pose?.sprite ?? growth.sprite;
   const size = pose?.sprite ? {
     width: Math.round(sprite.width * growth.width / pet.width),
-    height: Math.round(sprite.pixels.length * growth.pixels.length / pet.pixels.length)
-  } : { width: growth.width, height: growth.pixels.length };
+    height: Math.round(sprite.pixels.length * growth.height / pet.pixels.length)
+  } : growth;
   x += (pose?.walk?.x ?? 0) * scale;
   y += (pose?.walk?.y ?? 0) * scale;
   const restX = x;
@@ -2229,7 +2273,8 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
   if (species === 'goldfish') {
-    const bowl = fishBowlDimensions(level);
+    const transition = pose?.growth;
+    const bowl = transition ? growDimensions(fishBowlDimensions(transition.from), fishBowlDimensions(transition.to), transition.progress) : fishBowlDimensions(level);
     paintPetPixels(ctx, fishBowl, bowlColors, restX + Math.floor((25 - bowl.width) / 2) * scale,
       restY + (25 - bowl.height) * scale, bowl, scale);
   }
@@ -2247,11 +2292,11 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   }
 }
 
-function centeredPetPosition(canvas, species) {
-  const sprite = petGrowthSprite(species, Number(canvas.dataset.level ?? 1));
+function centeredPetPosition(canvas, species, growth) {
+  const { height } = petAppearance(species, Number(canvas.dataset.level ?? 1), growth);
   return {
     x: Math.round((canvas.width - 25) / 2),
-    y: Math.round(canvas.height / 2 - 24 + sprite.pixels.length / 2)
+    y: Math.round(canvas.height / 2 - 24 + height / 2)
   };
 }
 
@@ -2273,7 +2318,7 @@ function drawScene(canvas, pose) {
     return;
   }
   if (canvas.hasAttribute('data-portrait')) {
-    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species), canvas.hasAttribute('data-empty'), species, pose);
+    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species, pose?.growth), canvas.hasAttribute('data-empty'), species, pose);
     return;
   }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
@@ -2327,7 +2372,7 @@ function drawScene(canvas, pose) {
     box(x - 1, y - 1, 3, 1, p.flower);
     box(x, y - 2, 1, 3, p.flower);
   }
-  const { x, y } = canvas.dataset.palette === 'blueGarden' ? centeredPetPosition(canvas, species) : { x: wide ? 56 : 58, y: 39 };
+  const { x, y } = canvas.dataset.palette === 'blueGarden' ? centeredPetPosition(canvas, species, pose?.growth) : { x: wide ? 56 : 58, y: 39 };
   box(x - 4, y + 23, 31, 2, p.turf);
   box(x, y + 25, 23, 1, p.turf);
   paintPet(ctx, x, y, 1, level, faded, species, pose);
@@ -2381,7 +2426,7 @@ function drawRunningTrack(ctx, canvas, level, faded, species, pose) {
   }
 
   if (canvas.hasAttribute('data-empty')) return;
-  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
+  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species, pose?.growth) : {
     x: Math.round(width * .55) - 12, y: portrait ? 103 : 42
   };
   const { x = 0, y = 0 } = pose?.walk ?? {};
@@ -2455,7 +2500,7 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose) {
     box(right + 5, floor - 25, 8, 5, '#fff5d7');
   }
 
-  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
+  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species, pose?.growth) : {
     x: Math.round((width - 25) / 2), y: portrait ? 105 : 38
   };
   const rug = habitat === 'gym' ? '#90aaa7' : trim;
@@ -2618,7 +2663,7 @@ function wanderingPet(canvas, target, limit, elapsed, origin = null, terrain = s
   return keepOnTerrain(terrain, { x: Math.max(-xLimit, Math.min(x, xLimit)), y, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0 });
 }
 
-function animatePet(canvas, target, { roam = false, previewOffset = null, marker = null } = {}) {
+function animatePet(canvas, target, { roam = false, previewOffset = null, marker = null, growthFrom } = {}) {
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const limit = roam ? canvas.parentElement.querySelector('.pet-scene-panel, .habitat-continue') : null;
   let species = canvas.dataset.species;
@@ -2633,6 +2678,12 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
   let walkFlip = false;
   let previousFrame;
   let previousPose = '';
+  let growth;
+  const level = Number(canvas.dataset.level ?? 1);
+  if (growthFrom && !motion.matches && growthFrom !== level) {
+    growth = { from: growthFrom, to: level, started: idleSince };
+    drawScene(canvas, { growth: growthFrameAt(growth, idleSince) });
+  }
 
   function paint(now) {
     if (canvas.dataset.species !== species) {
@@ -2652,10 +2703,12 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     const elapsed = Math.max(0, now - touchedAt);
     const idle = Math.max(0, now - idleSince + (previewOffset ?? 0));
     const preview = previewOffset !== null && !reduced && elapsed > 2400;
-    const frame = reactionFrame(reaction, elapsed, reduced) ?? (preview ? reactionFrame(reaction, idle % 7800, false) : null);
+    const growing = growth && !reduced ? growthFrameAt(growth, now) : null;
+    if (!growing) growth = null;
+    const frame = growing ? null : reactionFrame(reaction, elapsed, reduced) ?? (preview ? reactionFrame(reaction, idle % 7800, false) : null);
     const moving = roam && !reduced;
     const delta = Math.min(100, Math.max(0, now - lastPaint));
-    if (!frame) {
+    if (!frame && !growing) {
       if (trip) trip.elapsed += delta;
       else if (moving) walked += delta;
     }
@@ -2681,10 +2734,10 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
       if (currentX !== previousX) walkFlip = (currentX < previousX) !== leftFacingSprites.has(species);
       previousX = currentX;
     }
-    const footstep = frame || species === 'goldfish' ? 0 : position.step;
+    const footstep = frame || growing || species === 'goldfish' ? 0 : position.step;
     const y = frame?.y ?? (footstep === 2 ? -1 : 0);
     const flip = roam && (!frame || species === 'cat') ? walkFlip : Boolean(frame?.flip);
-    const blink = frame?.blink ?? (!frame && !reduced && idle % 3000 >= 2750);
+    const blink = frame?.blink ?? (!growing && !frame && !reduced && idle % 3000 >= 2750);
     const scale = roam ? coverScale(canvas) : 1;
     if (marker) {
       const show = trip && (position.x !== trip.to.x || position.y !== trip.to.y);
@@ -2696,7 +2749,7 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     }
     const offsetX = position.x * scale;
     const offsetY = position.y * scale;
-    const pose = `${canvas.dataset.level},${offsetX},${offsetY},${position.x},${position.y},${x},${y},${flip},${blink},${footstep}`;
+    const pose = `${canvas.dataset.level},${offsetX},${offsetY},${position.x},${position.y},${x},${y},${flip},${blink},${footstep},${growing?.from},${growing?.progress}`;
     if (pose === previousPose && frame === previousFrame) return;
     previousPose = pose;
     previousFrame = frame;
@@ -2704,16 +2757,16 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
       target.style.setProperty('--pet-offset-x', offsetX + 'px');
       target.style.setProperty('--pet-offset-y', offsetY + 'px');
     }
-    drawScene(canvas, { ...frame, walk: position, x, y, flip, blink, footstep });
+    drawScene(canvas, { ...frame, walk: position, x, y, flip, blink, footstep, growth: growing });
   }
 
   function tick(now) {
-    if (!canvas.isConnected || target.closest('[inert]')) return;
+    if (!canvas.isConnected || target?.closest('[inert]')) return;
     if (now - lastPaint >= 65) paint(now);
-    requestAnimationFrame(tick);
+    if (target || growth) requestAnimationFrame(tick);
   }
 
-  target.addEventListener('click', () => {
+  target?.addEventListener('click', () => {
     // Synchronize the species before starting a reaction on a freshly selected preview.
     const now = performance.now();
     paint(now);
@@ -2741,6 +2794,14 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     });
   }
   requestAnimationFrame(tick);
+  return (nextLevel, animate) => {
+    const prior = Number(canvas.dataset.level ?? 1);
+    const now = performance.now();
+    canvas.dataset.level = nextLevel;
+    growth = animate && !motion.matches && prior !== nextLevel ? { from: prior, to: nextLevel, started: now } : null;
+    touchedAt = -Infinity;
+    paint(now);
+  };
 }
 
 function bindPetGuideView(view, species) {
@@ -2751,7 +2812,7 @@ function bindPetGuideView(view, species) {
   const previous = navigation.querySelector('[data-step="-1"]');
   const next = navigation.querySelector('[data-step="1"]');
   const stages = view.querySelector('.pet-guide-stages');
-  const animated = new WeakSet();
+  const animated = new WeakMap();
   const last = slides.length - 1;
   const clamp = index => Math.max(0, Math.min(last, index));
   let active = -1;
@@ -2775,8 +2836,7 @@ function bindPetGuideView(view, species) {
     previous.disabled = index === 0;
     next.disabled = index === last;
     if (!animated.has(selected)) {
-      animatePet(selected.querySelector('canvas'), selected);
-      animated.add(selected);
+      animated.set(selected, animatePet(selected.querySelector('canvas'), selected));
     }
   }
 
@@ -2796,9 +2856,14 @@ function bindPetGuideView(view, species) {
     if (!stage || stage.getAttribute('aria-pressed') === 'true') return;
     stages.querySelector('[aria-pressed="true"]').setAttribute('aria-pressed', 'false');
     stage.setAttribute('aria-pressed', 'true');
-    carousel.querySelectorAll('canvas').forEach(canvas => {
-      canvas.dataset.level = stage.dataset.stage;
-      drawScene(canvas);
+    slides.forEach((slide, index) => {
+      const change = animated.get(slide);
+      if (change) change(Number(stage.dataset.stage), index === active);
+      else {
+        const canvas = slide.querySelector('canvas');
+        canvas.dataset.level = stage.dataset.stage;
+        drawScene(canvas);
+      }
     });
   });
   view.addEventListener('keydown', event => {
@@ -3316,6 +3381,7 @@ function createPhone(container) {
   let logDay = null;
   let notice = '';
   let adoptionDatePet = null;
+  let presentedPet = null;
   let restoreFocus = null;
   let clickTrigger = null;
   let timerTick;
@@ -3403,6 +3469,12 @@ function createPhone(container) {
     </div>`;
   }
 
+  function growthSinceLastView(pet, level) {
+    const previous = presentedPet;
+    presentedPet = { id: pet.id, level };
+    return previous?.id === pet.id && previous.level < level ? previous.level : undefined;
+  }
+
   function renderHabitat(preserve) {
     if (!habitatEntry) return;
     const petTab = isPetHabitat();
@@ -3436,7 +3508,7 @@ function createPhone(container) {
     const landscape = habitatEntry.querySelector('canvas');
     drawScene(landscape);
     if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'), {
-      roam: true, marker: habitatEntry.querySelector('.scene-destination')
+      roam: true, marker: habitatEntry.querySelector('.scene-destination'), growthFrom: growthSinceLastView(pet, level)
     });
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
@@ -3897,6 +3969,14 @@ function createPhone(container) {
       timerTick = setInterval(updateTimer, 250);
     }
     outlet.querySelectorAll('canvas').forEach(canvas => drawScene(canvas));
+    if (usesGlass && tab === 'home' && !scrollArea.inert) {
+      const pet = current();
+      const canvas = scrollArea.querySelector('.habitat-link canvas');
+      if (pet && canvas && canvas.dataset.faded !== 'true') {
+        const growthFrom = growthSinceLastView(pet, Number(canvas.dataset.level));
+        if (growthFrom) animatePet(canvas, null, { growthFrom });
+      }
+    }
     if (overlay?.type === 'pet-guide') {
       layers.querySelectorAll('.pet-guide-preview').forEach((target, index) => {
         animatePet(target.querySelector('canvas'), target, { previewOffset: index * 780 });
@@ -3971,6 +4051,7 @@ function createPhone(container) {
   }
 
   function load(nextScenario, profile = null) {
+    presentedPet = null;
     onboarding?.stop();
     scenario = nextScenario;
     state = demoState(nextScenario === 'no-plan' ? 'standard' : nextScenario);

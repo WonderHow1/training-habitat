@@ -96,7 +96,7 @@ function wanderingPet(canvas, target, limit, elapsed, origin = null, terrain = s
   return keepOnTerrain(terrain, { x: Math.max(-xLimit, Math.min(x, xLimit)), y, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0 });
 }
 
-function animatePet(canvas, target, { roam = false, previewOffset = null, marker = null } = {}) {
+function animatePet(canvas, target, { roam = false, previewOffset = null, marker = null, growthFrom } = {}) {
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const limit = roam ? canvas.parentElement.querySelector('.pet-scene-panel, .habitat-continue') : null;
   let species = canvas.dataset.species;
@@ -111,6 +111,12 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
   let walkFlip = false;
   let previousFrame;
   let previousPose = '';
+  let growth;
+  const level = Number(canvas.dataset.level ?? 1);
+  if (growthFrom && !motion.matches && growthFrom !== level) {
+    growth = { from: growthFrom, to: level, started: idleSince };
+    drawScene(canvas, { growth: growthFrameAt(growth, idleSince) });
+  }
 
   function paint(now) {
     if (canvas.dataset.species !== species) {
@@ -130,10 +136,12 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     const elapsed = Math.max(0, now - touchedAt);
     const idle = Math.max(0, now - idleSince + (previewOffset ?? 0));
     const preview = previewOffset !== null && !reduced && elapsed > 2400;
-    const frame = reactionFrame(reaction, elapsed, reduced) ?? (preview ? reactionFrame(reaction, idle % 7800, false) : null);
+    const growing = growth && !reduced ? growthFrameAt(growth, now) : null;
+    if (!growing) growth = null;
+    const frame = growing ? null : reactionFrame(reaction, elapsed, reduced) ?? (preview ? reactionFrame(reaction, idle % 7800, false) : null);
     const moving = roam && !reduced;
     const delta = Math.min(100, Math.max(0, now - lastPaint));
-    if (!frame) {
+    if (!frame && !growing) {
       if (trip) trip.elapsed += delta;
       else if (moving) walked += delta;
     }
@@ -159,10 +167,10 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
       if (currentX !== previousX) walkFlip = (currentX < previousX) !== leftFacingSprites.has(species);
       previousX = currentX;
     }
-    const footstep = frame || species === 'goldfish' ? 0 : position.step;
+    const footstep = frame || growing || species === 'goldfish' ? 0 : position.step;
     const y = frame?.y ?? (footstep === 2 ? -1 : 0);
     const flip = roam && (!frame || species === 'cat') ? walkFlip : Boolean(frame?.flip);
-    const blink = frame?.blink ?? (!frame && !reduced && idle % 3000 >= 2750);
+    const blink = frame?.blink ?? (!growing && !frame && !reduced && idle % 3000 >= 2750);
     const scale = roam ? coverScale(canvas) : 1;
     if (marker) {
       const show = trip && (position.x !== trip.to.x || position.y !== trip.to.y);
@@ -174,7 +182,7 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     }
     const offsetX = position.x * scale;
     const offsetY = position.y * scale;
-    const pose = `${canvas.dataset.level},${offsetX},${offsetY},${position.x},${position.y},${x},${y},${flip},${blink},${footstep}`;
+    const pose = `${canvas.dataset.level},${offsetX},${offsetY},${position.x},${position.y},${x},${y},${flip},${blink},${footstep},${growing?.from},${growing?.progress}`;
     if (pose === previousPose && frame === previousFrame) return;
     previousPose = pose;
     previousFrame = frame;
@@ -182,16 +190,16 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
       target.style.setProperty('--pet-offset-x', offsetX + 'px');
       target.style.setProperty('--pet-offset-y', offsetY + 'px');
     }
-    drawScene(canvas, { ...frame, walk: position, x, y, flip, blink, footstep });
+    drawScene(canvas, { ...frame, walk: position, x, y, flip, blink, footstep, growth: growing });
   }
 
   function tick(now) {
-    if (!canvas.isConnected || target.closest('[inert]')) return;
+    if (!canvas.isConnected || target?.closest('[inert]')) return;
     if (now - lastPaint >= 65) paint(now);
-    requestAnimationFrame(tick);
+    if (target || growth) requestAnimationFrame(tick);
   }
 
-  target.addEventListener('click', () => {
+  target?.addEventListener('click', () => {
     // Synchronize the species before starting a reaction on a freshly selected preview.
     const now = performance.now();
     paint(now);
@@ -219,4 +227,12 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     });
   }
   requestAnimationFrame(tick);
+  return (nextLevel, animate) => {
+    const prior = Number(canvas.dataset.level ?? 1);
+    const now = performance.now();
+    canvas.dataset.level = nextLevel;
+    growth = animate && !motion.matches && prior !== nextLevel ? { from: prior, to: nextLevel, started: now } : null;
+    touchedAt = -Infinity;
+    paint(now);
+  };
 }

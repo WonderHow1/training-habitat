@@ -23,7 +23,7 @@ const escapeTimer = setTimeout(() => {
   console.error('Chrome verification timed out.');
   process.exitCode = 1;
   child.kill();
-}, 50_000);
+}, 75_000);
 function rejectPending(error) {
   for (const { reject } of responses.values()) reject(error);
   responses.clear();
@@ -45,6 +45,9 @@ child.stdio[4].on('data', text => {
     if (message.method === 'Runtime.exceptionThrown') {
       const info = message.params.exceptionDetails;
       errors.push(info.exception?.description ?? info.text);
+    }
+    if (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error') {
+      errors.push(message.params.args.map(arg => arg.description ?? arg.value).join(' '));
     }
   }
 });
@@ -1373,6 +1376,106 @@ async function verifyOpenSurfaces() {
   })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
 }
 
+const outlineSize = `canvas => {
+  const { width, height } = canvas;
+  const color = parseInt(petSprites[canvas.dataset.species].colors.I.slice(1), 16);
+  const pixels = canvas.getContext('2d').getImageData(0, 0, width, height).data;
+  let left = width, right = -1, top = height, bottom = -1;
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (!pixels[i + 3] || (pixels[i] * 65536 + pixels[i + 1] * 256 + pixels[i + 2]) !== color) continue;
+    const x = (i / 4) % width;
+    const y = Math.floor(i / (4 * width));
+    left = Math.min(left, x); right = Math.max(right, x);
+    top = Math.min(top, y); bottom = Math.max(bottom, y);
+  }
+  return [right - left + 1, bottom - top + 1];
+}`;
+
+async function verifyPixelGrowth(name, selector, trigger) {
+  const frame = JSON.stringify(selector);
+  const showPet = () => evaluate(`(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    const scrollArea = document.querySelector(${frame}).closest('.app-scroll');
+    if (scrollArea && !scrollArea.inert) scrollArea.scrollTop = 0;
+  })()`);
+  await showPet();
+  await screenshot(name + '-01-before');
+  const previousLevel = await evaluate(`document.querySelector(${frame}).dataset.level`);
+  await trigger();
+  await showPet();
+  const waitForOutline = during => evaluate(`new Promise(resolve => {
+    const size = ${outlineSize};
+    const canvas = document.querySelector(${frame});
+    const still = canvas.cloneNode();
+    drawScene(still);
+    const end = size(still);
+    still.dataset.level = ${JSON.stringify(previousLevel)};
+    drawScene(still);
+    const start = size(still);
+    const deadline = performance.now() + 1700;
+    function check() {
+      const current = size(canvas);
+      const between = current.every((n, i) => n >= start[i] && n <= end[i]) &&
+        String(current) !== String(start) && String(current) !== String(end);
+      if (${during} ? between : String(current) === String(end)) resolve(true);
+      else if (performance.now() >= deadline) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`);
+  assert.ok(await waitForOutline(true), name + ' shows a pixel outline between the two stages');
+  await screenshot(name + '-02-transition');
+  assert.ok(await waitForOutline(false), name + ' reaches the next stage');
+  await screenshot(name + '-03-after');
+}
+
+async function verifyGrowthFromTraining() {
+  await navigate('ios-prototype.html', 390, 760);
+  await enterToday();
+  await settleHabitatAnimation();
+  const card = lead('.habitat-link canvas');
+  const full = lead('.habitat-entry[data-active] canvas');
+  const record = async (title, time, tab) => {
+    await clickLead('tab', 'log');
+    await clickLead('review-add');
+    await clickLead('manual');
+    await change(lead('.sheet input[name="title"]'), title);
+    await change(lead('.sheet input[name="start"]'), time);
+    await change(lead('.sheet input[name="minutes"]'), '100');
+    await submit();
+    await clickLead('tab', tab);
+  };
+  await includes(lead('.habitat-link'), '幼年');
+  await verifyPixelGrowth('growth-live-young', card, () => record('有氧训练', '09:00', 'home'));
+  await includes(lead('.habitat-link'), '青年');
+  await clickLead('tab', 'pet');
+  await settleHabitatAnimation();
+  await verifyPixelGrowth('growth-live-adult', full, () => record('力量训练', '12:00', 'pet'));
+  await includes(lead('.habitat-entry-header'), '成年');
+}
+
+async function captureGrowthAudit() {
+  if (!output) return;
+  await navigate('ios-prototype.html', 1050, 1040);
+  await evaluate(`(() => {
+    document.body.removeAttribute('data-glass');
+    document.body.style.cssText = 'display:block;background:#fff;color:#20334a;padding:28px;font-family:system-ui,sans-serif';
+    document.body.innerHTML = '<h1 style="margin:0 0 24px;font-size:25px">宠物图鉴 · 成长阶段对照</h1>' +
+      '<main style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">' +
+      Object.entries(petSpecies).map(([species, name]) => '<section style="border-radius:18px;background:#f5f6f8;padding:10px 16px">' +
+        '<h2 style="margin:0;font-size:15px">' + name + '</h2>' +
+        '<div style="display:flex;justify-content:space-around">' +
+        ['幼年','青年','成年'].map((stage, i) => '<figure style="margin:0;text-align:center;font-size:13px">' +
+          petCanvas('blueGarden', i + 1, false, true, species) + '<figcaption>' + stage + '</figcaption></figure>').join('') +
+        '</div></section>').join('') + '</main>';
+    document.querySelectorAll('canvas').forEach(canvas => {
+      canvas.style.cssText = 'display:block;width:108px;height:108px;image-rendering:pixelated';
+      drawScene(canvas);
+    });
+  })()`);
+  await screenshot('growth-audit');
+}
+
 async function verifyNarrowTrainingSummary() {
   await navigate('ios-prototype.html', 320, 700);
   await enterToday();
@@ -1470,6 +1573,10 @@ async function verifyNarrowTrainingSummary() {
     }
     check();
   })`), 'Tapping the enlarged pet triggers its own reaction');
+  await verifyPixelGrowth('growth-guide-young', activePet + ' canvas',
+    () => click(lead('.pet-guide-stages [data-stage="2"]')));
+  await verifyPixelGrowth('growth-guide-adult', activePet + ' canvas',
+    () => click(lead('.pet-guide-stages [data-stage="3"]')));
   assert.ok(await evaluate(`(() => {
     const stages = [...document.querySelectorAll(${JSON.stringify(lead('.pet-guide-stages button'))})];
     const canvases = [...document.querySelector(${carousel}).querySelectorAll('canvas')];
@@ -1557,8 +1664,10 @@ try {
   await verifyGlass();
   await verifyCustomProjects();
   await verifyTrainingManagement();
+  await verifyGrowthFromTraining();
   await verifyNarrowTrainingSummary();
   await verifyOnboarding();
+  await captureGrowthAudit();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb] a").length'), 3);

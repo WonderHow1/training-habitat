@@ -52,12 +52,12 @@ function paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose) {
 
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   const pet = petSprites[species] ?? petSprites.cat;
-  const growth = petGrowthSprite(species, level);
-  const sprite = pose?.sprite ?? growth;
+  const growth = petAppearance(species, level, pose?.growth);
+  const sprite = pose?.sprite ?? growth.sprite;
   const size = pose?.sprite ? {
     width: Math.round(sprite.width * growth.width / pet.width),
-    height: Math.round(sprite.pixels.length * growth.pixels.length / pet.pixels.length)
-  } : { width: growth.width, height: growth.pixels.length };
+    height: Math.round(sprite.pixels.length * growth.height / pet.pixels.length)
+  } : growth;
   x += (pose?.walk?.x ?? 0) * scale;
   y += (pose?.walk?.y ?? 0) * scale;
   const restX = x;
@@ -69,7 +69,8 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
   if (species === 'goldfish') {
-    const bowl = fishBowlDimensions(level);
+    const transition = pose?.growth;
+    const bowl = transition ? growDimensions(fishBowlDimensions(transition.from), fishBowlDimensions(transition.to), transition.progress) : fishBowlDimensions(level);
     paintPetPixels(ctx, fishBowl, bowlColors, restX + Math.floor((25 - bowl.width) / 2) * scale,
       restY + (25 - bowl.height) * scale, bowl, scale);
   }
@@ -87,11 +88,11 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   }
 }
 
-function centeredPetPosition(canvas, species) {
-  const sprite = petGrowthSprite(species, Number(canvas.dataset.level ?? 1));
+function centeredPetPosition(canvas, species, growth) {
+  const { height } = petAppearance(species, Number(canvas.dataset.level ?? 1), growth);
   return {
     x: Math.round((canvas.width - 25) / 2),
-    y: Math.round(canvas.height / 2 - 24 + sprite.pixels.length / 2)
+    y: Math.round(canvas.height / 2 - 24 + height / 2)
   };
 }
 
@@ -113,7 +114,7 @@ function drawScene(canvas, pose) {
     return;
   }
   if (canvas.hasAttribute('data-portrait')) {
-    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species), canvas.hasAttribute('data-empty'), species, pose);
+    drawHabitatPortrait(ctx, p, level, faded, centeredPetPosition(canvas, species, pose?.growth), canvas.hasAttribute('data-empty'), species, pose);
     return;
   }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
@@ -167,7 +168,7 @@ function drawScene(canvas, pose) {
     box(x - 1, y - 1, 3, 1, p.flower);
     box(x, y - 2, 1, 3, p.flower);
   }
-  const { x, y } = canvas.dataset.palette === 'blueGarden' ? centeredPetPosition(canvas, species) : { x: wide ? 56 : 58, y: 39 };
+  const { x, y } = canvas.dataset.palette === 'blueGarden' ? centeredPetPosition(canvas, species, pose?.growth) : { x: wide ? 56 : 58, y: 39 };
   box(x - 4, y + 23, 31, 2, p.turf);
   box(x, y + 25, 23, 1, p.turf);
   paintPet(ctx, x, y, 1, level, faded, species, pose);
@@ -221,7 +222,7 @@ function drawRunningTrack(ctx, canvas, level, faded, species, pose) {
   }
 
   if (canvas.hasAttribute('data-empty')) return;
-  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
+  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species, pose?.growth) : {
     x: Math.round(width * .55) - 12, y: portrait ? 103 : 42
   };
   const { x = 0, y = 0 } = pose?.walk ?? {};
@@ -295,7 +296,7 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose) {
     box(right + 5, floor - 25, 8, 5, '#fff5d7');
   }
 
-  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
+  const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species, pose?.growth) : {
     x: Math.round((width - 25) / 2), y: portrait ? 105 : 38
   };
   const rug = habitat === 'gym' ? '#90aaa7' : trim;

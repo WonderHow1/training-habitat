@@ -6,7 +6,7 @@ function bindPetGuideView(view, species) {
   const previous = navigation.querySelector('[data-step="-1"]');
   const next = navigation.querySelector('[data-step="1"]');
   const stages = view.querySelector('.pet-guide-stages');
-  const animated = new WeakSet();
+  const animated = new WeakMap();
   const last = slides.length - 1;
   const clamp = index => Math.max(0, Math.min(last, index));
   let active = -1;
@@ -30,8 +30,7 @@ function bindPetGuideView(view, species) {
     previous.disabled = index === 0;
     next.disabled = index === last;
     if (!animated.has(selected)) {
-      animatePet(selected.querySelector('canvas'), selected);
-      animated.add(selected);
+      animated.set(selected, animatePet(selected.querySelector('canvas'), selected));
     }
   }
 
@@ -51,9 +50,14 @@ function bindPetGuideView(view, species) {
     if (!stage || stage.getAttribute('aria-pressed') === 'true') return;
     stages.querySelector('[aria-pressed="true"]').setAttribute('aria-pressed', 'false');
     stage.setAttribute('aria-pressed', 'true');
-    carousel.querySelectorAll('canvas').forEach(canvas => {
-      canvas.dataset.level = stage.dataset.stage;
-      drawScene(canvas);
+    slides.forEach((slide, index) => {
+      const change = animated.get(slide);
+      if (change) change(Number(stage.dataset.stage), index === active);
+      else {
+        const canvas = slide.querySelector('canvas');
+        canvas.dataset.level = stage.dataset.stage;
+        drawScene(canvas);
+      }
     });
   });
   view.addEventListener('keydown', event => {

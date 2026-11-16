@@ -103,6 +103,7 @@ function createPhone(container) {
   let logDay = null;
   let notice = '';
   let adoptionDatePet = null;
+  let presentedPet = null;
   let restoreFocus = null;
   let clickTrigger = null;
   let timerTick;
@@ -190,6 +191,12 @@ function createPhone(container) {
     </div>`;
   }
 
+  function growthSinceLastView(pet, level) {
+    const previous = presentedPet;
+    presentedPet = { id: pet.id, level };
+    return previous?.id === pet.id && previous.level < level ? previous.level : undefined;
+  }
+
   function renderHabitat(preserve) {
     if (!habitatEntry) return;
     const petTab = isPetHabitat();
@@ -223,7 +230,7 @@ function createPhone(container) {
     const landscape = habitatEntry.querySelector('canvas');
     drawScene(landscape);
     if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'), {
-      roam: true, marker: habitatEntry.querySelector('.scene-destination')
+      roam: true, marker: habitatEntry.querySelector('.scene-destination'), growthFrom: growthSinceLastView(pet, level)
     });
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
@@ -684,6 +691,14 @@ function createPhone(container) {
       timerTick = setInterval(updateTimer, 250);
     }
     outlet.querySelectorAll('canvas').forEach(canvas => drawScene(canvas));
+    if (usesGlass && tab === 'home' && !scrollArea.inert) {
+      const pet = current();
+      const canvas = scrollArea.querySelector('.habitat-link canvas');
+      if (pet && canvas && canvas.dataset.faded !== 'true') {
+        const growthFrom = growthSinceLastView(pet, Number(canvas.dataset.level));
+        if (growthFrom) animatePet(canvas, null, { growthFrom });
+      }
+    }
     if (overlay?.type === 'pet-guide') {
       layers.querySelectorAll('.pet-guide-preview').forEach((target, index) => {
         animatePet(target.querySelector('canvas'), target, { previewOffset: index * 780 });
@@ -758,6 +773,7 @@ function createPhone(container) {
   }
 
   function load(nextScenario, profile = null) {
+    presentedPet = null;
     onboarding?.stop();
     scenario = nextScenario;
     state = demoState(nextScenario === 'no-plan' ? 'standard' : nextScenario);
