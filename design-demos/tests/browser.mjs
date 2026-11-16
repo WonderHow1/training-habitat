@@ -184,7 +184,8 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.habitat-link .pet-attributes'), '体重3.2 公斤');
     await includes(lead('.today-task'), '今日训练');
     assert.equal(await todayHeadline(), '今天已经锻炼0小时');
-    assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.today-duration'))})).fontSize`), '25px');
+    const headingSizes = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.app-head :is(.kicker, .today-duration, .today-remaining)'))})].map(text => getComputedStyle(text).fontSize)`);
+    assert.deepEqual(headingSizes, ['13px', '28px', '13px']);
     await includes(lead('.app-head h2 + .today-remaining'), '你距离目标还有30分钟');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
@@ -1012,7 +1013,7 @@ async function verifyNarrowTrainingSummary() {
   assert.ok(await evaluate(`(() => {
     const headline = document.querySelector(${JSON.stringify(lead('.today-duration'))});
     const reminder = document.querySelector(${JSON.stringify(lead(act('settings')))});
-    return getComputedStyle(headline).fontSize === '22px' && headline.scrollWidth === headline.clientWidth &&
+    return getComputedStyle(headline).fontSize === '24px' && headline.scrollWidth === headline.clientWidth &&
       headline.getBoundingClientRect().right <= reminder.getBoundingClientRect().left;
   })()`), 'The exercise headline fits alongside the reminder on a narrow screen');
   await clickLead('tab', 'week');
