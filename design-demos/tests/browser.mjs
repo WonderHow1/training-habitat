@@ -346,6 +346,7 @@ const settleHabitatAnimation = () => evaluate(`Promise.allSettled(document.query
 
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
+  await verifyLightBluePalette();
   const { x, y } = await habitatPoint();
   const wheel = deltaY => cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY });
   await wheel(42);
@@ -415,6 +416,29 @@ async function verifyGlass() {
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length`), 0);
   await clickLead('close');
   await cmd('Emulation.setEmulatedMedia', { features: [] });
+}
+
+async function verifyLightBluePalette() {
+  assert.ok(await evaluate(`(() => {
+    const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
+    const colorChannels = color => color.match(/[0-9]+/g).slice(0, 3).map(Number);
+    const isPaleBlue = ([red, green, blue]) => red >= 215 && red < green && green < blue;
+    const luminance = channels => channels.map(value => {
+      const srgb = value / 255;
+      return srgb <= .04045 ? srgb / 12.92 : ((srgb + .055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
+    const button = document.querySelector('[data-phone="log"] .record-actions .primary');
+    const face = colorChannels(getComputedStyle(button).backgroundColor);
+    const text = colorChannels(getComputedStyle(button).color);
+    const contrast = (luminance(text) + .05) / (luminance(face) + .05);
+    const sky = [...document.querySelector('[data-phone="home"] .habitat-landscape')
+      .getContext('2d').getImageData(0, 0, 1, 1).data].slice(0, 3);
+    return background('[data-phone="log"] .heatmap') === 'rgb(255, 255, 255)' &&
+      isPaleBlue(colorChannels(background('.ios-screen'))) &&
+      isPaleBlue(colorChannels(background('body'))) &&
+      face[0] < face[1] && face[1] < face[2] && contrast >= 4.5 &&
+      sky[0] < sky[1] && sky[1] < sky[2];
+  })()`), 'The prototype uses white cards, pale-blue surfaces and sky, and a readable blue primary action');
 }
 let failed = false;
 try {

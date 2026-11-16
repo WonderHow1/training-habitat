@@ -1,6 +1,7 @@
 const root = document.querySelector('#board');
 const theme = document.body.dataset.theme;
 const usesGlass = document.body.hasAttribute('data-glass');
+const habitatPalette = usesGlass ? 'blueGarden' : theme;
 const icons = {
   home: 'M3 10.5 12 3l9 7.5V20H3z M9 20v-6h6v6', week: 'M4 6h16v14H4z M4 10h16 M8 4v4 M16 4v4',
   log: 'M5 4h14v16H5z M8 9h8 M8 13h8 M8 17h5', pet: 'M5 11V5l5 4h4l5-4v6l2 3v3l-4 3H7l-4-3v-3z M8 14h.1 M16 14h.1 M11 17h2',
@@ -92,7 +93,7 @@ function createPhone(initial) {
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
-      <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${label}</span></div>
+      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       ${petGrowth(count)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
@@ -113,7 +114,7 @@ function createPhone(initial) {
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${theme}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>

@@ -608,6 +608,7 @@ const sprite = [
 ];
 const palettes = {
   garden: { sky: '#b9dbe0', haze: '#d7e8d4', cloud: '#f5f2d5', far: '#94baa5', mid: '#73a783', trees: '#438263', land: '#84ab56', lit: '#b3cb72', turf: '#71944a', shore: '#a8c4be', water: '#80bdad', wave: '#bedfd0', flower: '#f9df95' },
+  blueGarden: { sky: '#c9e5ff', haze: '#e8f2fd', cloud: '#fbfdff', far: '#abc4dc', mid: '#8fabcd', trees: '#6c96ab', land: '#b3ced1', lit: '#c9dfda', turf: '#8daeb9', shore: '#c3e0f2', water: '#99c7eb', wave: '#daefff', flower: '#fff5db' },
   track: { sky: '#393758', haze: '#55486f', cloud: '#6f6688', far: '#555676', mid: '#4d607c', trees: '#3d506f', land: '#60767d', lit: '#93a697', turf: '#4e626d', shore: '#7999a7', water: '#596e98', wave: '#8f9dbb', flower: '#dec7f0' },
   diary: { sky: '#c2cbed', haze: '#e7dff7', cloud: '#f9edef', far: '#a7b1d1', mid: '#909cc3', trees: '#6d82ae', land: '#a2afc5', lit: '#c6cfdb', turf: '#879bbb', shore: '#c5cef0', water: '#a1b9df', wave: '#e3e8fb', flower: '#f8e4ab' },
   studio: { sky: '#edc39c', haze: '#f1d3ac', cloud: '#fff0d0', far: '#d1a381', mid: '#ba917c', trees: '#927757', land: '#c6a574', lit: '#dec08a', turf: '#af9469', shore: '#e1cbaa', water: '#ceae92', wave: '#efdbc5', flower: '#fbecba' },
@@ -1060,6 +1061,7 @@ function bindHabitatGesture({ screen, habitatEntry, scrollArea, getMode, setHabi
 const root = document.querySelector('#board');
 const theme = document.body.dataset.theme;
 const usesGlass = document.body.hasAttribute('data-glass');
+const habitatPalette = usesGlass ? 'blueGarden' : theme;
 const icons = {
   home: 'M3 10.5 12 3l9 7.5V20H3z M9 20v-6h6v6', week: 'M4 6h16v14H4z M4 10h16 M8 4v4 M16 4v4',
   log: 'M5 4h14v16H5z M8 9h8 M8 13h8 M8 17h5', pet: 'M5 11V5l5 4h4l5-4v6l2 3v3l-4 3H7l-4-3v-3z M8 14h.1 M16 14h.1 M11 17h2',
@@ -1151,7 +1153,7 @@ function createPhone(initial) {
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
-      <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${label}</span></div>
+      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       ${petGrowth(count)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
@@ -1172,7 +1174,7 @@ function createPhone(initial) {
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${theme}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
