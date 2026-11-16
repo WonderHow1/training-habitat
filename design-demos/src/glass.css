@@ -342,7 +342,9 @@
   top: 78px;
   left: clamp(22px, 2.4vw, 32px);
   color: var(--ink);
+  pointer-events: none;
 }
+.habitat-entry-header button { pointer-events: auto; }
 .ios-screen[data-habitat-tabs] .habitat-entry-header { right: clamp(22px, 2.4vw, 32px); }
 .ios-screen[data-habitat-tabs] .habitat-entry-header h2 { max-inline-size: calc(100% - 60px); overflow-wrap: anywhere; }
 .habitat-entry [data-action="pet-guide"] {

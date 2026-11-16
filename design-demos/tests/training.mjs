@@ -139,16 +139,17 @@ test('all ten species can be adopted with their own attributes', () => {
   }
 });
 
+const petMotionSource = ['pet-art.js', 'pet-reactions.js', 'pixels.js', 'pet-motion.js']
+  .map(name => readFileSync(new URL('../src/' + name, import.meta.url), 'utf8')).join('\n');
+
 test('pet sprites face their actual movement across turns and shoreline limits', () => {
-  const source = ['pet-art.js', 'pet-reactions.js', 'pixels.js', 'pet-motion.js']
-    .map(name => readFileSync(new URL('../src/' + name, import.meta.url), 'utf8')).join('\n');
   let now, nextFrame, pose;
   const context = vm.createContext({
     performance: { now: () => now },
     matchMedia: () => ({ matches: false }),
     requestAnimationFrame: callback => { nextFrame = callback; }
   });
-  vm.runInContext(source, context);
+  vm.runInContext(petMotionSource, context);
   context.drawScene = (_, frame) => { pose = frame; };
   const animate = vm.runInContext('animatePet', context);
   const target = { offsetWidth: 130, offsetHeight: 130, style: { setProperty() {} }, closest: () => null, addEventListener() {} };
@@ -157,7 +158,7 @@ test('pet sprites face their actual movement across turns and shoreline limits',
     for (const species of Object.keys(petSpecies)) {
       const canvas = {
         width: 88, height: 192, clientWidth: 390, clientHeight: 760, dataset: { habitat, species },
-        isConnected: true, parentElement: { querySelector: () => ({ offsetTop: 640 }) }
+        isConnected: true, parentElement: { querySelector: () => ({ offsetTop: 640 }) }, addEventListener() {}
       };
       let previousX = 0;
       const directions = new Set();
@@ -175,6 +176,44 @@ test('pet sprites face their actual movement across turns and shoreline limits',
       assert.equal(directions.size, 2);
     }
   }
+});
+
+test('a scene tap accounts for the canvas crop and lets a walking pet change destination smoothly', () => {
+  let now = 0, nextFrame, pose;
+  const context = vm.createContext({
+    performance: { now: () => now },
+    matchMedia: () => ({ matches: false }),
+    requestAnimationFrame: callback => { nextFrame = callback; }
+  });
+  vm.runInContext(petMotionSource, context);
+  context.drawScene = (_, frame) => { pose = frame; };
+  const { animatePet, habitatDestination } = vm.runInContext('({ animatePet, habitatDestination })', context);
+  const listeners = {};
+  const target = { offsetWidth: 120, offsetHeight: 120, style: { setProperty() {} }, closest: () => null,
+    addEventListener() {}, getBoundingClientRect: () => ({ width: 120, height: 120 }) };
+  const canvas = {
+    width: 88, height: 192, clientWidth: 352, clientHeight: 640, dataset: { habitat: 'garden', species: 'cat' },
+    isConnected: true, parentElement: { querySelector: () => ({ offsetTop: 570 }) }, closest: () => null,
+    getBoundingClientRect: () => ({ left: 16, top: 24, width: 352, height: 640 }),
+    addEventListener: (type, callback) => { listeners[type] = callback; }
+  };
+  const location = () => ({ x: pose.walk.x, y: pose.walk.y });
+  const tick = count => { for (let index = 0; index < count; index++) nextFrame(now += 80); };
+  const tap = (clientX, clientY) => listeners.click({ clientX, clientY });
+
+  assert.deepEqual({ ...habitatDestination(canvas, target, 16, 664) }, { x: -29, y: 65 });
+  animatePet(canvas, target, { roam: true });
+  tap(272, 464);
+  tick(5);
+  const previous = location();
+  assert.ok(previous.x > 0 && previous.y > 0);
+  tap(112, 264);
+  assert.deepEqual(location(), previous);
+  tick(20);
+  assert.deepEqual(location(), { x: -20, y: -20 });
+  assert.equal(pose.flip, false, 'The left-facing cat turns left when redirected');
+  tick(48);
+  assert.deepEqual(location(), { x: 0, y: 0 }, 'The pet rejoins its automatic route from the destination');
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {

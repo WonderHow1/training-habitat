@@ -107,6 +107,37 @@ const todayHeadline = () => evaluate(`document.querySelector(${JSON.stringify(le
 const submit = () => click(lead('.sheet button[type="submit"]'));
 const enterToday = () => click(lead('.habitat-continue'));
 const inHabitat = () => evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.habitat-entry[data-active]'))}))`);
+async function guidePetTo(fractionX, fractionY, touch = false) {
+  const landscape = JSON.stringify(lead('.habitat-landscape'));
+  const point = await evaluate(`(() => {
+    const canvas = document.querySelector(${landscape});
+    const bounds = canvas.getBoundingClientRect();
+    const x = Math.round(bounds.left + bounds.width * ${fractionX});
+    const y = Math.round(bounds.top + bounds.height * ${fractionY});
+    return document.elementFromPoint(x, y) === canvas ? { x, y } : null;
+  })()`);
+  assert.ok(point, 'The destination is on the exposed habitat');
+  if (touch) {
+    await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+    await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  } else {
+    await cmd('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
+    await cmd('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
+  }
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const target = document.querySelector(${JSON.stringify(lead('.scene-pet-touch'))});
+    const end = performance.now() + 2400;
+    function check() {
+      const rect = target.getBoundingClientRect();
+      if (Math.hypot(rect.left + rect.width / 2 - ${point.x}, rect.top + rect.height / 2 - ${point.y}) < 5) resolve(true);
+      else if (performance.now() >= end) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'The pet reaches the tapped position together with its interaction button');
+}
 async function includes(selector, text) {
   const actual = await evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent`);
   assert.ok(actual?.includes(text), `Expected "${text}" in ${selector}. Found "${actual}".`);
@@ -241,6 +272,8 @@ async function demoDirection(index, glass = false) {
       }
       return heart && rows.size === petSprites.cat.pixels.length;
     })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
+    await guidePetTo(.77, .61, true);
+    assert.equal(await inHabitat(), true);
     await enterToday();
     await assertPetCentered(lead('.habitat-link .pixel-scene'));
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-link .scene-label'))}) === null`),
@@ -917,6 +950,7 @@ async function verifyGlass() {
     return !scene.querySelector('.habitat-continue') && !scroll.firstElementChild && !testNav.inert;
   })()`), 'The full-screen scene contains the pet controls and leaves the tabs accessible');
   await settleHabitatAnimation();
+  await guidePetTo(.25, .43);
   await screenshot('ios-prototype-pet');
   assert.ok(await evaluate(`(() => {
     const guide = document.querySelector(${JSON.stringify(lead(act('pet-guide')))});
