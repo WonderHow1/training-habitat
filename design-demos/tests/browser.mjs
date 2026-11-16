@@ -307,6 +307,8 @@ async function demoDirection(index, glass = false) {
       const portrait = JSON.stringify(lead('.habitat-landscape'));
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.species`), 'dog');
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'gym');
+      await includes(lead('.pet-attributes'), '0 天');
+      await includes(lead('.pet-attributes'), '6 公斤');
       await clickLead('habitat-settings');
       await change(lead('.sheet select[name="habitat"]'), 'running-track');
       await submit();
@@ -661,6 +663,8 @@ async function verifyGlass() {
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
   await includes(lead('.habitat-entry-header'), '我的宠物');
   await includes(lead('.habitat-entry-header'), '领养于 11月9日');
+  await includes(lead('.pet-attributes > div:first-child'), '年龄7 天');
+  await includes(lead('.pet-attributes > div:last-child'), '体重3.2 公斤');
   await includes(lead('.pet-scene-panel'), '经验与血量');
   assert.ok(await evaluate(`(() => {
     const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
@@ -706,6 +710,11 @@ async function verifyGlass() {
   assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backdropFilter`), 'none');
   await clickLead('close');
   await cmd('Emulation.setEmulatedMedia', { features: [] });
+  await clickLead('tab', 'pet');
+  await change('#demo-time', '2026-11-17T00:00');
+  await click('#advance');
+  await includes(lead('.pet-attributes'), '8 天');
+  await includes(lead('.pet-attributes'), '3.2 公斤');
 }
 
 async function verifyWeekPicker() {

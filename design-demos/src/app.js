@@ -158,6 +158,15 @@ function createPhone(container) {
     </section>`;
   }
 
+  function petAttributes(pet, species) {
+    const grams = pet.weightGrams ?? petWeightsInGrams[species];
+    const weight = grams < 1000 ? `${grams} 克` : `${grams / 1000} 公斤`;
+    return `<dl class="pet-attributes">
+      <div><dt>年龄</dt><dd>${petAgeInDays(pet, state.now)} 天</dd></div>
+      <div><dt>体重</dt><dd>${weight}</dd></div>
+    </dl>`;
+  }
+
   function renderHabitat(preserve) {
     if (!habitatEntry) return;
     const petTab = isPetHabitat();
@@ -177,7 +186,7 @@ function createPhone(container) {
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
-        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
+        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>${petAttributes(pet, species)}` : ''}
         ${!petTab && pet ? petGrowth(details) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">

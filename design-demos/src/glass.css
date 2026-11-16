@@ -328,6 +328,25 @@
   font-size: 12px;
   font-weight: 620;
 }
+.pet-attributes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pet-attributes > div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: var(--control-tint);
+  background-image: var(--control-glint);
+}
+.pet-attributes dt { color: var(--muted); }
+.pet-attributes dd { margin: 0; font-weight: 680; white-space: nowrap; }
 .pet-scene-panel {
   position: absolute;
   inset: auto 12px 106px;

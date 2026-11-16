@@ -6,6 +6,7 @@ const XP_PER_LEVEL = 100;
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
 const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
+const petWeightsInGrams = { cat: 3200, dog: 6000, rabbit: 1800, hamster: 120 };
 const habitatStyles = { garden: '草地', gym: '健身房', 'running-track': '操场跑道', living: '客厅', bedroom: '卧室' };
 
 function bj(date, time = '00:00') {
@@ -73,7 +74,7 @@ function seed(scenario = 'standard') {
       id: 'sample', date: first.date, start: '18:40', minutes: 18, title: first.title,
       source: 'manual', plan: first.id
     }],
-    pets: [{ id: 'moss', name: '团团', spans: [[bj('2026-11-09'), null]], born: '2026-11-09' }],
+    pets: [{ id: 'moss', name: '团团', species: 'cat', weightGrams: petWeightsInGrams.cat, spans: [[bj('2026-11-09'), null]], born: '2026-11-09' }],
     active: 'moss',
     finished: { first: { at: bj(first.date, '19:00'), pet: 'moss', record: 'sample' } },
     misses: {},
@@ -91,6 +92,11 @@ function seed(scenario = 'standard') {
 
 function petAt(state, time) {
   return state.pets.find(pet => pet.spans.some(([start, end]) => start <= time && (end === null || time < end)))?.id ?? null;
+}
+
+function petAgeInDays(pet, now) {
+  const end = pet.needsRecovery ? pet.spans.at(-1)?.[1] ?? now : now;
+  return Math.max(0, (bj(dateAt(end)) - bj(pet.born)) / DAY);
 }
 
 function petExperienceRecords(state, petId) {
@@ -250,7 +256,7 @@ function switchPet(state, pet) {
 
 function adopt(state, name, species = 'cat', habitat = 'garden') {
   if (state.active || !Object.hasOwn(petSpecies, species) || !Object.hasOwn(habitatStyles, habitat)) return false;
-  const pet = { id: 'pet-' + ++state.serial, name, species, habitat, spans: [], born: dateAt(state.now) };
+  const pet = { id: 'pet-' + ++state.serial, name, species, habitat, weightGrams: petWeightsInGrams[species], spans: [], born: dateAt(state.now) };
   state.pets.push(pet);
   switchPet(state, pet);
   return true;

@@ -6,10 +6,10 @@ import vm from 'node:vm';
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
   adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress } = vm.runInNewContext(model + `
+  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
      adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress })`);
+     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -92,11 +92,22 @@ test('adoption records the pet species and chosen habitat independently of healt
   assert.equal(adopt(state, '米粒', 'rabbit', 'running-track'), true);
   const pet = state.pets.find(entry => entry.id === state.active);
   assert.equal(pet.species, 'rabbit');
+  assert.equal(pet.weightGrams, 1800);
+  assert.equal(petAgeInDays(pet, state.now), 0);
   assert.equal(pet.habitat, 'running-track');
   assert.equal(setPetHabitat(state, 'bedroom'), true);
   assert.equal(setPetHabitat(state, 'unsupported'), false);
   assert.equal(pet.habitat, 'bedroom');
   assert.equal(health(state, pet.id), 3);
+});
+
+test('pet age advances at local midnight and a memorial retains the age at death', () => {
+  const living = seed().pets[0];
+  assert.equal(living.weightGrams, 3200);
+  assert.equal(petAgeInDays(living, bj('2026-11-16', '23:59')), 7);
+  assert.equal(petAgeInDays(living, bj('2026-11-17')), 8);
+  const memorial = seed('death').pets[0];
+  assert.equal(petAgeInDays(memorial, bj('2026-11-17')), 6);
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {
