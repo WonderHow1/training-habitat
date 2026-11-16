@@ -1054,6 +1054,10 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 .heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding: 4px; }
 .review-day + .review-day { margin-block-start: 18px; }
 .review-day h3 { color: var(--muted); font-size: 13px; font-weight: 680; padding-inline: 2px; }
+.review-add-options { display: grid; gap: 10px; }
+.review-add-options button { justify-content: start; min-height: 48px; gap: 10px; padding-inline: 14px; }
+.review-add-options button span { white-space: nowrap; }
+.review-add-options button svg:last-child { margin-inline-start: auto; color: var(--muted); }
 .review-record-actions { margin-block-start: 8px; }
 .heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
 .heat-legend i { --heat-size: 8px; }
@@ -3036,8 +3040,9 @@ function createPhone(container) {
     switch (overlay.type) {
       case 'detail': return detail(plan);
       case 'pick-week': return weekPicker(overlay.date);
-      case 'review-add': return sheet('补录或导入', `<div class="sheet-buttons">
-        ${button(icon('plus', 20) + '手动记录', 'manual', 'secondary full')}${button(icon('watch', 20) + '导入设备', 'import', 'secondary full')}</div>`);
+      case 'review-add': return sheet('补录或导入', `<div class="review-add-options">
+        ${button(icon('plus', 20) + '<span>手动记录</span>' + icon('arrow', 16), 'manual', 'secondary')}
+        ${button(icon('watch', 20) + '<span>导入设备</span>' + icon('arrow', 16), 'import', 'secondary')}</div>`);
       case 'manual': return trainingForm(plan, false, overlay.measured);
       case 'workout-timer': return sheet('训练计时', `<div class="workout-timer">
         <p>${escape(plan.title)}</p><time class="timer-elapsed" aria-label="已用时间">00:00</time></div>

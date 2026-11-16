@@ -954,7 +954,7 @@ async function verifyCustomProjects() {
   await clickLead('tab', 'log');
   await clickLead('review-add');
   await includes(lead('.sheet h3'), '补录或导入');
-  await includes(lead('.sheet-buttons'), '导入设备');
+  await includes(lead('.review-add-options'), '导入设备');
   await clickLead('manual');
   const input = lead('.sheet input[name="title"]');
   const project = JSON.stringify(input);
@@ -1249,6 +1249,21 @@ async function verifyNarrowTrainingSummary() {
   await waitForHeatScroll(`weeks.scrollLeft < ${latest - 40}`);
   assert.equal(await evaluate('document.documentElement.scrollLeft'), 0);
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await clickLead('review-add');
+  assert.ok(await evaluate(`(async () => {
+    const options = document.querySelector(${JSON.stringify(lead('.review-add-options'))});
+    await Promise.allSettled(options.closest('.sheet').getAnimations().map(animation => animation.finished));
+    const [manual, device] = options.children;
+    const [top, bottom] = [manual, device].map(button => button.getBoundingClientRect());
+    const singleLine = button => {
+      const range = document.createRange();
+      range.selectNodeContents(button.querySelector('span'));
+      return range.getClientRects().length === 1;
+    };
+    return top.left === bottom.left && top.width === options.clientWidth && bottom.width === top.width &&
+      top.height === bottom.height && top.bottom < bottom.top && singleLine(manual) && singleLine(device);
+  })()`), 'Both recording options are equal-width rows with single-line labels at 320px');
+  await clickLead('close');
 }
 let failed = false;
 try {

@@ -665,6 +665,10 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 .heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding: 4px; }
 .review-day + .review-day { margin-block-start: 18px; }
 .review-day h3 { color: var(--muted); font-size: 13px; font-weight: 680; padding-inline: 2px; }
+.review-add-options { display: grid; gap: 10px; }
+.review-add-options button { justify-content: start; min-height: 48px; gap: 10px; padding-inline: 14px; }
+.review-add-options button span { white-space: nowrap; }
+.review-add-options button svg:last-child { margin-inline-start: auto; color: var(--muted); }
 .review-record-actions { margin-block-start: 8px; }
 .heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
 .heat-legend i { --heat-size: 8px; }
