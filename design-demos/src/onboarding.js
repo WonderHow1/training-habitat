@@ -31,13 +31,18 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
   view.hidden = true;
   view.setAttribute('aria-label', '新用户引导');
   screen.append(view);
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const easing = getComputedStyle(document.body).getPropertyValue('--glass-ease').trim();
   let draft;
   let step;
+  let panel;
+  let leaving;
+  let exit;
   let color;
   let timer;
 
   function updateWarning() {
-    const warning = view.querySelector('.onboarding-warning');
+    const warning = panel.querySelector('.onboarding-warning');
     if (!warning) return;
     const minutes = Number(draft.minutes);
     warning.textContent = draft.minutes && minutes < MIN_DAILY_GOAL ? `每日目标至少 ${MIN_DAILY_GOAL} 分钟。` :
@@ -45,15 +50,19 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
   }
 
   function updatePetPreview() {
-    const preview = view.querySelector('.onboarding-pet-preview');
+    const preview = panel.querySelector('.onboarding-pet-preview');
     preview.dataset.species = draft.species;
     preview.parentElement.setAttribute('aria-label', `摸摸${petSpecies[draft.species]}`);
     drawScene(preview);
   }
 
   function show(index) {
+    const previous = panel;
+    const direction = Math.sign(index - step);
     step = index;
-    view.dataset.step = ['goal', 'pet', 'habitat'][index];
+    panel = document.createElement('div');
+    panel.className = 'onboarding-step';
+    panel.dataset.step = ['goal', 'pet', 'habitat'][index];
     const titles = ['设定每日训练目标', '领养宠物', '选择栖息地'];
     const contents = [
       () => `<div class="onboarding-goal"><label class="goal-entry">
@@ -69,7 +78,7 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
     const fullScene = index === 2 ? `<canvas class="onboarding-habitat-art" width="88" height="192" data-portrait="onboarding" data-centered-pet
       data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>
       <button type="button" class="scene-pet-touch" aria-label="摸摸${petSpecies[draft.species]}"></button>` : '';
-    view.innerHTML = `${fullScene}<form class="onboarding-form">
+    panel.innerHTML = `${fullScene}<form class="onboarding-form">
       <header class="onboarding-head">
         <h2 tabindex="-1">${titles[index]}</h2>
       </header>
@@ -78,44 +87,73 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
         <button type="submit">${index === 2 ? '开始训练' : '继续'} ${icon('arrow', 16)}</button>
       </div>
     </form>`;
-    view.scrollTop = 0;
+    leaving?.remove();
+    leaving = null;
+    if (previous) {
+      previous.inert = true;
+      previous.querySelector('[id="onboarding-warning"]')?.removeAttribute('id');
+      if (motion.matches) previous.remove();
+      else {
+        leaving = previous;
+        previous.getAnimations().forEach(animation => animation.cancel());
+        const distance = previous.dataset.step === 'habitat' ? 0 : -direction * 20;
+        previous.animate([
+          { opacity: 1, transform: 'none' },
+          { opacity: 0, transform: `translateX(${distance}px)` }
+        ], { duration: 200, easing }).finished.then(() => {
+          previous.remove();
+          if (leaving === previous) leaving = null;
+        }, () => {});
+      }
+    }
+    view.append(panel);
     if (index === 1) {
       updatePetPreview();
-      const preview = view.querySelector('.onboarding-pet-preview');
+      const preview = panel.querySelector('.onboarding-pet-preview');
       animatePet(preview, preview.parentElement);
-      view.querySelectorAll('.onboarding-choice .avatar').forEach(canvas => drawScene(canvas));
+      panel.querySelectorAll('.onboarding-choice .avatar').forEach(canvas => drawScene(canvas));
     }
     if (index === 2) {
-      const preview = view.querySelector('.onboarding-habitat-art');
+      const preview = panel.querySelector('.onboarding-habitat-art');
       drawScene(preview);
-      animatePet(preview, view.querySelector('.scene-pet-touch'));
+      animatePet(preview, panel.querySelector('.scene-pet-touch'));
+    }
+    if (previous && !motion.matches) {
+      const distance = index === 2 ? 0 : direction * 28;
+      panel.animate([
+        { opacity: 0, transform: `translateX(${distance}px)` },
+        { opacity: 1, transform: 'none' }
+      ], { duration: 320, easing });
     }
     updateWarning();
-    view.querySelector('h2').focus({ preventScroll: true });
+    panel.querySelector('h2').focus({ preventScroll: true });
   }
 
   view.addEventListener('input', event => {
+    if (!panel?.contains(event.target) || view.inert) return;
     const input = event.target;
     draft[input.name] = input.value;
     input.setCustomValidity('');
     updateWarning();
   });
   view.addEventListener('change', event => {
+    if (!panel?.contains(event.target) || view.inert) return;
     const input = event.target;
     draft[input.name] = input.value;
     if (input.name === 'species') updatePetPreview();
     if (input.name === 'habitat') {
-      const preview = view.querySelector('.onboarding-habitat-art');
+      const preview = panel.querySelector('.onboarding-habitat-art');
       preview.dataset.habitat = input.value;
       drawScene(preview);
     }
     updateWarning();
   });
   view.addEventListener('click', event => {
-    if (event.target.closest('[data-back]')) show(step - 1);
+    if (panel?.contains(event.target) && !view.inert && event.target.closest('[data-back]')) show(step - 1);
   });
   view.addEventListener('submit', event => {
     event.preventDefault();
+    if (!panel?.contains(event.target) || view.inert) return;
     const data = Object.fromEntries(new FormData(event.target));
     Object.assign(draft, data);
     if (step === 1 && !draft.name.trim()) {
@@ -128,23 +166,43 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
     else show(step + 1);
   });
 
-  function stop() {
-    clearInterval(timer);
+  function hide() {
     view.hidden = true;
-    view.innerHTML = '';
+    view.replaceChildren();
+    panel = leaving = null;
+  }
+
+  function stop({ animate = false } = {}) {
+    clearInterval(timer);
+    exit?.cancel();
+    exit = null;
+    view.inert = true;
+    if (!animate || view.hidden || motion.matches) {
+      hide();
+      return;
+    }
+    const fade = view.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 320, easing, fill: 'forwards' });
+    exit = fade;
+    fade.finished.then(() => {
+      if (exit !== fade) return;
+      hide();
+      fade.cancel();
+      exit = null;
+    }, () => {});
   }
 
   return {
-    get active() { return !view.hidden; },
+    get active() { return !view.hidden && !view.inert; },
     start() {
       stop();
       draft = { minutes: String(DEFAULT_DAILY_GOAL), name: '团团', species: 'cat', habitat: 'garden' };
       color = 0;
       view.style.backgroundColor = onboardingColors[color];
       view.hidden = false;
+      view.inert = false;
       show(0);
       timer = setInterval(() => {
-        if (document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (document.hidden || motion.matches) return;
         color = (color + 1) % onboardingColors.length;
         view.style.backgroundColor = onboardingColors[color];
       }, onboardingColorInterval);

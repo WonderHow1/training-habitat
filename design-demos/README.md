@@ -1,6 +1,6 @@
 # 像素宠物健身 iOS 原型
 
-2026 年 11 月 17 日确认以「训练栖地 · Liquid Glass」作为产品原型定稿，Git 标签为 `prototype-v1.0`。
+2026 年 11 月 17 日确认以「训练栖地 · Liquid Glass」作为产品原型定稿（`prototype-v1.0`）。当前版本 `prototype-v1.1` 为新用户引导加入前进、返回和进入栖息地的转场，支持系统的「减少动态效果」设置。
 
 双击 [训练栖地 · Liquid Glass](ios-prototype.html) 试用日常流程，或打开 [新用户引导原型](new-user.html) 体验首次启动。日常原型的四台手机可以独立操作。初稿见 [六稿总览](thumbs.html)。
 

@@ -112,7 +112,7 @@ function createPhone(container) {
     finish(profile) {
       if (!applyOnboardingProfile(profile)) return;
       storeOnboardingProfile(profile);
-      onboarding.stop();
+      onboarding.stop({ animate: true });
       render();
       habitatEntry.querySelector('.habitat-continue').focus({ preventScroll: true });
     }

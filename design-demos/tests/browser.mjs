@@ -89,7 +89,7 @@ async function click(selector, verticalPosition = .5) {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return [];
     if (!el.checkVisibility()) throw new Error('Control is not visible');
-    await Promise.allSettled((el.closest('.sheet, .habitat-entry')?.getAnimations() ?? []).map(animation => animation.finished));
+    await Promise.allSettled((el.closest('.sheet, .habitat-entry, .onboarding-step')?.getAnimations() ?? []).map(animation => animation.finished));
     el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
@@ -570,8 +570,29 @@ async function verifyOnboarding() {
   await navigate('new-user.html', 320, 700);
   await includes('.board-nav a[href="ios-prototype.html"]', '日常使用原型');
   const screen = JSON.stringify(lead('.onboarding'));
-  const heading = lead('.onboarding h2');
-  const submitStep = () => click(lead('.onboarding button[type="submit"]'));
+  const activeStep = '.onboarding-step:not([inert]) ';
+  const heading = lead(activeStep + 'h2');
+  const submitStep = () => click(lead(activeStep + 'button[type="submit"]'));
+  const back = () => click(lead(activeStep + '[data-back]'));
+  const verifyTransition = async (direction, from, to) => {
+    assert.ok(await evaluate(`(async () => {
+      const view = document.querySelector(${screen});
+      const active = view.querySelector('.onboarding-step:not([inert])');
+      const previous = view.querySelector('.onboarding-step[inert]');
+      if (previous?.dataset.step !== '${from}' || active?.dataset.step !== '${to}' ||
+        document.activeElement !== active.querySelector('h2')) return false;
+      const [entrance] = active.getAnimations();
+      const [exit] = previous.getAnimations();
+      if (!entrance || !exit) return false;
+      const [start, finish] = entrance.effect.getKeyframes();
+      const [exitStart, exitFinish] = exit.effect.getKeyframes();
+      const shift = new DOMMatrixReadOnly(start.transform).m41;
+      const exitsWithFade = Number(exitStart.opacity) === 1 && Number(exitFinish.opacity) === 0;
+      await Promise.all([entrance.finished, exit.finished]);
+      return Math.sign(shift) === ${direction} && Number(start.opacity) === 0 &&
+        Number(finish.opacity) === 1 && exitsWithFade && view.children.length === 1;
+    })()`), `Onboarding animates from ${from} to ${to}, then removes the previous page`);
+  };
   const checkHeading = async title => {
     await includes(heading, title);
     assert.equal(await evaluate(`document.querySelector(${screen}).querySelector('progress, [role="progressbar"]')`), null);
@@ -622,6 +643,7 @@ async function verifyOnboarding() {
   await change(goal, '121');
   await includes(warning, '超过 2 小时');
   await submitStep();
+  await verifyTransition(1, 'goal', 'pet');
   await checkHeading('领养宠物');
   const petPreview = JSON.stringify(lead('.onboarding-pet-preview'));
   const cat = await evaluate(`document.querySelector(${petPreview}).toDataURL()`);
@@ -674,13 +696,16 @@ async function verifyOnboarding() {
       getComputedStyle(options.parentElement.querySelector('input[name="name"]')).textAlign === 'center';
   })()`), 'The preview fits above all ten illustrated choices on a 320px screen');
   await change(lead('.onboarding input[name="name"]'), '小栗');
-  await click(lead('.onboarding [data-back]'));
+  await back();
+  await verifyTransition(-1, 'pet', 'goal');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(goal)}).value`), '121');
   await includes(warning, '避免过度训练');
   await submitStep();
+  await verifyTransition(1, 'goal', 'pet');
   await screenshot('new-user-pet');
   assert.equal(await evaluate(`document.querySelector(${screen}).querySelector('input[name="species"]:checked').value`), 'rabbit');
   await submitStep();
+  await verifyTransition(0, 'pet', 'habitat');
   await checkHeading('选择栖息地');
   const preview = JSON.stringify(lead('.onboarding-habitat-art'));
   assert.ok(await evaluate(`(() => {
@@ -691,9 +716,19 @@ async function verifyOnboarding() {
       getComputedStyle(canvas.parentElement.querySelector('h2')).color === 'rgb(255, 255, 255)';
   })()`), 'The habitat preview fills the phone screen');
   await verifyCenteredHabitatChoices(lead('.onboarding-habitat-art'), lead('.onboarding select[name="habitat"]'));
+  await back();
+  await verifyTransition(-1, 'habitat', 'pet');
+  await submitStep();
+  await verifyTransition(0, 'pet', 'habitat');
   await screenshot('new-user-habitat');
   await submitStep();
-  assert.equal(await evaluate(`document.querySelector(${screen}).hidden`), true);
+  assert.ok(await evaluate(`(async () => {
+    const view = document.querySelector(${screen});
+    const fade = view.getAnimations().find(animation => animation.effect.getKeyframes().some(frame => Number(frame.opacity) === 0));
+    if (!fade || !view.inert || view.hidden || !document.activeElement.matches('.habitat-continue')) return false;
+    await fade.finished;
+    return view.hidden;
+  })()`), 'Finishing fades the onboarding into the interactive habitat');
   assert.equal(await inHabitat(), true);
   await includes(lead('.habitat-entry-header'), '小栗');
   await includes(lead('.habitat-entry-header .pet-attributes'), '年龄0 天');
@@ -707,6 +742,16 @@ async function verifyOnboarding() {
   await includes(lead('.today-remaining'), '你距离目标还有121分钟');
   await click('#reset');
   await includes(heading, '设定每日训练目标');
+  await cmd('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await submitStep();
+  await checkHeading('领养宠物');
+  assert.ok(await evaluate(`(() => {
+    const view = document.querySelector(${screen});
+    return view.children.length === 1 && view.firstElementChild.getAnimations().length === 0;
+  })()`), 'Reduced motion switches steps immediately');
+  await back();
+  await checkHeading('设定每日训练目标');
+  await cmd('Emulation.setEmulatedMedia', { features: [] });
 }
 
 async function habitatPoint() {
