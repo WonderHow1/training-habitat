@@ -714,7 +714,7 @@ a { color: inherit; }
 }
 .scene-pet-touch {
   position: absolute;
-  inset: 50% auto auto 50%;
+  inset: calc(50% + var(--pet-offset-y, 0px)) auto auto calc(50% + var(--pet-offset-x, 0px));
   width: min(34%, 160px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
@@ -1761,20 +1761,22 @@ function restore(state, petId) {
   return true;
 }
 
-function petArt(colors, scarf, reaction, art) {
+function pixelSprite(art) {
   const pixels = art.trim().split('\n').map(row => row.trim());
+  const width = Math.max(...pixels.map(row => row.length));
+  return { pixels: pixels.map(row => row.padEnd(width, '.')), width };
+}
+
+function petArt(colors, scarf, art) {
   return {
-    pixels,
-    width: Math.max(...pixels.map(row => row.length)),
+    ...pixelSprite(art),
     scarf,
-    reaction,
     colors: { W: '#fff5df', M: colors.I, E: colors.I, ...colors }
   };
 }
 
 const petSprites = {
-  cat: petArt({ I: '#633e49', G: '#d87870', L: '#f4ad84', B: '#ef8588', C: '#ffe2b4', E: '#392831' }, 15,
-    [[0, -1], [0, -4], [0, -5], [0, -3], [0, 0], [0, 1], [0, 0]], `
+  cat: petArt({ I: '#633e49', G: '#d87870', L: '#f4ad84', B: '#ef8588', C: '#ffe2b4', E: '#392831' }, 15, `
       ......II.......II......
       .....IBGI.....IGBI.....
       .....IBLGI...IGLBI.....
@@ -1795,8 +1797,7 @@ const petSprites = {
       ......IIGGGGGGGGGIIII..
       ......IICIIIIIICII.....
     `),
-  dog: petArt({ I: '#563c32', G: '#a9643b', L: '#e2a96c', B: '#ed9387', C: '#fff0c8', E: '#33262b' }, 15,
-    [[1, 0], [-1, -1], [1, 0], [-1, -1], [1, 0], [-1, 0], [0, 0]], `
+  dog: petArt({ I: '#563c32', G: '#a9643b', L: '#e2a96c', B: '#ed9387', C: '#fff0c8', E: '#33262b' }, 15, `
       .......IIIIIIII........
       .....IILLLLCLLLII......
       ...IIGILLLCCCLLIGII....
@@ -1816,8 +1817,7 @@ const petSprites = {
       .......IGGGGGLLGGI.....
       .......IICIIIICII......
     `),
-  rabbit: petArt({ I: '#534763', G: '#a893bf', L: '#e4d9f0', B: '#e6a4be', C: '#fff3ed', E: '#352c44' }, 16,
-    [[0, -1], [0, -5], [0, -2], [0, 0], [0, -4], [0, -2], [0, 0]], `
+  rabbit: petArt({ I: '#534763', G: '#a893bf', L: '#e4d9f0', B: '#e6a4be', C: '#fff3ed', E: '#352c44' }, 16, `
       .....III.....III.....
       ....ILBBI...IBBLI....
       ....ILBBI...IBBLI....
@@ -1839,8 +1839,7 @@ const petSprites = {
       .......IIGGGGIII.....
       ......IICIIICII......
     `),
-  hamster: petArt({ I: '#5b4030', G: '#be7d47', L: '#edb968', B: '#ed9883', C: '#fff0c3', E: '#392936' }, 16,
-    [[0, 1], [0, 0], [0, -1], [0, 0], [0, 1], [0, 0]], `
+  hamster: petArt({ I: '#5b4030', G: '#be7d47', L: '#edb968', B: '#ed9883', C: '#fff0c3', E: '#392936' }, 16, `
       .....IIII.....IIII.....
       ....IBBBI.....IBBBI....
       ....ILGGIIIIIIIGGLI....
@@ -1858,8 +1857,7 @@ const petSprites = {
       ....IIGGGGGGGGGGII.....
       ......IICIIIICII.......
     `),
-  guineaPig: petArt({ I: '#533832', G: '#8e5541', L: '#c98159', B: '#eaa194', C: '#f5ded1', E: '#342931' }, 17,
-    [[-1, 0], [1, 0], [2, 0], [0, -2], [-1, 0], [0, 0]], `
+  guineaPig: petArt({ I: '#533832', G: '#8e5541', L: '#c98159', B: '#eaa194', C: '#f5ded1', E: '#342931' }, 17, `
       ..........IIIIII........
       .......IIILLLLLIIIII....
       .....IIGGLLLLLLILBBGI...
@@ -1876,8 +1874,7 @@ const petSprites = {
       ...IIGGGGGGGGGGGGGGII...
       .....IICIIIIIICII.......
     `),
-  chinchilla: petArt({ I: '#45405a', G: '#77769d', L: '#aaa9c4', B: '#d8a1b6', C: '#e7e7f6', E: '#292639' }, 15,
-    [[-1, -2], [0, -5], [1, -6], [2, -4], [1, -1], [0, 0], [0, -1], [0, 0]], `
+  chinchilla: petArt({ I: '#45405a', G: '#77769d', L: '#aaa9c4', B: '#d8a1b6', C: '#e7e7f6', E: '#292639' }, 15, `
       ....IIII.....IIII.......
       ...IGBBGI...IGBBGI......
       ..IGBBBGLIIILGBBBGI.....
@@ -1896,8 +1893,7 @@ const petSprites = {
       ......IGGGGGGGLLGGI.....
       ......IICIIICIIIII......
     `),
-  parrot: petArt({ I: '#344c50', G: '#397b7b', L: '#70c8ac', B: '#eaa45c', C: '#f9df87', E: '#242e3d' }, 14,
-    [[0, -2], [-2, -4], [0, -3], [2, -5], [0, -3], [-1, -2], [0, 0]], `
+  parrot: petArt({ I: '#344c50', G: '#397b7b', L: '#70c8ac', B: '#eaa45c', C: '#f9df87', E: '#242e3d' }, 14, `
       ..........II.........
       .........IGII........
       ........IGLGI........
@@ -1917,8 +1913,7 @@ const petSprites = {
       .IGIIIBBIBBI.........
       ..II..II.II..........
     `),
-  turtle: petArt({ I: '#37473a', G: '#638450', L: '#a9bf70', B: '#e6a184', C: '#dcc981', E: '#243930' }, 18,
-    [[0, 1], [0, 1], [1, 0], [2, -1], [1, -1], [0, 0]], `
+  turtle: petArt({ I: '#37473a', G: '#638450', L: '#a9bf70', B: '#e6a184', C: '#dcc981', E: '#243930' }, 18, `
       .........IIIIII.........
       .......IIGGCCGGII.......
       .....IIGCLCCCCLCGII.....
@@ -1934,8 +1929,7 @@ const petSprites = {
       ....ILLIIIIIIIILLII.....
       .....II.........II......
     `),
-  hedgehog: petArt({ I: '#533345', G: '#7c576a', L: '#eac5a6', B: '#e9929d', C: '#fff0d1', E: '#32263a' }, 17,
-    [[0, 1], [-2, 1], [-2, 0], [0, -2], [1, -1], [0, 0]], `
+  hedgehog: petArt({ I: '#533345', G: '#7c576a', L: '#eac5a6', B: '#e9929d', C: '#fff0d1', E: '#32263a' }, 17, `
       ..........I.............
       ......I..IGI..I.........
       ....IIGIIGGGIIGI........
@@ -1952,8 +1946,7 @@ const petSprites = {
       ...IIGGGGGGGGGGGGII.....
       .....IICIIIICII.........
     `),
-  goldfish: petArt({ I: '#80504d', G: '#d57351', L: '#fbab62', B: '#ef8181', C: '#ffe2a1', E: '#492d38' }, 17,
-    [[-2, -1], [-1, -3], [1, -4], [3, -2], [2, -1], [0, 0]], `
+  goldfish: petArt({ I: '#80504d', G: '#d57351', L: '#fbab62', B: '#ef8181', C: '#ffe2a1', E: '#492d38' }, 17, `
       ..........III...........
       .........IGLGI..........
       .III....IGLLLLIIIII.....
@@ -1970,6 +1963,198 @@ const petSprites = {
       ..........IGLGI.........
       ...........III..........
     `)
+};
+
+function patchPetSprite(species, row, column, patch) {
+  const pixels = [...petSprites[species].pixels];
+  patch.forEach((strip, offset) => {
+    const line = pixels[row + offset];
+    pixels[row + offset] = line.slice(0, column) + strip + line.slice(column + strip.length);
+  });
+  return pixelSprite(pixels.join('\n'));
+}
+
+const catStretch = pixelSprite(`
+  ....................II...
+  ...................IGI...
+  .................IIGLI...
+  ..............IIIGLLI....
+  ....I...I..IIIGLLLGI.....
+  ...IGI.IGIIGLLLLLLLI.....
+  ..IGLIIIGLLLLCCCCCLGI....
+  .IGLLLLLLLLLCCCCCCCGI....
+  .IGLMLMLCLLLCCCCCCLGI....
+  .IGBLLLMCGLLLGIIIIII.....
+  ..IGLLLCCGIIGI....IGI....
+  ..IIIGGGGGGIII....IGI....
+  .ICCGIIIICCGII....ICI....
+  .IIII....IIII.....III....
+`);
+const catReach = pixelSprite([...catStretch.pixels.slice(0, 11),
+  '.IIIIGGGGGGIII....IGI....', 'ICCCGIIIIICCGI....ICI....', 'IIIII.....IIII.....III....'
+].join('\n'));
+
+const dogTailUp = patchPetSprite('dog', 9, 17, [
+  '....II', '...IGI', '..IGLI', '..IGLI', '.IGGI.', '.IGGI.', 'IGGI..', 'GI....'
+]);
+const dogTailLow = patchPetSprite('dog', 9, 17, [
+  '......', '......', '......', '......', '....II', '...IGI', 'GGGGI.', 'GI....'
+]);
+
+const rabbitCrouch = pixelSprite(petSprites.rabbit.pixels.filter((_, row) => ![4, 16, 17].includes(row)).join('\n'));
+
+const hamsterPuff = patchPetSprite('hamster', 7, 0, [
+  'IGBBBBLLLCCCLLLBBBBLLGI',
+  'IGBBCCLLCCMCCLLCCBBGGGI',
+  'IGBBCCLCCCMCCCLCCBBGGGI',
+  'IGGCCCCCCCCCCCCCCCGGGGI'
+]);
+const hamsterChew = { ...hamsterPuff, pixels: hamsterPuff.pixels.map((row, index) =>
+  index === 8 ? row.replace('CCMCC', 'CMMMC') : row) };
+
+const guineaSqueak = patchPetSprite('guineaPig', 7, 19, [
+  'LBBMI', 'LMMMI', 'CMBMI', 'CGGGI'
+]);
+
+const chinchillaRoll = pixelSprite(`
+  ........IIIIII.........
+  .....IIIGGGGGGIII......
+  ...IIGGLLGGGGLLGGII....
+  ..IGGLLLLCCCLLLLGGGI...
+  .IGLLLCCCCCCCCCCLLGGI..
+  IGLCCCCWCCCCCCWCCCLGGI.
+  IGLLCCCLLLCCCLLLCCCGGI.
+  .IGGLCCCCCMMCCCCLCGGGI.
+  ..IIGGCCCCCCCCCGGGGII..
+  ....IIGGGGGGGGGGGII....
+  ......IIIIIIIIIII......
+`);
+
+const parrotWings = pixelSprite(`
+  ..............II.........
+  .............IGII........
+  ............IGLGI........
+  ...........IGLLLLIII.....
+  .II.......IGLLLLLCCCI....
+  IGGI.....IGLLLLLCCEEBI...
+  ILLGI...IGLLLLLLCCEEBBI..
+  .IGLGI.IGLLLLLLLLCCBBBI..
+  ..IGLGIGLLLLLLLLLCCMMI...
+  ...IGLLLGGGLLLLLLCCGI....
+  ....IGLLLLGLGLLLLCGI.....
+  .....IGGLLLGLGLLCGI......
+  ......IIGGGLGLLCGI.......
+  .......IIIGLLLLCGI.......
+  .......IGLLLLLCGI........
+  .......IGGGGGGI..........
+  .........IBBIBBI.........
+  ..........II.II..........
+`);
+
+const turtlePeek = patchPetSprite('turtle', 5, 19, [
+  'CI...', 'GIILI', 'GIILI', 'GGILI', 'GIIGI', 'IIGI.'
+]);
+const turtleShell = pixelSprite(`
+  .........IIIIII.........
+  .......IIGGCCGGII.......
+  .....IIGCLCCCCLCGII.....
+  ....IGCLCCCCCCCCLCGI....
+  ...IGCLCCCGGCCCCCLCGI...
+  ..IGCLCCGLCCLGCCCCLCGI..
+  ..IGCLCCGLCCLGCCCCLGGI..
+  .IGCCLCCCGGCCCCCLCCGGI..
+  .IGGCCCCCLLCCCCCCGGGGI..
+  ..IGGGGGGGGGGGGGGGGII...
+  ...IIIIIIIIIIIIIIIII....
+`);
+
+const hedgehogBall = pixelSprite(`
+  .......I.I.I........
+  .....IIGIGII........
+  ....IGGGCGGGIII.....
+  ..IIGCGGGCGGGGI....
+  ..IGGGCGGGCGGGGII..
+  .IGCGGGGGCGGGGCGI..
+  .IGGGCGGGGGCGGGGII.
+  .IGCGGGCGGGGCGGGGI.
+  .IGGGCGGGGGGGCGGGI.
+  ..IGGGGGCGGGGGGGI..
+  ...IIGGGGGGGGGII...
+  .....IIIIIIIII.....
+`);
+
+const petReactionEffects = {
+  note: { color: '#654a8a', pixels: ['..###', '..#..', '..#..', '.##..', '###..', '.#...'] },
+  dust: { color: '#d4a576', pixels: ['.#.....#', '...##...', '......#.', '#...#...'] },
+  bubbles: { color: '#3c91b4', pixels: ['.##...', '#..#..', '.##...', '.....#', '....#.', '......'] }
+};
+
+const petReactions = {
+  cat: {
+    still: { sprite: catStretch },
+    frames: [
+      { sprite: catStretch, duration: 185 }, { sprite: catReach, duration: 490 },
+      { sprite: catStretch, duration: 180 }, { blink: true, duration: 140 }
+    ]
+  },
+  dog: {
+    still: { sprite: dogTailUp },
+    frames: Array.from({ length: 8 }, (_, index) => ({ sprite: index % 2 ? dogTailLow : dogTailUp, duration: 95 }))
+  },
+  rabbit: {
+    still: { sprite: rabbitCrouch },
+    frames: [
+      { sprite: rabbitCrouch, duration: 100 }, { y: -5, duration: 95 }, { y: -8, duration: 115 },
+      { y: -4, duration: 95 }, { sprite: rabbitCrouch, duration: 90 }, { y: -4, duration: 95 },
+      { y: -6, duration: 105 }, { y: -2, duration: 90 }, { sprite: rabbitCrouch, duration: 110 }
+    ]
+  },
+  hamster: {
+    still: { sprite: hamsterPuff },
+    frames: Array.from({ length: 6 }, (_, index) => ({ sprite: index % 2 ? hamsterChew : hamsterPuff, duration: 125 }))
+  },
+  guineaPig: {
+    still: { sprite: guineaSqueak },
+    frames: [
+      { sprite: guineaSqueak, effect: ['note', 24, 7], duration: 160 }, { effect: ['note', 25, 4], duration: 145 },
+      { sprite: guineaSqueak, effect: ['note', 25, 2], duration: 185 }, { effect: ['note', 26, 0], duration: 140 }
+    ]
+  },
+  chinchilla: {
+    still: { sprite: chinchillaRoll },
+    frames: [
+      { sprite: chinchillaRoll, x: -2, effect: ['dust', -3, 17], duration: 185 },
+      { sprite: chinchillaRoll, x: 2, flip: true, effect: ['dust', 20, 16], duration: 185 },
+      { sprite: chinchillaRoll, x: -1, effect: ['dust', 3, 14], duration: 185 },
+      { effect: ['dust', 20, 16], duration: 160 }
+    ]
+  },
+  parrot: {
+    still: { sprite: parrotWings },
+    frames: Array.from({ length: 7 }, (_, index) => ({ sprite: index % 2 ? undefined : parrotWings, duration: 105 }))
+  },
+  turtle: {
+    still: { sprite: turtleShell },
+    frames: [{ sprite: turtlePeek, duration: 135 }, { sprite: turtleShell, duration: 600 }, { sprite: turtlePeek, duration: 170 }]
+  },
+  hedgehog: {
+    still: { sprite: hedgehogBall },
+    frames: [
+      { sprite: hedgehogBall, duration: 150 }, { sprite: hedgehogBall, x: -3, flip: true, duration: 150 },
+      { sprite: hedgehogBall, x: -5, duration: 165 }, { sprite: hedgehogBall, x: -3, flip: true, duration: 145 },
+      { sprite: hedgehogBall, x: -1, duration: 125 }
+    ]
+  },
+  goldfish: {
+    still: { effect: ['bubbles', 23, 3] },
+    frames: [
+      { x: -2, flip: true, effect: ['bubbles', 0, 6], duration: 150 },
+      { x: -3, y: -3, flip: true, effect: ['bubbles', 1, 2], duration: 180 },
+      { x: 1, y: -3, effect: ['bubbles', 23, 5], duration: 180 },
+      { x: 3, y: -1, effect: ['bubbles', 24, 2], duration: 150 },
+      { y: -1, effect: ['bubbles', 24, 0], duration: 150 }
+    ]
+  }
 };
 
 const gardenPalette = {
@@ -1992,7 +2177,11 @@ const palettes = {
 };
 
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
-  const { pixels, width, colors, scarf } = petSprites[species] ?? petSprites.cat;
+  const pet = petSprites[species] ?? petSprites.cat;
+  const { colors, scarf } = pet;
+  const { pixels, width } = pose?.sprite ?? pet;
+  x += (pose?.walk?.x ?? 0) * scale;
+  y += (pose?.walk?.y ?? 0) * scale;
   const restX = x;
   const restY = y;
   x += (pose?.x ?? 0) * scale;
@@ -2015,27 +2204,30 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   pixels.forEach((row, j) => [...row].forEach((color, i) => {
     if (color === '.') return;
     ctx.fillStyle = pose?.blink && color === 'E' && pixels[j + 1]?.[i] === 'E' ? colors.L : colors[color];
-    ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
+    const column = pose?.flip ? width - i - 1 : i;
+    const lift = pose?.footstep && j === pixels.length - 1 && (column < width / 2) === (pose.footstep === 1) ? 1 : 0;
+    ctx.fillRect(left + column * scale, top + (j - lift) * scale, scale, scale);
   }));
-  if (level > 1) {
+  if (level > 1 && !pose?.sprite) {
     ctx.fillStyle = '#6c6564';
     ctx.fillRect(x + 5 * scale, y + scarf * scale, 15 * scale, 2 * scale);
     ctx.fillStyle = '#f6d77d';
     ctx.fillRect(x + 5 * scale, y + scarf * scale, 14 * scale, scale);
     ctx.fillRect(x + 16 * scale, y + (scarf + 1) * scale, 3 * scale, 3 * scale);
   }
-  if (level > 2) {
+  if (level > 2 && !pose?.sprite) {
     ctx.fillStyle = '#8da55b';
     ctx.fillRect(x + 11 * scale, y - 2 * scale, scale, 5 * scale);
     ctx.fillRect(x + 12 * scale, y - 2 * scale, 4 * scale, 2 * scale);
   }
   ctx.restore();
-  if (pose?.heart) {
-    const heart = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
-    const left = Math.min(x + 23 * scale, ctx.canvas.width - 7 * scale);
-    const top = Math.max(0, y + (15 - pixels.length) * scale);
-    ctx.fillStyle = '#e46d8e';
-    heart.forEach((row, j) => [...row].forEach((pixel, i) => {
+  if (pose?.effect) {
+    const [type, dx, dy] = pose.effect;
+    const { color, pixels: effect } = petReactionEffects[type];
+    const left = Math.min(restX + dx * scale, ctx.canvas.width - effect[0].length * scale);
+    const top = restY + dy * scale;
+    ctx.fillStyle = color;
+    effect.forEach((row, j) => [...row].forEach((pixel, i) => {
       if (pixel === '#') ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
     }));
   }
@@ -2178,8 +2370,9 @@ function drawRunningTrack(ctx, canvas, level, faded, species, pose) {
   const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
     x: Math.round(width * .55) - 12, y: portrait ? 103 : 42
   };
-  box(petX - 2, petY + 22, 29, 2, '#885445');
-  box(petX + 1, petY + 24, 23, 1, '#885445');
+  const { x = 0, y = 0 } = pose?.walk ?? {};
+  box(petX + x - 2, petY + y + 22, 29, 2, '#885445');
+  box(petX + x + 1, petY + y + 24, 23, 1, '#885445');
   paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
@@ -2257,6 +2450,10 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose) {
   if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
+function gardenShoreAt(y) {
+  return Math.round(73 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+}
+
 function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, species, pose) {
   const box = (x, y, w, h, color) => {
     ctx.fillStyle = color;
@@ -2282,7 +2479,7 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
     box(x + size, y + size * 3, 2, size * 2, p.turf);
   }
   for (let y = 84; y < 192; y += 3) {
-    const left = Math.round(73 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+    const left = gardenShoreAt(y);
     box(left, y, 88 - left, 3, p.shore);
     box(left + 3, y, 88 - left, 3, p.water);
     if (y % 9 === 0) box(left + 9 + y % 13, y + 1, 7 + y % 8, 1, p.wave);
@@ -2297,8 +2494,9 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
     if (i % 3 === 0) box(x + 1, y - 2, 3, 1, p.flower);
   }
   if (empty) return;
-  box(petX - 2, petY + 23, 28, 2, p.turf);
-  box(petX + 2, petY + 25, 22, 1, p.turf);
+  const { x = 0, y = 0 } = pose?.walk ?? {};
+  box(petX + x - 2, petY + y + 23, 28, 2, p.turf);
+  box(petX + x + 2, petY + y + 25, 22, 1, p.turf);
   paintPet(ctx, petX, petY, 1, level, faded, species, pose);
   box(petX + 32, petY + 1, 1, 5, p.flower);
   box(petX + 30, petY + 3, 5, 1, p.flower);
@@ -2308,11 +2506,46 @@ function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'c
   return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
 }
 
-function animatePet(canvas, target) {
+const petRoute = [[0, 0], [-1, .25], [.84, .65], [.35, .12], [-.65, .85], [0, 0]];
+const restPosition = { x: 0, y: 0, flip: false, step: 0 };
+
+function reactionFrame(reaction, elapsed, reduced) {
+  if (reduced) return elapsed < 650 ? reaction.still : null;
+  for (const frame of reaction.frames) {
+    if (elapsed < frame.duration) return frame;
+    elapsed -= frame.duration;
+  }
+  return null;
+}
+
+function wanderingPet(canvas, target, limit, elapsed) {
+  // Pause near each destination and keep the whole touch target clear of scene controls.
+  const cycle = Math.max(0, elapsed - 3000);
+  const segment = Math.floor(cycle / 4400) % (petRoute.length - 1);
+  const travel = Math.min(1, cycle % 4400 / 3200);
+  const [fromX, fromY] = petRoute[segment];
+  const [toX, toY] = petRoute[segment + 1];
+  const scale = Math.max(canvas.clientWidth / canvas.width, canvas.clientHeight / canvas.height);
+  const rangeX = Math.max(0, Math.floor((canvas.clientWidth - target.offsetWidth) / 2 / scale) - 3);
+  const bottom = limit?.offsetTop ?? canvas.clientHeight;
+  const rangeY = Math.min(22, Math.max(0, Math.floor((bottom - (canvas.clientHeight + target.offsetHeight) / 2 - 8) / scale)));
+  const y = Math.round((fromY + (toY - fromY) * travel) * rangeY);
+  const x = Math.round((fromX + (toX - fromX) * travel) * rangeX);
+  const feetY = centeredPetPosition(canvas, canvas.dataset.species).y + y + 24;
+  const rightEdge = canvas.dataset.habitat === 'garden' ? Math.max(-rangeX, gardenShoreAt(feetY) - canvas.width / 2 - 16) : rangeX;
+  const walking = cycle > 0 && travel < 1;
+  return { x: Math.min(x, rightEdge), y, flip: cycle > 0 && toX < fromX, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0, scale };
+}
+
+function animatePet(canvas, target, { roam = false } = {}) {
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const limit = roam ? canvas.parentElement.querySelector('.pet-scene-panel, .habitat-continue') : null;
   let species = canvas.dataset.species;
   let idleSince = performance.now();
+  let lastPaint = idleSince;
   let touchedAt = -Infinity;
+  let walked = 0;
+  let previousFrame;
   let previousPose = '';
 
   function paint(now) {
@@ -2322,21 +2555,35 @@ function animatePet(canvas, target) {
       touchedAt = -Infinity;
       previousPose = '';
     }
-    const { reaction } = petSprites[species];
-    const elapsed = Math.max(0, now - touchedAt);
-    const index = Math.floor(elapsed / 110);
-    const heart = elapsed < (motion.matches ? 660 : reaction.length * 110);
-    const [x, y] = !motion.matches && heart ? reaction[index] : [0, 0];
-    const blink = !motion.matches && (heart ? index === 2 : (now - idleSince) % 3000 >= 2750);
-    const pose = `${x},${y},${blink},${heart}`;
-    if (pose === previousPose) return;
+    const reduced = motion.matches;
+    const frame = reactionFrame(petReactions[species], Math.max(0, now - touchedAt), reduced);
+    const moving = roam && !reduced;
+    if (moving && !frame) walked += Math.min(100, Math.max(0, now - lastPaint));
+    lastPaint = now;
+    const walks = moving && species !== 'goldfish';
+    const walk = walks ? wanderingPet(canvas, target, limit, walked) : restPosition;
+    const swimPhase = Math.floor(Math.max(0, walked - 3000) / 420) % 8;
+    const x = frame?.x ?? (moving && species === 'goldfish' && !frame ? [0, 1, 2, 1, 0, -1, -2, -1][swimPhase] : 0);
+    const footstep = frame ? 0 : walk.step;
+    const y = frame?.y ?? (footstep === 2 ? -1 : 0);
+    const flip = frame ? Boolean(frame.flip) : walk.flip;
+    const blink = frame?.blink ?? (!frame && !reduced && (now - idleSince) % 3000 >= 2750);
+    const offsetX = walks ? walk.x * walk.scale : 0;
+    const offsetY = walks ? walk.y * walk.scale : 0;
+    const pose = `${offsetX},${offsetY},${walk.x},${walk.y},${x},${y},${flip},${blink},${footstep}`;
+    if (pose === previousPose && frame === previousFrame) return;
     previousPose = pose;
-    drawScene(canvas, { x, y, blink, heart });
+    previousFrame = frame;
+    if (roam) {
+      target.style.setProperty('--pet-offset-x', offsetX + 'px');
+      target.style.setProperty('--pet-offset-y', offsetY + 'px');
+    }
+    drawScene(canvas, { ...frame, walk, x, y, flip, blink, footstep });
   }
 
   function tick(now) {
     if (!canvas.isConnected || target.closest('[inert]')) return;
-    paint(now);
+    if (now - lastPaint >= 65) paint(now);
     requestAnimationFrame(tick);
   }
 
@@ -2940,7 +3187,7 @@ function createPhone(container) {
       </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     const landscape = habitatEntry.querySelector('canvas');
     drawScene(landscape);
-    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'));
+    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'), { roam: true });
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
   }

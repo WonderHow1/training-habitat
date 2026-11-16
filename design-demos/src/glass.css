@@ -325,7 +325,7 @@
 }
 .scene-pet-touch {
   position: absolute;
-  inset: 50% auto auto 50%;
+  inset: calc(50% + var(--pet-offset-y, 0px)) auto auto calc(50% + var(--pet-offset-x, 0px));
   width: min(34%, 160px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);

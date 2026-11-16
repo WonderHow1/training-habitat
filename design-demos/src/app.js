@@ -220,7 +220,7 @@ function createPhone(container) {
       </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     const landscape = habitatEntry.querySelector('canvas');
     drawScene(landscape);
-    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'));
+    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'), { roam: true });
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
   }

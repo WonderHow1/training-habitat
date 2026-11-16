@@ -206,15 +206,39 @@ async function demoDirection(index, glass = false) {
       }
       check();
     })`), 'An untouched pet blinks in the habitat');
-    await click(lead('.scene-pet-touch'));
+    const pet = lead('.scene-pet-touch');
+    assert.ok(await evaluate(`new Promise(resolve => {
+      const target = document.querySelector(${JSON.stringify(pet)});
+      const start = performance.now();
+      function check() {
+        const offset = parseFloat(target.style.getPropertyValue('--pet-offset-x'));
+        if (Math.abs(offset) >= 8) {
+          const rect = target.getBoundingClientRect();
+          const scene = target.parentElement.getBoundingClientRect();
+          resolve(rect.left >= scene.left && rect.right <= scene.right && Math.abs(rect.left + rect.width / 2 - scene.left - scene.width / 2) >= 8);
+        } else if (performance.now() - start > 3800) resolve(false);
+        else requestAnimationFrame(check);
+      }
+      check();
+    })`), 'The pet walks away from the center and the touch target follows inside the scene');
     assert.ok(await evaluate(`(() => {
       const canvas = document.querySelector(${landscape});
-      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      const target = document.querySelector(${JSON.stringify(pet)});
+      const stop = wanderingPet(canvas, target, canvas.parentElement.querySelector('.habitat-continue'), 10600);
+      const feet = centeredPetPosition(canvas, canvas.dataset.species).y + stop.y + 24;
+      return canvas.width / 2 + stop.x + 16 <= gardenShoreAt(feet);
+    })()`), 'The route stays on the grass at its eastern edge');
+    await click(pet);
+    assert.ok(await evaluate(`(() => {
+      const canvas = document.querySelector(${landscape});
+      const { width, height } = canvas;
+      const pixels = canvas.getContext('2d').getImageData(0, 0, width, height).data;
+      const rows = new Set();
       for (let index = 0; index < pixels.length; index += 4) {
-        if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) return true;
+        if (pixels[index] === 99 && pixels[index + 1] === 62 && pixels[index + 2] === 73) rows.add(Math.floor(index / 4 / width));
       }
-      return false;
-    })()`), 'Tapping the full-screen pet shows a pixel heart');
+      return rows.size > 10 && rows.size < petSprites.cat.pixels.length;
+    })()`), 'Tapping the walking cat draws its low stretching silhouette');
     await enterToday();
     await assertPetCentered(lead('.habitat-link .pixel-scene'));
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-link .scene-label'))}) === null`),
@@ -540,11 +564,29 @@ async function verifyOnboarding() {
       rests.add(still);
       preview.parentElement.click();
       const reaction = preview.toDataURL();
-      if (preview.dataset.species !== option.value || reaction === still) return false;
+      const expected = preview.cloneNode();
+      drawScene(expected, petReactions[option.value].frames[0]);
+      if (preview.dataset.species !== option.value || reaction === still || reaction !== expected.toDataURL()) return false;
       reactions.add(reaction);
     }
     return options.length === 10 && rests.size === 10 && reactions.size === 10;
   })()`), 'Each of the ten selectable pets has a distinct portrait and reacts to a tap');
+  assert.ok(await evaluate(`(async () => {
+    const preview = document.querySelector(${petPreview});
+    for (const species of ['dog', 'turtle']) {
+      preview.parentElement.nextElementSibling.querySelector('input[value="' + species + '"]').click();
+      const expected = preview.cloneNode();
+      drawScene(expected, petReactions[species].frames[1]);
+      const nextPose = expected.toDataURL();
+      preview.parentElement.click();
+      const end = performance.now() + 600;
+      while (preview.toDataURL() !== nextPose && performance.now() < end) {
+        await new Promise(requestAnimationFrame);
+      }
+      if (preview.toDataURL() !== nextPose) return false;
+    }
+    return true;
+  })()`), 'The dog switches tail poses and the turtle retracts into its shell');
   await click(lead('.onboarding-choice:has(input[value="rabbit"])'));
   assert.notEqual(await evaluate(`document.querySelector(${petPreview}).toDataURL()`), cat);
   assert.ok(await evaluate(`(() => {

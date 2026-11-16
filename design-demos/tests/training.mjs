@@ -112,9 +112,11 @@ test('pet age advances at local midnight and a memorial retains the age at death
 
 test('all ten species can be adopted with their own attributes', () => {
   const source = readFileSync(new URL('../src/pet-art.js', import.meta.url), 'utf8');
-  const sprites = vm.runInNewContext(source + '\npetSprites');
+  const reactionSource = readFileSync(new URL('../src/pet-reactions.js', import.meta.url), 'utf8');
+  const { sprites, reactions } = vm.runInNewContext(source + '\n' + reactionSource + '\n({ sprites: petSprites, reactions: petReactions })');
   assert.equal(Object.keys(petSpecies).length, 10);
   assert.deepEqual(Object.keys(sprites), Object.keys(petSpecies));
+  assert.deepEqual(Object.keys(reactions), Object.keys(petSpecies));
   for (const [species, name] of Object.entries(petSpecies)) {
     const state = seed('onboarding');
     assert.equal(adopt(state, name, species, 'living'), true, species);
@@ -122,11 +124,18 @@ test('all ten species can be adopted with their own attributes', () => {
     assert.equal(pet.species, species);
     assert.equal(pet.habitat, 'living');
     assert.ok(pet.weightGrams > 0);
-    const { pixels, colors, width, reaction } = sprites[species];
+    const { pixels, colors, width } = sprites[species];
     assert.ok(width <= 25 && pixels.length <= 24);
     assert.ok(pixels.every(row => row.length === width && [...row].every(pixel => pixel === '.' || Object.hasOwn(colors, pixel))));
     assert.ok(pixels.some((row, y) => [...row].some((pixel, x) => pixel === 'E' && pixels[y + 1]?.[x] === 'E')));
-    assert.ok(reaction.some(([x, y]) => x !== 0 || y !== 0));
+    const { still, frames } = reactions[species];
+    assert.ok(still.sprite || still.effect);
+    assert.ok(frames.length >= 3 && frames.every(frame => frame.duration > 0));
+    for (const { sprite } of [still, ...frames]) {
+      if (!sprite) continue;
+      assert.ok(sprite.width <= 28 && sprite.pixels.length <= 24);
+      assert.ok(sprite.pixels.every(row => row.length === sprite.width && [...row].every(pixel => pixel === '.' || Object.hasOwn(colors, pixel))));
+    }
   }
 });
 

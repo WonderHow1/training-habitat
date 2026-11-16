@@ -18,7 +18,11 @@ const palettes = {
 };
 
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
-  const { pixels, width, colors, scarf } = petSprites[species] ?? petSprites.cat;
+  const pet = petSprites[species] ?? petSprites.cat;
+  const { colors, scarf } = pet;
+  const { pixels, width } = pose?.sprite ?? pet;
+  x += (pose?.walk?.x ?? 0) * scale;
+  y += (pose?.walk?.y ?? 0) * scale;
   const restX = x;
   const restY = y;
   x += (pose?.x ?? 0) * scale;
@@ -41,27 +45,30 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   pixels.forEach((row, j) => [...row].forEach((color, i) => {
     if (color === '.') return;
     ctx.fillStyle = pose?.blink && color === 'E' && pixels[j + 1]?.[i] === 'E' ? colors.L : colors[color];
-    ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
+    const column = pose?.flip ? width - i - 1 : i;
+    const lift = pose?.footstep && j === pixels.length - 1 && (column < width / 2) === (pose.footstep === 1) ? 1 : 0;
+    ctx.fillRect(left + column * scale, top + (j - lift) * scale, scale, scale);
   }));
-  if (level > 1) {
+  if (level > 1 && !pose?.sprite) {
     ctx.fillStyle = '#6c6564';
     ctx.fillRect(x + 5 * scale, y + scarf * scale, 15 * scale, 2 * scale);
     ctx.fillStyle = '#f6d77d';
     ctx.fillRect(x + 5 * scale, y + scarf * scale, 14 * scale, scale);
     ctx.fillRect(x + 16 * scale, y + (scarf + 1) * scale, 3 * scale, 3 * scale);
   }
-  if (level > 2) {
+  if (level > 2 && !pose?.sprite) {
     ctx.fillStyle = '#8da55b';
     ctx.fillRect(x + 11 * scale, y - 2 * scale, scale, 5 * scale);
     ctx.fillRect(x + 12 * scale, y - 2 * scale, 4 * scale, 2 * scale);
   }
   ctx.restore();
-  if (pose?.heart) {
-    const heart = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
-    const left = Math.min(x + 23 * scale, ctx.canvas.width - 7 * scale);
-    const top = Math.max(0, y + (15 - pixels.length) * scale);
-    ctx.fillStyle = '#e46d8e';
-    heart.forEach((row, j) => [...row].forEach((pixel, i) => {
+  if (pose?.effect) {
+    const [type, dx, dy] = pose.effect;
+    const { color, pixels: effect } = petReactionEffects[type];
+    const left = Math.min(restX + dx * scale, ctx.canvas.width - effect[0].length * scale);
+    const top = restY + dy * scale;
+    ctx.fillStyle = color;
+    effect.forEach((row, j) => [...row].forEach((pixel, i) => {
       if (pixel === '#') ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
     }));
   }
@@ -204,8 +211,9 @@ function drawRunningTrack(ctx, canvas, level, faded, species, pose) {
   const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
     x: Math.round(width * .55) - 12, y: portrait ? 103 : 42
   };
-  box(petX - 2, petY + 22, 29, 2, '#885445');
-  box(petX + 1, petY + 24, 23, 1, '#885445');
+  const { x = 0, y = 0 } = pose?.walk ?? {};
+  box(petX + x - 2, petY + y + 22, 29, 2, '#885445');
+  box(petX + x + 1, petY + y + 24, 23, 1, '#885445');
   paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
@@ -283,6 +291,10 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species, pose) {
   if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species, pose);
 }
 
+function gardenShoreAt(y) {
+  return Math.round(73 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+}
+
 function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, species, pose) {
   const box = (x, y, w, h, color) => {
     ctx.fillStyle = color;
@@ -308,7 +320,7 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
     box(x + size, y + size * 3, 2, size * 2, p.turf);
   }
   for (let y = 84; y < 192; y += 3) {
-    const left = Math.round(73 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+    const left = gardenShoreAt(y);
     box(left, y, 88 - left, 3, p.shore);
     box(left + 3, y, 88 - left, 3, p.water);
     if (y % 9 === 0) box(left + 9 + y % 13, y + 1, 7 + y % 8, 1, p.wave);
@@ -323,8 +335,9 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
     if (i % 3 === 0) box(x + 1, y - 2, 3, 1, p.flower);
   }
   if (empty) return;
-  box(petX - 2, petY + 23, 28, 2, p.turf);
-  box(petX + 2, petY + 25, 22, 1, p.turf);
+  const { x = 0, y = 0 } = pose?.walk ?? {};
+  box(petX + x - 2, petY + y + 23, 28, 2, p.turf);
+  box(petX + x + 2, petY + y + 25, 22, 1, p.turf);
   paintPet(ctx, petX, petY, 1, level, faded, species, pose);
   box(petX + 32, petY + 1, 1, 5, p.flower);
   box(petX + 30, petY + 3, 5, 1, p.flower);
