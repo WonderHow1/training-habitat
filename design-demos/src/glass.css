@@ -421,8 +421,8 @@
 }
 .habitat-link .habitat-art { border-radius: var(--r) var(--r) 0 0; }
 .habitat-link .pixel-scene {
-  -webkit-mask-image: linear-gradient(to bottom, #000 73%, #000b 88%, transparent);
-  mask-image: linear-gradient(to bottom, #000 73%, #000b 88%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 81%, #000b 93%, transparent);
+  mask-image: linear-gradient(to bottom, #000 81%, #000b 93%, transparent);
 }
 .habitat-link .pet-meta { padding-top: 3px; }
 .habitat-link .pet-attributes { margin: 0 6px 8px; }

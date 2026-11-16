@@ -1038,8 +1038,10 @@ async function verifyOpenSurfaces() {
     };
     const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.record-actions']]
       .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
+    const cardFade = canvas.maskImage;
     return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
-      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap && compactWeek;
+      cardFade.includes('linear-gradient') && cardFade.includes('81%') && cardFade.includes('93%') &&
+      portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap && compactWeek;
   })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
 }
 
