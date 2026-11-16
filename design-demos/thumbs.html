@@ -455,49 +455,72 @@ const palettes = {
   signal: { sky: '#b9d8ce', haze: '#cce5dc', cloud: '#e3fbec', far: '#85afac', mid: '#709596', trees: '#4e767a', land: '#80a99a', lit: '#a1c5a8', turf: '#6d978a', shore: '#b5d6d0', water: '#92b6bf', wave: '#c6e0dc', flower: '#fae5ac' }
 };
 
+const petAvatarSize = 39;
+const petStageSizes = [[.85, .8], [1, 1], [1.18, 1.22]];
+const bowlTop = ['....IIIIIIIIIIIIIIIIIIII....', '...ICCCCCCCCCCCCCCCCCCCCI...', '..ICLLLLLLLLLLLLLLLLLLLLCI..',
+  '.ICLLLLLLLLLLLLLLLLLLLLLLCI.', 'ICLLLLLLLLLLLLLLLLLLLLLLLLCI'];
+const fishBowl = pixelSprite([...bowlTop, ...Array(12).fill(bowlTop.at(-1)), ...bowlTop.slice(0, -1).reverse()].join('\n'));
+const bowlColors = { I: '#779bb9', C: '#f5faff', L: '#ceedff' };
+
+function petStageDimensions(sprite, level) {
+  const [width, height] = petStageSizes[Math.min(petStageSizes.length, level) - 1] ?? petStageSizes[0];
+  return { width: Math.round(sprite.width * width), height: Math.round(sprite.pixels.length * height) };
+}
+
+function paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose) {
+  // Sample the original art onto whole canvas pixels to preserve hard pixel edges.
+  for (let y = 0; y < size.height; y++) {
+    const row = Math.floor((y + .5) * sprite.pixels.length / size.height);
+    for (let x = 0; x < size.width; x++) {
+      const column = Math.floor((x + .5) * sprite.width / size.width);
+      const pixel = sprite.pixels[row][column];
+      if (pixel === '.') continue;
+      ctx.fillStyle = colors[pixel];
+      if (pose?.blink && pixel === 'E') {
+        const nextRow = Math.floor((y + 1.5) * sprite.pixels.length / size.height);
+        const previousRow = Math.floor((y - .5) * sprite.pixels.length / size.height);
+        if (sprite.pixels[nextRow]?.[column] === 'E' || sprite.pixels[previousRow]?.[column] !== 'E') ctx.fillStyle = colors.L;
+      }
+      const drawX = pose?.flip ? size.width - x - 1 : x;
+      const lift = pose?.footstep && y === size.height - 1 && (drawX < size.width / 2) === (pose.footstep === 1) ? 1 : 0;
+      ctx.fillRect(left + drawX * scale, top + (y - lift) * scale, scale, scale);
+    }
+  }
+}
+
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   const pet = petSprites[species] ?? petSprites.cat;
   const { colors, scarf } = pet;
-  const { pixels, width } = pose?.sprite ?? pet;
+  const sprite = pose?.sprite ?? pet;
+  const size = petStageDimensions(sprite, level);
   x += (pose?.walk?.x ?? 0) * scale;
   y += (pose?.walk?.y ?? 0) * scale;
   const restX = x;
   const restY = y;
   x += (pose?.x ?? 0) * scale;
   y += (pose?.y ?? 0) * scale;
-  const left = x + Math.floor((25 - width) / 2) * scale;
-  const top = y + (24 - pixels.length) * scale;
+  const left = x + Math.floor((25 - size.width) / 2) * scale;
+  const top = y + (24 - size.height) * scale;
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
   if (species === 'goldfish') {
-    const bowl = ['....IIIIIIIIIIIIIIIIIIII....', '...ICCCCCCCCCCCCCCCCCCCCI...', '..ICLLLLLLLLLLLLLLLLLLLLCI..',
-      '.ICLLLLLLLLLLLLLLLLLLLLLLCI.', 'ICLLLLLLLLLLLLLLLLLLLLLLLLCI'];
-    const rows = [...bowl, ...Array(12).fill(bowl.at(-1)), ...bowl.slice(0, -1).reverse()];
-    const glass = { I: '#779bb9', C: '#f5faff', L: '#ceedff' };
-    rows.forEach((row, j) => [...row].forEach((color, i) => {
-      if (color === '.') return;
-      ctx.fillStyle = glass[color];
-      ctx.fillRect(restX + (i - 2) * scale, restY + (j + 4) * scale, scale, scale);
-    }));
+    const bowl = petStageDimensions(fishBowl, level);
+    paintPetPixels(ctx, fishBowl, bowlColors, restX + Math.floor((25 - bowl.width) / 2) * scale,
+      restY + (25 - bowl.height) * scale, bowl, scale);
   }
-  pixels.forEach((row, j) => [...row].forEach((color, i) => {
-    if (color === '.') return;
-    ctx.fillStyle = pose?.blink && color === 'E' && pixels[j + 1]?.[i] === 'E' ? colors.L : colors[color];
-    const column = pose?.flip ? width - i - 1 : i;
-    const lift = pose?.footstep && j === pixels.length - 1 && (column < width / 2) === (pose.footstep === 1) ? 1 : 0;
-    ctx.fillRect(left + column * scale, top + (j - lift) * scale, scale, scale);
-  }));
+  paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose);
   if (level > 1 && !pose?.sprite) {
+    const scarfTop = y + (24 - Math.round((24 - scarf) * size.height / sprite.pixels.length)) * scale;
     ctx.fillStyle = '#6c6564';
-    ctx.fillRect(x + 5 * scale, y + scarf * scale, 15 * scale, 2 * scale);
+    ctx.fillRect(x + 5 * scale, scarfTop, 15 * scale, 2 * scale);
     ctx.fillStyle = '#f6d77d';
-    ctx.fillRect(x + 5 * scale, y + scarf * scale, 14 * scale, scale);
-    ctx.fillRect(x + 16 * scale, y + (scarf + 1) * scale, 3 * scale, 3 * scale);
+    ctx.fillRect(x + 5 * scale, scarfTop, 14 * scale, scale);
+    ctx.fillRect(x + 16 * scale, scarfTop + scale, 3 * scale, 3 * scale);
   }
   if (level > 2 && !pose?.sprite) {
     ctx.fillStyle = '#8da55b';
-    ctx.fillRect(x + 11 * scale, y - 2 * scale, scale, 5 * scale);
-    ctx.fillRect(x + 12 * scale, y - 2 * scale, 4 * scale, 2 * scale);
+    ctx.fillRect(x + 11 * scale, top - 3 * scale, scale, 5 * scale);
+    ctx.fillRect(x + 12 * scale, top - 3 * scale, 4 * scale, 2 * scale);
   }
   ctx.restore();
   if (pose?.effect) {
@@ -513,10 +536,11 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
 }
 
 function centeredPetPosition(canvas, species) {
-  const { pixels } = petSprites[species] ?? petSprites.cat;
+  const sprite = petSprites[species] ?? petSprites.cat;
+  const { height } = petStageDimensions(sprite, Number(canvas.dataset.level ?? 1));
   return {
     x: Math.round((canvas.width - 25) / 2),
-    y: Math.round(canvas.height / 2 - 24 + pixels.length / 2)
+    y: Math.round(canvas.height / 2 - 24 + height / 2)
   };
 }
 
@@ -544,7 +568,7 @@ function drawScene(canvas, pose) {
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
   if (compact) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    paintPet(ctx, 4, 5, 1, level, faded, species, pose);
+    paintPet(ctx, Math.floor((canvas.width - 25) / 2), canvas.height - 28, 1, level, faded, species, pose);
     return;
   }
   box(0, 0, 144, 83, p.sky);
@@ -782,7 +806,7 @@ function drawHabitatPortrait(ctx, p, level, faded, { x: petX, y: petY }, empty, 
 }
 
 function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden', { centered = false } = {}) {
-  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+  return `<canvas width="${avatar ? petAvatarSize : 144}" height="${avatar ? petAvatarSize : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} ${centered ? 'data-centered-pet' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
 }
 
 document.querySelectorAll('canvas').forEach(canvas => drawScene(canvas));</script></body></html>

@@ -211,7 +211,7 @@ test('a scene tap lets a walking pet change destination and start its next strol
 
   assert.deepEqual({ ...habitatDestination(canvas, target, 16, 664) }, { x: -29, y: 65 });
   canvas.dataset.habitat = 'bedroom';
-  assert.deepEqual({ ...habitatDestination(canvas, target, 112, 120) }, { x: -20, y: -5 });
+  assert.deepEqual({ ...habitatDestination(canvas, target, 112, 120) }, { x: -20, y: -8 });
   canvas.dataset.habitat = 'garden';
   const pond = habitatDestination(canvas, target, 332, 544);
   const terrain = vm.runInContext('sceneTerrain', context)(canvas, target);

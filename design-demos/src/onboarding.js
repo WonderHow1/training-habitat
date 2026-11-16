@@ -59,7 +59,7 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       () => `<div class="onboarding-goal"><label class="goal-entry">
         <input type="number" name="minutes" min="${MIN_DAILY_GOAL}" max="1440" step="1" inputmode="numeric" value="${escape(draft.minutes)}" aria-label="每日目标分钟数" aria-describedby="onboarding-warning" required><span>分钟</span>
       </label><p class="onboarding-warning" id="onboarding-warning" role="status"></p></div>`,
-      () => `<button type="button" class="onboarding-pet-touch"><canvas class="onboarding-pet-preview" width="33" height="33" data-avatar data-palette="${palette}" aria-hidden="true"></canvas></button>
+      () => `<button type="button" class="onboarding-pet-touch"><canvas class="onboarding-pet-preview" width="${petAvatarSize}" height="${petAvatarSize}" data-avatar data-palette="${palette}" aria-hidden="true"></canvas></button>
         <fieldset class="onboarding-species" aria-label="宠物种类">${Object.entries(petSpecies).map(([species, label]) => `<label class="onboarding-choice">
           <input type="radio" name="species" value="${species}" ${species === draft.species ? 'checked' : ''}>
           <span class="onboarding-choice-icon" aria-hidden="true">${petCanvas(palette, 1, false, true, species)}</span><span>${label}</span></label>`).join('')}

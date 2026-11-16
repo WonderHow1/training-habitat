@@ -10,13 +10,17 @@ function coverScale(canvas, width = canvas.clientWidth, height = canvas.clientHe
 
 function sceneTerrain(canvas, target) {
   const scale = coverScale(canvas);
-  const visibleX = Math.max(0, Math.floor((canvas.clientWidth - target.offsetWidth) / 2 / scale));
-  const visibleY = Math.max(0, Math.floor((canvas.clientHeight - target.offsetHeight) / 2 / scale));
+  const species = canvas.dataset.species;
+  const level = Number(canvas.dataset.level ?? 1);
+  const body = petStageDimensions(species === 'goldfish' ? fishBowl : (petSprites[species] ?? petSprites.cat), level);
+  const visibleX = Math.max(0, Math.floor((canvas.clientWidth - Math.max(target.offsetWidth, body.width * scale)) / 2 / scale));
+  const visibleY = Math.max(0, Math.floor((canvas.clientHeight - Math.max(target.offsetHeight, body.height * scale)) / 2 / scale));
   const habitat = canvas.dataset.habitat;
   const floor = habitat === 'garden' ? 83 : habitat === 'running-track' ? Math.round(canvas.height * .39) + 3 : 81;
-  const feet = centeredPetPosition(canvas, canvas.dataset.species).y + 24;
-  const minY = Math.max(-visibleY, Math.min(0, floor + feet - canvas.height));
-  const rightAt = y => habitat === 'garden' ? Math.min(visibleX, gardenShoreAt(Math.max(84, feet + y)) - canvas.width / 2 - 16) : visibleX;
+  const feet = centeredPetPosition(canvas, species).y + 24;
+  const minY = Math.max(-visibleY, Math.min(0, floor - (feet - body.height)));
+  const bankMargin = Math.max(16, Math.ceil(body.width / 2) + 3);
+  const rightAt = y => habitat === 'garden' ? Math.min(visibleX, gardenShoreAt(Math.max(84, feet + y)) - canvas.width / 2 - bankMargin) : visibleX;
   let maxY = visibleY;
   while (maxY > minY && rightAt(maxY) < -visibleX) maxY--;
   return { visibleX, minY, maxY, rightAt };

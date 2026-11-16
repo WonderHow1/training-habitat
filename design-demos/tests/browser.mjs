@@ -277,14 +277,19 @@ async function demoDirection(index, glass = false) {
     assert.ok(await evaluate(`(() => {
       const canvas = document.querySelector(${landscape});
       const { width, height } = canvas;
-      const pixels = canvas.getContext('2d').getImageData(0, 0, width, height).data;
-      const rows = new Set();
-      let heart = false;
-      for (let index = 0; index < pixels.length; index += 4) {
-        if (pixels[index] === 99 && pixels[index + 1] === 62 && pixels[index + 2] === 73) rows.add(Math.floor(index / 4 / width));
-        if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) heart = true;
+      const still = canvas.cloneNode();
+      drawScene(still);
+      function read(frame) {
+        const pixels = frame.getContext('2d').getImageData(0, 0, width, height).data;
+        let outline = 0, heart = false;
+        for (let index = 0; index < pixels.length; index += 4) {
+          if (pixels[index] === 99 && pixels[index + 1] === 62 && pixels[index + 2] === 73) outline++;
+          if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) heart = true;
+        }
+        return { outline, heart };
       }
-      return heart && rows.size === petSprites.cat.pixels.length;
+      const animated = read(canvas);
+      return animated.heart && animated.outline === read(still).outline;
     })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
     await guidePetTo(.23, .57, true);
     assert.ok(await evaluate(`new Promise(resolve => {
@@ -1473,12 +1478,26 @@ async function verifyNarrowTrainingSummary() {
       return canvases.map(canvas => {
         const still = canvas.cloneNode();
         drawScene(still);
-        return still.toDataURL();
+        const { width, height } = still;
+        const outline = petSprites[still.dataset.species].colors.I.slice(1).match(/../g).map(value => parseInt(value, 16));
+        const data = still.getContext('2d').getImageData(0, 0, width, height).data;
+        let left = width, right = -1, top = height, bottom = -1;
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+          const offset = (y * width + x) * 4;
+          if (!outline.every((color, index) => data[offset + index] === color)) continue;
+          left = Math.min(left, x); right = Math.max(right, x);
+          top = Math.min(top, y); bottom = Math.max(bottom, y);
+        }
+        return { width: right - left + 1, height: bottom - top + 1, fits: left > 0 && right < width - 1 && top > 0 && bottom < height - 1 };
       });
     });
     return stages.map(stage => stage.textContent.trim()).join(',') === '幼年,青年,成年' && canvases.length === 10 &&
-      canvases.every((_, index) => new Set(frames.map(stage => stage[index])).size === 3);
-  })()`), 'All ten pets have three distinct growth previews');
+      canvases.every((_, index) => {
+        const [young, youth, adult] = frames.map(stage => stage[index]);
+        return young.fits && youth.fits && adult.fits && young.width < youth.width && youth.width < adult.width &&
+          young.height < youth.height && youth.height < adult.height;
+      });
+  })()`), 'All ten pet outlines get wider and taller at each stage and fit in the preview');
   const waitForPet = expected => evaluate(`new Promise((resolve, reject) => {
     const strip = document.querySelector(${carousel});
     const end = performance.now() + 1600;
