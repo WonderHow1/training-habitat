@@ -470,7 +470,7 @@ async function verifyPrototypePalette() {
   assert.ok(await evaluate(`(() => {
     const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
     const colorChannels = color => color.match(/[0-9]+/g).slice(0, 3).map(Number);
-    const isPaleTan = ([red, green, blue]) => red >= 215 && red > green && green > blue;
+    const isPaleTan = ([red, green, blue]) => red >= 240 && green >= 230 && blue >= 214 && red > green && green > blue;
     const luminance = channels => channels.map(value => {
       const srgb = value / 255;
       return srgb <= .04045 ? srgb / 12.92 : ((srgb + .055) / 1.055) ** 2.4;
