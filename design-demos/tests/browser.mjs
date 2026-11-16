@@ -481,8 +481,9 @@ async function verifyPrototypePalette() {
     const card = '[data-phone="home"] .habitat-art canvas';
     const sky = pixel(habitat, 0, 0);
     const white = 'rgb(255, 255, 255)';
-    return ['html', 'body', '.ios-screen', '.app-scroll', '[data-phone="log"] .heatmap'].every(selector => background(selector) === white) &&
+    return ['html', 'body', '.ios-screen', '.app-scroll', '.week-card', '.heatmap'].every(selector => background(selector) === white) &&
       isPaleBlue(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
+      isPaleBlue(colorChannels(background('[data-phone="week"] .day.actual'))) &&
       face[0] < face[1] && face[1] < face[2] && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
@@ -504,8 +505,15 @@ async function verifyOpenSurfaces() {
       return style.borderTopWidth === '0px' && style.borderBottomWidth === '0px';
     }) && parseFloat(getComputedStyle(document.querySelector('.week-days')).marginTop) > 9 &&
       parseFloat(getComputedStyle(document.querySelector('.plan-list .list-row')).paddingTop) > 11;
+    const gapBetween = (first, second) => {
+      const above = document.querySelector(first).getBoundingClientRect();
+      const below = document.querySelector(second).getBoundingClientRect();
+      return below.top - above.bottom;
+    };
+    const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.record-actions']]
+      .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
     return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
-      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none' && hasOpenSpacing;
+      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap;
   })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
 }
 let failed = false;
