@@ -1751,12 +1751,12 @@ function createPhone(container) {
       <div><dt>本周已完成</dt><dd>${completed}</dd></div>
       <div><dt>本周训练时长</dt><dd>${trainingMinutes(state.records, week, dayPlus(week, 7))}<span> 分钟</span></dd></div>
     </dl>` : `<div class="week-total"><span>本周已完成</span><strong>${completed}</strong></div>`;
-    return head('训练计划', usesGlass ? '' : '周一至周日', round('plus', '新增训练', 'new')) +
+    return head('训练计划', usesGlass ? '' : '周一至周日', round('plus', '新增计划', 'new')) +
       `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}${weekTitle}${round('arrow', '下一周', 'next')}</div>
       <div class="week-days" aria-label="筛选训练日期">${strip}</div>
       ${summary}</section>
       <section class="plan-list"><div class="section-heading"><h3>${selectedDay ? weekday(selectedDay) + '的安排' : '本周安排'}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
-      ${shown.map(plan => planRow(plan, true, managementActions('plan', plan.id))).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增训练', 'new', 'primary section-add');
+      ${shown.map(plan => planRow(plan, true, managementActions('plan', plan.id))).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增计划', 'new', 'primary section-add');
   }
 
   function logged() {
@@ -1866,7 +1866,7 @@ function createPhone(container) {
     const rescheduling = plan && !editing;
     const fixedDate = editing && status(state, plan) !== 'upcoming';
     const dateLimit = fixedDate ? 'readonly' : `min="${min}" ${plan ? `max="${max}"` : ''}`;
-    return sheet(editing ? '编辑训练计划' : plan ? '改期' : '新增训练', `<form data-form="${editing ? 'edit-plan' : plan ? 'reschedule' : 'new'}">
+    return sheet(editing ? '编辑训练计划' : plan ? '改期' : '新增计划', `<form data-form="${editing ? 'edit-plan' : plan ? 'reschedule' : 'new'}">
       ${rescheduling ? `<p class="sheet-note">${escape(plan.title)} · ${plan.minutes} 分钟。请选择同一周内的日期。</p>` : projectField(plan?.title)}
       <div class="form-pair">${field('计划日期', `<input type="date" name="date" ${dateLimit} value="${picked}" required>`)}
       ${field('计划时间（选填）', `<input type="time" name="start" value="${plan?.start ?? ''}" ${fixedDate ? 'readonly' : ''}>`)}</div>

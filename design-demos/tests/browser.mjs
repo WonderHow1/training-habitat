@@ -934,7 +934,10 @@ async function verifyCustomProjects() {
   await includes(entry, '已匹配计划');
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '1 / 3');
-  await click(lead('.app-head [data-action="new"]'));
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-head ' + act('new')))}).getAttribute('aria-label')`), '新增计划');
+  await includes(lead('.section-add'), '新增计划');
+  await click(lead('.section-add'));
+  await includes(lead('.sheet h3'), '新增计划');
   await click(suggestion('自由泳'));
   assert.equal(await evaluate(`document.querySelector(${project}).value`), '自由泳');
   await change(input, '瑜伽拉伸');
