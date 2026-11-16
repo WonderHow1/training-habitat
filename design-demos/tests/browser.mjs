@@ -190,6 +190,7 @@ async function demoDirection(index, glass = false) {
   if (index === 1) {
     await change('#demo-scene', 'death');
     await includes(lead('.habitat'), '已离世');
+    if (glass) await enterToday();
     await clickLead('adopt');
     await change(lead('input[name="name"]'), '点点');
     await submit();
@@ -199,6 +200,7 @@ async function demoDirection(index, glass = false) {
     await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
     await submit();
     await clickLead('tab', 'pet');
+    if (glass) await enterToday();
     await clickLead('restore', 'moss');
     await clickLead('confirm-restore', 'moss');
     await includes(lead('.habitat'), '团团');
@@ -216,7 +218,7 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.sheet .sheet-status'), '已漏练');
   }
 
-  await navigate(name + '.html', 390, glass ? 844 : 1120);
+  await navigate(name + '.html', 390, glass ? 760 : 1120);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-status")].every(el => { const island = el.nextElementSibling.getBoundingClientRect(); return el.children[0].getBoundingClientRect().right < island.left && el.children[1].getBoundingClientRect().left > island.right; })'));
   await screenshot(name + '-mobile');
@@ -250,17 +252,59 @@ async function verifySwipe() {
   for (const distance of [28, 64, 118]) {
     await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - distance }] });
   }
+  await assertSceneScale(false);
   await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   assert.equal(await inHabitat(), false, 'An upward touch swipe opens Today');
   await includes(lead('.today-task'), '校园夜跑');
+
+  const scroller = JSON.stringify(lead('.app-scroll'));
+  await evaluate(`document.querySelector(${scroller}).scrollTop = 40`);
+  await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: y - 210 }] });
+  await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 190 }] });
+  assert.ok(await evaluate(`document.querySelector(${scroller}).scrollTop > 0`), 'Dragging within the list still scrolls it');
+  await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 60 }] });
+  assert.equal(await evaluate(`document.querySelector(${scroller}).scrollTop`), 0);
+  await assertSceneScale(true);
+  await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  assert.equal(await inHabitat(), true, 'Continuing the same downward swipe at the top reopens the habitat');
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await enterToday();
+}
+
+async function assertSceneScale(fromDetails) {
+  assert.ok(await evaluate(`(() => {
+    const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+    const style = getComputedStyle(scene);
+    const transform = new DOMMatrixReadOnly(style.transform);
+    return transform.a > .74 && transform.a < 1 && transform.a === transform.d && transform.e === 0 && transform.f === 0 &&
+      Number(style.opacity) > 0 && Number(style.opacity) < 1 && scene.inert === ${fromDetails};
+  })()`), 'The scene scales with a partial drag before the finger releases');
+}
+
+async function waitForHabitat(visible) {
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const end = performance.now() + 700;
+    function check() {
+      const visible = document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).hasAttribute('data-active');
+      if (visible === ${visible}) resolve(true);
+      else if (performance.now() >= end) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'The wheel gesture settles in the expected view');
 }
 
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
   const { x, y } = await habitatPoint();
-  await cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY: 108 });
-  assert.equal(await inHabitat(), false, 'A downward wheel scroll opens Today');
+  const wheel = deltaY => cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY });
+  await wheel(42);
+  await assertSceneScale(false);
+  await wheel(66);
+  await waitForHabitat(false);
+  await wheel(-102);
+  await waitForHabitat(true);
+  await enterToday();
   const nav = lead('.tabbar');
   const scroller = lead('.app-scroll');
   await evaluate(`window.testNav = document.querySelector(${JSON.stringify(nav)}); true`);
@@ -280,6 +324,14 @@ async function verifyGlass() {
       updated.style.getPropertyValue('--tab-index') === '3';
   })()`));
   assert.ok(await evaluate(`testNav.getAnimations({ subtree: true }).some(a => a.transitionProperty === 'transform')`));
+  assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
+  await includes(lead('.habitat-entry-header'), '我的宠物');
+  await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+  await screenshot('ios-prototype-pet');
+  await enterToday();
+  await includes(lead('.pet-effects'), '成长与血量');
+  await clickLead('tab', 'week');
+  await clickLead('tab', 'pet');
   await clickLead('tab', 'home');
   assert.equal(await inHabitat(), false, 'Returning to the Today tab keeps the training view');
   await clickLead('habitat');

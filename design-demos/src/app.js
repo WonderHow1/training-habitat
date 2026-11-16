@@ -35,13 +35,14 @@ function createPhone(initial) {
   const tabbar = outlet.querySelector('.tabbar');
   const tabButtons = [...tabbar.querySelectorAll('button')];
   const layers = outlet.querySelector('.app-overlays');
-  const habitatEntry = usesGlass && initial === 'home' ? document.createElement('section') : null;
+  const phoneScreen = outlet.closest('.ios-screen');
+  const habitatEntry = usesGlass ? document.createElement('section') : null;
   if (habitatEntry) {
     habitatEntry.className = 'habitat-entry';
     habitatEntry.setAttribute('aria-label', '栖息地');
-    outlet.closest('.ios-screen').append(habitatEntry);
+    phoneScreen.append(habitatEntry);
   }
-  let showHabitat = Boolean(habitatEntry);
+  let showHabitat = Boolean(habitatEntry) && (initial === 'home' || initial === 'pet');
   let state = seed();
   let tab = initial;
   let overlay = null;
@@ -87,27 +88,30 @@ function createPhone(initial) {
 
   function renderHabitat() {
     if (!habitatEntry) return;
+    phoneScreen.toggleAttribute('data-habitat', showHabitat);
+    phoneScreen.toggleAttribute('data-habitat-tabs', tab === 'pet');
     habitatEntry.toggleAttribute('data-active', showHabitat);
     habitatEntry.inert = !showHabitat;
-    if (!showHabitat) return;
+    if (tab !== 'home' && tab !== 'pet') return;
     const { name, stage, lives, hp, level } = petDetails(current());
+    const petTab = tab === 'pet';
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
       data-portrait data-palette="${theme}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
-        <p>栖息地</p><h2>${name}</h2>
+        <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${lives}<span>${stage}</span></div>
       </header>
-      <button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`;
+      <button type="button" class="habitat-continue">${icon('arrow', 16)}<span>${petTab ? '上滑查看成长' : '上滑查看今天'}</span></button>`;
     drawScene(habitatEntry.querySelector('canvas'));
   }
 
-  function enterToday() {
-    if (!showHabitat) return;
-    showHabitat = false;
+  function setHabitat(visible) {
+    if (showHabitat === visible) return;
+    showHabitat = visible;
     render();
-    const heading = scrollArea.querySelector('.app-head h2');
-    heading.tabIndex = -1;
-    heading.focus({ preventScroll: true });
+    const target = visible ? habitatEntry.querySelector('button') : scrollArea.querySelector('.app-head h2');
+    if (!visible) target.tabIndex = -1;
+    target.focus({ preventScroll: true });
   }
 
   function planRow(plan, showDate = true) {
@@ -319,7 +323,7 @@ function createPhone(initial) {
     const offset = preserve ? scrollArea.scrollTop : 0;
     scrollArea.innerHTML = screens[tab]();
     scrollArea.inert = showHabitat || Boolean(overlay);
-    tabbar.inert = scrollArea.inert;
+    tabbar.inert = Boolean(overlay) || (showHabitat && tab !== 'pet');
     const index = tabButtons.findIndex(button => button.dataset.value === tab);
     tabButtons.forEach((button, i) => {
       if (i === index) button.setAttribute('aria-current', 'page');
@@ -392,7 +396,8 @@ function createPhone(initial) {
     selectedDay = null;
     logFilter = 'all';
     tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
-    showHabitat = Boolean(habitatEntry) && nextScenario === 'standard';
+    showHabitat = Boolean(habitatEntry) && (nextScenario === 'death' ||
+      (nextScenario === 'standard' && (tab === 'home' || tab === 'pet')));
     overlay = null;
     restoreFocus = null;
     notice = '';
@@ -412,8 +417,14 @@ function createPhone(initial) {
   }
 
   const handle = {
-    tab(value) { tab = value; notice = ''; render(); outlet.querySelector('[aria-current="page"]')?.focus({ preventScroll: true }); },
-    habitat() { showHabitat = true; render(); habitatEntry.querySelector('button').focus({ preventScroll: true }); },
+    tab(value) {
+      if (tab !== value) showHabitat = Boolean(habitatEntry) && value === 'pet';
+      tab = value;
+      notice = '';
+      render();
+      tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
+    },
+    habitat() { setHabitat(true); },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),
@@ -444,44 +455,11 @@ function createPhone(initial) {
     'onboard-finish'() { scenario = 'standard'; tab = 'home'; feedback('可以开始训练了'); }
   };
 
-  if (habitatEntry) {
-    let gesture = null;
-    const finishGesture = event => {
-      if (event.pointerId !== gesture?.id) return;
-      const climb = gesture.y - event.clientY;
-      const sideways = Math.abs(gesture.x - event.clientX);
-      gesture = null;
-      habitatEntry.removeAttribute('data-dragging');
-      if (event.type === 'pointerup' && climb >= 55 && climb > sideways) enterToday();
-      habitatEntry.style.removeProperty('--entry-offset');
-    };
-
-    habitatEntry.addEventListener('pointerdown', event => {
-      if (!event.isPrimary || event.button !== 0) return;
-      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    });
-    habitatEntry.addEventListener('pointermove', event => {
-      if (event.pointerId !== gesture?.id) return;
-      const climb = gesture.y - event.clientY;
-      if (climb < 8 || climb < Math.abs(gesture.x - event.clientX)) return;
-      if (event.pointerType === 'mouse' && !habitatEntry.hasPointerCapture(event.pointerId)) {
-        habitatEntry.setPointerCapture(event.pointerId);
-      }
-      habitatEntry.setAttribute('data-dragging', '');
-      habitatEntry.style.setProperty('--entry-offset', `${-climb}px`);
-    });
-    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-      habitatEntry.addEventListener(type, finishGesture);
-    }
-    habitatEntry.addEventListener('wheel', event => {
-      if (event.deltaY <= 0 || Math.abs(event.deltaX) >= event.deltaY) return;
-      event.preventDefault();
-      enterToday();
-    }, { passive: false });
-    habitatEntry.addEventListener('click', event => {
-      if (event.target.closest('.habitat-continue')) enterToday();
-    });
-  }
+  if (habitatEntry) bindHabitatGesture({
+    screen: phoneScreen, habitatEntry, scrollArea,
+    getMode: () => !overlay && (tab === 'home' || tab === 'pet') ? showHabitat : null,
+    setHabitat
+  });
 
   outlet.addEventListener('click', event => {
     const control = event.target.closest('[data-action]');

@@ -121,24 +121,40 @@
 [data-glass] .switch-row[aria-checked="true"] .switch::before { transform: translateX(19px); }
 [data-glass] .toast { bottom: 105px; }
 
+.ios-screen:has(.habitat-entry) {
+  --habitat-progress: var(--gesture-progress, 0);
+}
+.ios-screen[data-habitat] { --habitat-progress: var(--gesture-progress, 1); }
+.ios-screen:has(.habitat-entry) .app-scroll {
+  transform: scale(calc(1 - var(--habitat-progress) * .045));
+  opacity: calc(1 - var(--habitat-progress) * .42);
+  transition: transform 340ms var(--glass-ease), opacity 340ms var(--glass-ease);
+  overscroll-behavior-y: contain;
+}
+.ios-screen:has(.habitat-entry) .app-head h2[tabindex="-1"]:focus { outline: none; }
+.ios-screen:not([data-habitat-tabs]):has(.habitat-entry) .tabbar {
+  opacity: calc(1 - var(--habitat-progress));
+  transition: opacity 280ms var(--glass-ease);
+}
+[data-glass] .ios-screen[data-habitat-tabs] .tabbar { z-index: 11; }
+.ios-screen[data-habitat-tabs] .habitat-continue { bottom: 106px; }
+
 .habitat-entry {
   position: absolute;
   inset: 0;
   z-index: 9;
   overflow: hidden;
   background: #b9dbe0;
-  transform: translateY(var(--entry-offset, 0px));
-  transition: transform 390ms var(--glass-ease);
+  transform: scale(calc(.74 + var(--habitat-progress) * .26));
+  transform-origin: 50% 57%;
+  opacity: var(--habitat-progress);
+  border-radius: calc(30px * (1 - var(--habitat-progress)));
+  transition: transform 340ms var(--glass-ease), opacity 300ms var(--glass-ease), border-radius 340ms var(--glass-ease);
   touch-action: none;
   user-select: none;
 }
-.habitat-entry[data-dragging] { transition: none; }
-.habitat-entry:not([data-active]) {
-  pointer-events: none;
-  visibility: hidden;
-  transform: translateY(-100%);
-  transition: transform 390ms var(--glass-ease), visibility 0s 390ms;
-}
+.habitat-entry:not([data-active]) { pointer-events: none; }
+.ios-screen[data-habitat-dragging] :is(.habitat-entry, .app-scroll, .tabbar) { transition: none; }
 .habitat-landscape {
   position: absolute;
   inset: 0;
@@ -222,5 +238,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   [data-glass] .tabbar button:active, [data-glass] .round:active { transform: none; }
-  .habitat-entry[data-active] { transform: none; }
+  .ios-screen:has(.habitat-entry) :is(.habitat-entry, .app-scroll) { transform: none; }
+  .ios-screen:has(.habitat-entry) { --habitat-progress: 0; }
+  .ios-screen[data-habitat] { --habitat-progress: 1; }
 }
