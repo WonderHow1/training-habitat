@@ -148,7 +148,7 @@ test('all ten species can be adopted with their own attributes', () => {
 const petMotionSource = ['pet-art.js', 'pet-growth.js', 'pet-reactions.js', 'pixels.js', 'pet-motion.js']
   .map(name => readFileSync(new URL('../src/' + name, import.meta.url), 'utf8')).join('\n');
 
-test('growth changes body proportions and keeps the young chinchilla eyes even', () => {
+test('growth changes body proportions and keeps the outer pixel outlines closed', () => {
   const sprites = vm.runInNewContext(petMotionSource + '\npetGrowthSprites');
   for (const [species, stages] of Object.entries(sprites)) {
     for (const [index, sprite] of stages.entries()) {
@@ -165,16 +165,31 @@ test('growth changes body proportions and keeps the young chinchilla eyes even',
   const torsoToFace = sprite => span(sprite.pixels[Math.floor(sprite.pixels.length * .8)]) / span(sprite.pixels[eyeRow(sprite)]);
   assert.ok(eyeRow(young) / young.pixels.length > eyeRow(youth) / youth.pixels.length, 'The juvenile has proportionally more head');
   assert.ok(torsoToFace(adult) > torsoToFace(youth), 'The adult torso fills out relative to its face');
+});
 
-  const eyeRows = sprites.chinchilla[0].pixels.filter(row => row.includes('E'));
-  assert.equal(eyeRows.length, 2);
-  assert.equal(eyeRows[0], eyeRows[1]);
-  const eyes = [...eyeRows[0].matchAll(/E+/g)];
-  assert.deepEqual(eyes.map(eye => eye[0].length), [2, 2]);
-  assert.equal(eyes[0].index + eyes[1].index + 1, eyeRows[0].indexOf('I') + eyeRows[0].lastIndexOf('I'));
-  for (const row of sprites.chinchilla[2].pixels.filter(row => row.includes('E'))) {
-    const [left, right] = row.match(/E+/g);
-    assert.equal(left.length, right.length, 'Both adult chinchilla eyes have the same width');
+test('the juvenile and adolescent hamster have a smooth, uninterrupted head and cheeks', () => {
+  const [young, youth] = vm.runInNewContext(petMotionSource + '\npetGrowthSprites.hamster');
+  for (const { pixels } of [young, youth]) {
+    const face = pixels.slice(2, pixels.findLastIndex(row => row.includes('M')) + 2);
+    const spans = face.map(row => row.replace(/^\.+|\.+$/g, ''));
+    assert.ok(spans.every(row => /^I[^I.]+I$/.test(row)), 'No inner outline divides the forehead or cheeks');
+    for (const [i, row] of spans.slice(1).entries()) {
+      assert.ok(Math.abs(row.length - spans[i].length) <= 2, 'The silhouette curves gradually through the cheeks');
+    }
+  }
+});
+
+test('all chinchilla stages have a clear forehead and two centered, matching eyes', () => {
+  const stages = vm.runInNewContext(petMotionSource + '\npetGrowthSprites.chinchilla');
+  for (const { pixels } of stages) {
+    const eyeRows = pixels.filter(row => row.includes('E'));
+    assert.equal(eyeRows.length, 2);
+    assert.equal(eyeRows[0], eyeRows[1]);
+    const forehead = pixels[pixels.indexOf(eyeRows[0]) - 1].replace(/^\.+|\.+$/g, '');
+    assert.match(forehead, /^I[GL]+I$/, 'The fur above the eyes contains no stray light or dark markings');
+    const eyes = [...eyeRows[0].matchAll(/E+/g)];
+    assert.deepEqual(eyes.map(eye => eye[0].length), [2, 2]);
+    assert.equal(eyes[0].index + eyes[1].index + 1, eyeRows[0].indexOf('I') + eyeRows[0].lastIndexOf('I'));
   }
 });
 

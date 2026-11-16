@@ -1649,6 +1649,16 @@ async function verifyNarrowTrainingSummary() {
   await clickLead('close');
   await includes(lead('.sheet h3'), '宠物图鉴');
   assert.equal(await evaluate('document.activeElement.dataset.value'), 'turtle');
+  const stage = number => click(lead(`.pet-guide-stages [data-stage="${number}"]`));
+  await clickLead('pet-guide-view', 'hamster');
+  await includes(lead('.pet-guide-navigation strong'), '仓鼠');
+  await verifyPixelGrowth('growth-hamster-youth', activePet + ' canvas', () => stage(2));
+  await clickLead('close');
+  await clickLead('pet-guide-view', 'chinchilla');
+  await includes(lead('.pet-guide-navigation strong'), '龙猫');
+  await verifyPixelGrowth('growth-chinchilla-youth', activePet + ' canvas', () => stage(2));
+  await verifyPixelGrowth('growth-chinchilla-adult', activePet + ' canvas', () => stage(3));
+  await clickLead('close');
   await clickLead('close');
   assert.equal(await evaluate('document.activeElement.dataset.action'), 'pet-guide');
   assert.equal(await inHabitat(), true);

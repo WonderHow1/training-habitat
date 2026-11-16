@@ -1772,7 +1772,7 @@ const petSprites = {
   hamster: petArt({ I: '#5b4030', G: '#be7d47', L: '#edb968', B: '#ed9883', C: '#fff0c3', E: '#392936' }, `
       .....IIII.....IIII.....
       ....IBBBI.....IBBBI....
-      ....ILGGIIIIIIIGGLI....
+      ....ILGGLLLLLLLGGLI....
       ...IGLLLLLLLLLLLLLGI...
       ..IGLLLLLLLLLLLLLLLGI..
       .IGLLLELLLLLLLLELLLLGI.
@@ -1810,9 +1810,9 @@ const petSprites = {
       ..IGBBBGLIIILGBBBGI.....
       ..IGBBGLLLLLLLGBBGI.....
       ...IGGLLLLLLLLLGGI......
-      ....IGCGLCLCLGCGI.......
-      ...IGLLLELLLELLLGI......
-      ...IGLLLELLLELLLGI......
+      ...IGGLLLLLLLLLGGI......
+      ...IGLLEELLLEELLGI......
+      ...IGLLEELLLEELLGI......
       ...IGBLLCCMCCLBLGI......
       ....IGLCCCCCCCLGI.......
       .....IIGGGGGGII.....III.
@@ -1916,6 +1916,44 @@ const sideGrowth = [
   { head: 1.08, torso: 1.23, tail: 1.2, bodyHeight: 1.24, feet: 1.45 }
 ];
 
+// Hamsters have one continuous curve from forehead to belly, with no neck band.
+const hamsterEarlyStages = [
+  pixelSprite(`
+    ....III.......III....
+    ...IBBGIIIIIIIGBBI...
+    ..IGBGLLLLLLLLLGBGI..
+    .IGGLLLLLLLLLLLLLGGI.
+    .IGLLLELLLLLLLELLLGI.
+    IGLLLLELLCCCLLELLLLGI
+    IGLBLCLLCCMCCLLCLBLGI
+    IGLCLCLCCCMCCCLCLCLGI
+    .IGLCCCCCCCCCCCCCLGI.
+    .IGGCCCCCCCCCCCCCGGI.
+    ..IGGCCCCCCCCCCCGGI..
+    ...IGGCCCCCCCCCGGI...
+    ....IIICIIIIICIII....
+  `),
+  pixelSprite(`
+    ....IIII.......IIII....
+    ...IBBBGIIIIIIIGBBBI...
+    ..IGBBGLLLLLLLLLGBBGI..
+    ..IGGLLLLLLLLLLLLLGGI..
+    .IGGLLLLLLLLLLLLLLLGGI.
+    .IGLLLEELLLLLLLEELLLGI.
+    IGLLLLEELLCCCLLEELLLLGI
+    IGLLBLCLLCCMCCLLCLBLLGI
+    IGLBLCCLCCCMCCCLCCLBLGI
+    IGLCLCCCCCCCCCCCCCLCLGI
+    .IGLCCCCCCCCCCCCCCCLGI.
+    .IGGCCCCCCCCCCCCCCCGGI.
+    ..IGGGCCCCCCCCCCCGGGI..
+    ..IGGLLCCCCCCCCCLLGGI..
+    ...IGGLLCCCCCCCLLGGI...
+    ....IIGGGGGGGGGGGII....
+    .....IICIIIIIIICII.....
+  `)
+];
+
 const youngChinchilla = pixelSprite(`
   ...IIII.....IIII.....
   ..IGBBGI...IGBBGI....
@@ -1947,10 +1985,15 @@ function balanceEyeRow(row, width) {
     for (let index = 0; index < pixels.length; index++) {
       if (pixels[index] === 'E') pixels[index] = 'L';
     }
-    for (const eye of eyes) {
-      const left = Math.round((eye.index + eye[0].length / 2) * ratio - eyeWidth / 2);
-      pixels.fill('E', left, left + eyeWidth);
+    const starts = eyes.map(eye => Math.round((eye.index + eye[0].length / 2) * ratio - eyeWidth / 2));
+    const faceCenter = row.search(/[^.]/) + row.replace(/\.+$/, '').length - 1;
+    const eyeCenter = eyes[0].index + eyes[1].index + (eyes[0][0].length + eyes[1][0].length) / 2 - 1;
+    if (eyeCenter === faceCenter) {
+      const first = pixels.findIndex(pixel => pixel !== '.');
+      const last = pixels.findLastIndex(pixel => pixel !== '.');
+      starts[1] = first + last - starts[0] - eyeWidth + 1;
     }
+    for (const left of starts) pixels.fill('E', left, left + eyeWidth);
   }
   return pixels.join('');
 }
@@ -1994,6 +2037,7 @@ function growSideProfile(sprite, { head, feet, tail = 0 }, stage) {
 const petGrowthSprites = Object.fromEntries(Object.entries(petSprites).map(([species, sprite]) => [
   species,
   [0, 1, 2].map(stage => {
+    if (species === 'hamster' && stage < hamsterEarlyStages.length) return hamsterEarlyStages[stage];
     if (species === 'chinchilla' && stage === 0) return cropGrowthSprite(youngChinchilla.pixels);
     return uprightAnatomy[species] ? growUpright(sprite, uprightAnatomy[species], stage) : growSideProfile(sprite, sideAnatomy[species], stage);
   })
