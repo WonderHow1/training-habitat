@@ -717,12 +717,6 @@ a { color: inherit; }
 }
 .habitat-entry-header .growth-bar { background: #5e5e5e3e; }
 .habitat-entry-header .growth span { color: inherit; font-weight: 650; }
-.habitat-entry-header .pet-born {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 620;
-}
 .pet-attributes {
   display: flex;
   flex-wrap: wrap;
@@ -1809,7 +1803,7 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
 
   if (canvas.hasAttribute('data-empty')) return;
   const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
-    x: Math.round(width * .55) - 12, y: portrait ? (canvas.dataset.portrait === 'pet' ? 81 : 103) : 42
+    x: Math.round(width * .55) - 12, y: portrait ? 103 : 42
   };
   box(petX - 2, petY + 22, 29, 2, '#885445');
   box(petX + 1, petY + 24, 23, 1, '#885445');
@@ -1882,7 +1876,7 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
   }
 
   const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
-    x: Math.round((width - 25) / 2), y: portrait ? (canvas.dataset.portrait === 'pet' ? 84 : 105) : 38
+    x: Math.round((width - 25) / 2), y: portrait ? 105 : 38
   };
   const rug = habitat === 'gym' ? '#90aaa7' : trim;
   box(petX - 7, petY + 19, 39, 14, rug);
@@ -2507,13 +2501,11 @@ function createPhone(container) {
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
-        <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
+        <p>栖息地</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
-        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
-        ${!petTab && pet ? petGrowth(details) : ''}
-        ${pet ? petAttributes(pet, species, !petTab) : ''}
+        ${pet ? petGrowth(details) + petAttributes(pet, species, true) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">
         <header class="pet-panel-header"><h3>经验与血量</h3>

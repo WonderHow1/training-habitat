@@ -305,7 +305,7 @@ function drawRunningTrack(ctx, canvas, level, faded, species) {
 
   if (canvas.hasAttribute('data-empty')) return;
   const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
-    x: Math.round(width * .55) - 12, y: portrait ? (canvas.dataset.portrait === 'pet' ? 81 : 103) : 42
+    x: Math.round(width * .55) - 12, y: portrait ? 103 : 42
   };
   box(petX - 2, petY + 22, 29, 2, '#885445');
   box(petX + 1, petY + 24, 23, 1, '#885445');
@@ -378,7 +378,7 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
   }
 
   const { x: petX, y: petY } = canvas.hasAttribute('data-centered-pet') ? centeredPetPosition(canvas, species) : {
-    x: Math.round((width - 25) / 2), y: portrait ? (canvas.dataset.portrait === 'pet' ? 84 : 105) : 38
+    x: Math.round((width - 25) / 2), y: portrait ? 105 : 38
   };
   const rug = habitat === 'gym' ? '#90aaa7' : trim;
   box(petX - 7, petY + 19, 39, 14, rug);

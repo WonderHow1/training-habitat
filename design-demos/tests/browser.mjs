@@ -390,8 +390,9 @@ async function demoDirection(index, glass = false) {
     assert.ok(await evaluate(`(() => {
       const petScene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
       const panel = petScene.querySelector('.pet-scene-panel').getBoundingClientRect();
+      const header = petScene.querySelector('.habitat-entry-header').getBoundingClientRect();
       const nav = document.querySelector(${JSON.stringify(lead('.tabbar'))}).getBoundingClientRect();
-      return petScene.getBoundingClientRect().height === innerHeight && panel.bottom < nav.top;
+      return petScene.getBoundingClientRect().height === innerHeight && header.bottom < panel.top && panel.bottom < nav.top;
     })()`));
     await screenshot(name + '-mobile-pet');
   }
@@ -759,6 +760,11 @@ async function verifyGlass() {
   await waitForHabitat(false);
   await wheel(-102);
   await waitForHabitat(true);
+  const habitatAppearance = () => evaluate(`(() => {
+    const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+    return [scene.querySelector('.habitat-entry-header').innerHTML, scene.querySelector('canvas').toDataURL()];
+  })()`);
+  const todayHabitat = await habitatAppearance();
   await enterToday();
   await clickLead('tab', 'log');
   const nav = lead('.tabbar');
@@ -781,12 +787,16 @@ async function verifyGlass() {
   })()`));
   assert.ok(await evaluate(`testNav.getAnimations({ subtree: true }).some(a => a.transitionProperty === 'transform')`));
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
-  await includes(lead('.habitat-entry-header'), '我的宠物');
-  await includes(lead('.habitat-entry-header'), '领养于 11月9日');
+  assert.deepEqual(await habitatAppearance(), todayHabitat, 'Pet and Today share the habitat artwork and header');
   await assertPetCentered(lead('.habitat-landscape'));
-  await includes(lead('.pet-attributes > div:first-child'), '年龄7 天');
+  await includes(lead(act('toggle-pet-age')), '年龄7 天');
+  await clickLead('toggle-pet-age');
+  await includes(lead(act('toggle-pet-age')), '领养于2026年11月9日');
+  await clickLead('toggle-pet-age');
+  await includes(lead(act('toggle-pet-age')), '年龄7 天');
   await includes(lead('.pet-attributes > div:last-child'), '体重3.2 公斤');
   await includes(lead('.pet-scene-panel'), '经验与血量');
+  await includes(lead('.pet-scene-panel'), '更换背景');
   assert.ok(await evaluate(`(() => {
     const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
     const scroll = document.querySelector(${JSON.stringify(lead('.app-scroll'))});

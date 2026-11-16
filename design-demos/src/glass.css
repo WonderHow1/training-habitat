@@ -328,12 +328,6 @@
 }
 .habitat-entry-header .growth-bar { background: #5e5e5e3e; }
 .habitat-entry-header .growth span { color: inherit; font-weight: 650; }
-.habitat-entry-header .pet-born {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 620;
-}
 .pet-attributes {
   display: flex;
   flex-wrap: wrap;
