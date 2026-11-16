@@ -3,6 +3,8 @@ const DEMO_AT = '2026-11-16T20:00';
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const sports = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸', '户外跑步', '其他训练'];
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
+const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
+const habitatStyles = { garden: '草地', gym: '健身房', dorm: '宿舍', living: '客厅', bedroom: '卧室' };
 
 function bj(date, time = '00:00') {
   return Date.parse(date + 'T' + time + ':00+08:00');
@@ -166,11 +168,18 @@ function switchPet(state, pet) {
   state.active = pet.id;
 }
 
-function adopt(state, name) {
-  if (state.active) return false;
-  const pet = { id: 'pet-' + ++state.serial, name, spans: [], born: dateAt(state.now) };
+function adopt(state, name, species = 'cat', habitat = 'garden') {
+  if (state.active || !Object.hasOwn(petSpecies, species) || !Object.hasOwn(habitatStyles, habitat)) return false;
+  const pet = { id: 'pet-' + ++state.serial, name, species, habitat, spans: [], born: dateAt(state.now) };
   state.pets.push(pet);
   switchPet(state, pet);
+  return true;
+}
+
+function setPetHabitat(state, habitat) {
+  const pet = state.pets.find(entry => entry.id === state.active);
+  if (!pet || !Object.hasOwn(habitatStyles, habitat)) return false;
+  pet.habitat = habitat;
   return true;
 }
 

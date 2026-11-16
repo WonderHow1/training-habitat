@@ -284,12 +284,32 @@
   }
 }
 .pet-scene-panel h3 { font-size: 16px; letter-spacing: -.035em; }
+.pet-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pet-panel-header .scene-control { min-height: 32px; padding-inline: 9px; font-size: 12px; }
 .pet-scene-panel .growth { padding: 7px 0; }
 .pet-scene-panel .growth-bar { background-color: #eaeaea; }
 .pet-scene-panel .pet-options { margin: 5px 0; }
 .pet-scene-panel .pet-options .empty-copy { padding-block: 1px; font-size: 13px; }
 .pet-scene-panel .list-row { min-height: 50px; padding: 7px 2px; }
 .pet-scene-panel .activity { width: 34px; height: 34px; }
+.species-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.species-choice {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 5px 2px 7px;
+  border-radius: 12px;
+  background: var(--wash);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.species-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.species-choice:has(input:checked) { background: var(--accent); color: var(--on-accent); }
+.species-choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.species-choice .avatar { display: block; width: 44px; max-width: 100%; }
+.habitat-choice-preview { overflow: hidden; border-radius: 13px; margin-bottom: 12px; }
 .habitat-continue {
   position: absolute;
   bottom: 40px;

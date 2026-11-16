@@ -407,6 +407,8 @@ const DEMO_AT = '2026-11-16T20:00';
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const sports = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸', '户外跑步', '其他训练'];
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
+const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
+const habitatStyles = { garden: '草地', gym: '健身房', dorm: '宿舍', living: '客厅', bedroom: '卧室' };
 
 function bj(date, time = '00:00') {
   return Date.parse(date + 'T' + time + ':00+08:00');
@@ -570,11 +572,18 @@ function switchPet(state, pet) {
   state.active = pet.id;
 }
 
-function adopt(state, name) {
-  if (state.active) return false;
-  const pet = { id: 'pet-' + ++state.serial, name, spans: [], born: dateAt(state.now) };
+function adopt(state, name, species = 'cat', habitat = 'garden') {
+  if (state.active || !Object.hasOwn(petSpecies, species) || !Object.hasOwn(habitatStyles, habitat)) return false;
+  const pet = { id: 'pet-' + ++state.serial, name, species, habitat, spans: [], born: dateAt(state.now) };
   state.pets.push(pet);
   switchPet(state, pet);
+  return true;
+}
+
+function setPetHabitat(state, habitat) {
+  const pet = state.pets.find(entry => entry.id === state.active);
+  if (!pet || !Object.hasOwn(habitatStyles, habitat)) return false;
+  pet.habitat = habitat;
   return true;
 }
 
@@ -592,7 +601,7 @@ function restore(state, petId) {
   return true;
 }
 
-const sprite = [
+const catSprite = [
   '.......II.......II.......',
   '......IGGI.....IGGI......',
   '.....IGGGGI...IGGGGI.....',
@@ -618,6 +627,46 @@ const sprite = [
   '.....IIIIGIIIIIGIII......',
   '........II.....II........'
 ];
+
+const petSprites = {
+  cat: {
+    pixels: catSprite, scarf: 15,
+    colors: { I: '#573851', G: '#c8788d', L: '#e5a3ad', B: '#f6c3ae', W: '#fff2d8', K: '#382843', C: '#f9d6c2' }
+  },
+  dog: {
+    pixels: [
+      '......IIIIIIIII......', '....IILLLLLLLLLII....', '..IIILLLLLLLLLLLIII..', '.IIGILLLLLLLLLLLIGII.',
+      'IGGGILLLLLWLLLLLIGGGI', 'IGGGILLLWWWWWLLLIGGGI', 'IGGGILLKWWWWWKLIGGGGI', 'IGGGILLWCCCCCKLIGGGGI',
+      'IGGGILLCCCCCCCLIGGGGI', '.IGGILCCCCKCCCCLIGGI.', '..IIILCCCCCCCCCLIII..', '....IGCCCCKCCCGI.....',
+      '.....IGGGGGGGI......', '.....ILLLLLLLI......', '....ILLLCCCLLLI.....', '...ILLLCCCCCLLLI....',
+      '...ILLLCCCCCLLLII...', '...IGLLLCCCLLLGIGI..', '....IGGGGGGGGGIII...', '.....IIIIIIIII......',
+      '......II...II.......'
+    ], scarf: 16,
+    colors: { I: '#593d36', G: '#a56c4b', L: '#e6ad73', C: '#fff0d4', W: '#f9d9a7', K: '#3f292c' }
+  },
+  rabbit: {
+    pixels: [
+      '....III.......III....', '...ILLLI.....ILLLI...', '...IBBLI.....ILBBI...', '...IBBLI.....ILBBI...',
+      '...IBBLI.....ILBBI...', '....IBLI.....ILBI....', '....ILLLIIIIIILLI....', '...ILLLLLLLLLLLLLI...',
+      '..ILLLLLLLLLLLLLLLI..', '.ILLLLLLLLLLLLLLLLLI.', '.ILLLKLLLLLLLLKLLLLI.', '.ILLLKLLLLLLLLKLLLLI.',
+      '.ILBLLLLLBLLLLLLBLI.', '..ILLLLLKCKLLLLLLI..', '...IGLLLLLLLLLLGI...', '....IGGGGGGGGGGI....',
+      '.....ILLLLLLLLI.....', '....ILLLCCCCLLLI....', '...ILLLCCCCCCLLLI...', '...ILLLCCCCCCLLLII..',
+      '...IGLLLCCCCLLLGICI.', '....IGGGGGGGGGGIIII.', '.....IIIIIIIIIII....', '......II.....II.....'
+    ], scarf: 15,
+    colors: { I: '#58536e', G: '#aaa4c4', L: '#eeeaf7', B: '#e8a8bd', C: '#fff7ef', K: '#3d344c' }
+  },
+  hamster: {
+    pixels: [
+      '....IIII.....IIII....', '...IGBBI.....IBBGI...', '...IGLLIIIIIIILLGI...', '..IGLLLLLLLLLLLLLGI..',
+      '.IGLLLLLLLLLLLLLLLGI.', '.IGLLLKLLLLLLLKLLLGI.', '.IGLLLKLLLLLLLKLLLGI.', 'IGLBBBLLCCCLLBBBLGGI',
+      'IGLBBBLLCKCLLBBBLGGI', 'IGLBBLCLCCCLCLBBLGGI', '.IGLLCCCCCCCCCLLGGI.', '.IGLGCCCCCCCCCGILLI.',
+      '..IGLCCCCCCCCCLLGI..', '..IGLCCCCCCCCCLLGI..', '..IGLLCCCCCCCLLLGI..', '...IGLLCCCCCLLLGI...',
+      '....IGGGGGGGGGGI....', '.....IIIIIIIIII.....', '......II....II......'
+    ], scarf: 16,
+    colors: { I: '#644335', G: '#ba8651', L: '#eec387', B: '#e9a592', C: '#fdf0d2', K: '#44302c' }
+  }
+};
+
 const gardenPalette = {
   sky: '#b9dbe0', haze: '#d7e8d4', cloud: '#f5f2d5', far: '#94baa5', mid: '#73a783',
   trees: '#438263', land: '#84ab56', lit: '#b3cb72', turf: '#71944a',
@@ -637,21 +686,23 @@ const palettes = {
   signal: { sky: '#b9d8ce', haze: '#cce5dc', cloud: '#e3fbec', far: '#85afac', mid: '#709596', trees: '#4e767a', land: '#80a99a', lit: '#a1c5a8', turf: '#6d978a', shore: '#b5d6d0', water: '#92b6bf', wave: '#c6e0dc', flower: '#fae5ac' }
 };
 
-function paintPet(ctx, x, y, scale, level, faded) {
-  const colors = { I: '#573851', G: '#c8788d', L: '#e5a3ad', B: '#f6c3ae', W: '#fff2d8', K: '#382843', C: '#f9d6c2' };
+function paintPet(ctx, x, y, scale, level, faded, species) {
+  const { pixels, colors, scarf } = petSprites[species] ?? petSprites.cat;
+  const left = x + Math.floor((25 - pixels[0].length) / 2) * scale;
+  const top = y + (24 - pixels.length) * scale;
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
-  sprite.forEach((row, j) => [...row].forEach((color, i) => {
+  pixels.forEach((row, j) => [...row].forEach((color, i) => {
     if (color === '.') return;
     ctx.fillStyle = colors[color];
-    ctx.fillRect(x + i * scale, y + j * scale, scale, scale);
+    ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
   }));
   if (level > 1) {
     ctx.fillStyle = '#6c6564';
-    ctx.fillRect(x + 5 * scale, y + 15 * scale, 15 * scale, 2 * scale);
+    ctx.fillRect(x + 5 * scale, y + scarf * scale, 15 * scale, 2 * scale);
     ctx.fillStyle = '#f6d77d';
-    ctx.fillRect(x + 5 * scale, y + 15 * scale, 14 * scale, scale);
-    ctx.fillRect(x + 16 * scale, y + 16 * scale, 3 * scale, 3 * scale);
+    ctx.fillRect(x + 5 * scale, y + scarf * scale, 14 * scale, scale);
+    ctx.fillRect(x + 16 * scale, y + (scarf + 1) * scale, 3 * scale, 3 * scale);
   }
   if (level > 2) {
     ctx.fillStyle = '#8da55b';
@@ -668,14 +719,20 @@ function drawScene(canvas) {
   const wide = canvas.hasAttribute('data-wide');
   const level = Number(canvas.dataset.level ?? 1);
   const faded = canvas.dataset.faded === 'true';
+  const species = canvas.dataset.species ?? 'cat';
+  const habitat = canvas.dataset.habitat ?? 'garden';
+  if (!compact && habitat !== 'garden') {
+    drawIndoorHabitat(ctx, canvas, habitat, level, faded, species);
+    return;
+  }
   if (canvas.hasAttribute('data-portrait')) {
     const petY = canvas.dataset.portrait === 'pet' ? 77 : 103;
-    drawHabitatPortrait(ctx, p, level, faded, petY, canvas.hasAttribute('data-empty'));
+    drawHabitatPortrait(ctx, p, level, faded, petY, canvas.hasAttribute('data-empty'), species);
     return;
   }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
   if (compact) {
-    paintPet(ctx, 4, 5, 1, level, faded);
+    paintPet(ctx, 4, 5, 1, level, faded, species);
     return;
   }
   box(0, 0, 144, 83, p.sky);
@@ -726,7 +783,7 @@ function drawScene(canvas) {
   const x = wide ? 56 : 58;
   box(x - 4, 62, 31, 2, p.turf);
   box(x, 64, 23, 1, p.turf);
-  paintPet(ctx, x, 39, 1, level, faded);
+  paintPet(ctx, x, 39, 1, level, faded, species);
   if (faded) {
     box(x + 26, 54, 1, 7, p.flower);
     box(x + 24, 55, 5, 2, p.flower);
@@ -737,7 +794,93 @@ function drawScene(canvas) {
   }
 }
 
-function drawHabitatPortrait(ctx, p, level, faded, petY, empty) {
+const roomPalettes = {
+  gym: ['#dbe9eb', '#aac2c4', '#dae2df', '#b7c6be', '#355754'],
+  dorm: ['#f4e8d8', '#d7baa2', '#ecd5b9', '#d1ad91', '#886751'],
+  living: ['#e8edd9', '#becba8', '#efddc3', '#d9bf9f', '#647457'],
+  bedroom: ['#efe7f2', '#cbbad3', '#e4d1db', '#cfb9c7', '#795f79']
+};
+
+function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
+  const { width, height } = canvas;
+  const portrait = canvas.hasAttribute('data-portrait');
+  const floor = portrait ? 77 : 48;
+  const [wall, trim, ground, seams, outline] = roomPalettes[habitat] ?? roomPalettes.living;
+  const box = (x, y, w, h, fill) => {
+    ctx.fillStyle = fill;
+    ctx.fillRect(Math.round(x), Math.round(y), w, h);
+  };
+  box(0, 0, width, height, wall);
+  box(0, floor - 3, width, 3, trim);
+  box(0, floor, width, height - floor, ground);
+  for (let y = floor + 12; y < height; y += 16) {
+    box(0, y, width, 1, seams);
+    for (let x = y % 32; x < width; x += 33) box(x, y, 1, 16, seams);
+  }
+  const windowX = width - 30;
+  const windowY = floor - 47;
+  box(windowX - 2, windowY - 2, 22, 24, trim);
+  box(windowX, windowY, 18, 20, '#c0def4');
+  box(windowX + 2, windowY + 3, 14, 2, '#f5fbff');
+  box(windowX + 8, windowY, 2, 20, '#f5fbff');
+  box(windowX, windowY + 10, 18, 2, '#f5fbff');
+  box(windowX - 3, windowY + 20, 24, 2, outline);
+
+  const right = width - 24;
+  if (habitat === 'gym') {
+    box(5, floor - 22, 3, 25, outline);
+    box(21, floor - 22, 3, 25, outline);
+    box(3, floor - 16, 23, 2, '#677f7e');
+    box(3, floor - 20, 5, 10, '#40535d');
+    box(21, floor - 20, 5, 10, '#40535d');
+    box(5, floor - 5, 23, 5, '#617f78');
+    box(right, floor - 18, 3, 18, outline);
+    box(right - 3, floor - 20, 12, 4, '#536e6f');
+    box(right - 7, floor - 4, 25, 7, '#526e6c');
+    box(right - 5, floor - 3, 21, 3, '#9eafac');
+  } else if (habitat === 'dorm') {
+    box(4, floor - 32, 25, 34, outline);
+    for (const y of [floor - 29, floor - 14]) {
+      box(6, y, 21, 9, '#f7f0de');
+      box(11, y, 15, 7, '#9cb3b8');
+    }
+    box(24, floor - 26, 2, 28, '#ac815f');
+    for (let y = floor - 23; y < floor; y += 6) box(24, y, 5, 2, '#ac815f');
+    box(right - 1, floor - 11, 21, 4, outline);
+    box(right, floor - 7, 3, 10, outline);
+    box(right + 16, floor - 7, 3, 10, outline);
+    box(right + 6, floor - 18, 8, 7, '#d49872');
+  } else if (habitat === 'living') {
+    box(6, floor - 23, 27, 17, '#7f9b82');
+    box(3, floor - 14, 33, 13, '#75917c');
+    box(7, floor - 10, 25, 7, '#acc0a3');
+    box(11, floor - 17, 7, 6, '#e4c399');
+    box(21, floor - 17, 8, 6, '#eadcc4');
+    box(7, floor - 1, 3, 3, outline);
+    box(29, floor - 1, 3, 3, outline);
+    box(right + 5, floor - 13, 2, 10, '#627b57');
+    box(right + 1, floor - 21, 9, 9, '#849664');
+    box(right + 3, floor - 7, 7, 9, '#b78064');
+  } else {
+    box(4, floor - 23, 27, 24, '#a289a5');
+    box(6, floor - 16, 24, 16, '#f5edf5');
+    box(7, floor - 16, 9, 6, '#fff9fa');
+    box(7, floor - 8, 24, 8, '#c2a6c7');
+    box(4, floor - 1, 27, 3, outline);
+    box(right + 2, floor - 12, 15, 14, '#ae93a1');
+    box(right + 8, floor - 22, 2, 10, outline);
+    box(right + 5, floor - 25, 8, 5, '#fff5d7');
+  }
+
+  const petY = portrait ? (canvas.dataset.portrait === 'pet' ? 84 : 105) : 38;
+  const petX = Math.round((width - 25) / 2);
+  const rug = habitat === 'gym' ? '#90aaa7' : trim;
+  box(petX - 7, petY + 19, 39, 14, rug);
+  box(petX - 3, petY + 22, 31, 3, seams);
+  if (!canvas.hasAttribute('data-empty')) paintPet(ctx, petX, petY, 1, level, faded, species);
+}
+
+function drawHabitatPortrait(ctx, p, level, faded, petY, empty, species) {
   const box = (x, y, w, h, color) => {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
@@ -779,13 +922,13 @@ function drawHabitatPortrait(ctx, p, level, faded, petY, empty) {
   if (empty) return;
   box(20, petY + 23, 28, 2, p.turf);
   box(24, petY + 25, 22, 1, p.turf);
-  paintPet(ctx, 22, petY, 1, level, faded);
+  paintPet(ctx, 22, petY, 1, level, faded, species);
   box(54, petY + 1, 1, 5, p.flower);
   box(52, petY + 3, 5, 1, p.flower);
 }
 
-function petCanvas(theme, level = 1, faded = false, avatar = false) {
-  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
+function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'cat', habitat = 'garden') {
+  return `<canvas width="${avatar ? 33 : 144}" height="${avatar ? 33 : 83}" class="${avatar ? 'avatar' : 'pixel-scene'}" data-palette="${theme}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${faded}" ${avatar ? 'data-avatar' : ''} role="img" aria-label="${faded ? '像素宠物的纪念画像' : '像素宠物'}"></canvas>`;
 }
 
 // Precompiled from huashu-design assets/ios_frame.jsx using the frameNode JSX factory.
@@ -1157,12 +1300,14 @@ function createPhone(initial) {
 
   function petDetails(pet) {
     const count = pet ? points(state, pet.id) : 0;
+    const species = pet?.species ?? 'cat';
+    const habitat = pet?.habitat ?? 'garden';
     const level = count >= 5 ? 3 : count >= 2 ? 2 : 1;
     const hp = pet ? health(state, pet.id) : 0;
     const name = pet ? escape(pet.name) : '待领养';
     const stage = pet ? (hp ? ['幼苗期', '成长期', '成熟期'][level - 1] : '已离世') : '还没有在养宠物';
     const lives = `<div class="hearts" role="img" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
-    return { count, level, hp, name, stage, lives };
+    return { count, level, hp, name, stage, lives, species, habitat };
   }
 
   function petGrowth(count) {
@@ -1170,11 +1315,11 @@ function createPhone(initial) {
   }
 
   function profile(pet, full = false) {
-    const { count, level, hp, name, stage, lives } = petDetails(pet);
+    const { count, level, hp, name, stage, lives, species, habitat } = petDetails(pet);
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
-      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp)}<span class="scene-label">${label}</span></div>
+      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp, false, species, habitat)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       ${petGrowth(count)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
@@ -1191,11 +1336,11 @@ function createPhone(initial) {
     habitatEntry.inert = !active || Boolean(overlay);
     if (tab !== 'home' && !petTab) return;
     const pet = current();
-    const { name, stage, lives, hp, level, count } = petDetails(pet);
+    const { name, stage, lives, hp, level, count, species, habitat } = petDetails(pet);
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
@@ -1203,7 +1348,8 @@ function createPhone(initial) {
         ${!petTab && pet ? petGrowth(count) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="成长与血量">
-        <h3>成长与血量</h3>
+        <header class="pet-panel-header"><h3>成长与血量</h3>
+          ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
         ${petGrowth(count)}
         ${petOptions(pet)}
         ${petTimeline(pet)}
@@ -1408,6 +1554,36 @@ function createPhone(initial) {
     </form>`);
   }
 
+  function habitatPicker(habitat) {
+    return field('栖息地背景', `<select name="habitat">${Object.entries(habitatStyles).map(([key, label]) =>
+      `<option value="${key}" ${key === habitat ? 'selected' : ''}>${label}</option>`
+    ).join('')}</select>`);
+  }
+
+  function adoptForm() {
+    const choices = Object.entries(petSpecies).map(([species, label]) => `<label class="species-choice">
+      <input type="radio" name="species" value="${species}" ${species === 'cat' ? 'checked' : ''}>
+      <span aria-hidden="true">${petCanvas(habitatPalette, 1, false, true, species)}</span><span>${label}</span>
+    </label>`).join('');
+    return sheet('领养宠物', `<form data-form="adopt">
+      ${usesGlass ? `<fieldset class="species-picker"><legend>选择宠物</legend><div class="species-options">${choices}</div></fieldset>
+        ${habitatPicker('garden')}
+        <div class="habitat-choice-preview">${petCanvas(habitatPalette)}</div>` : `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>`}
+      <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
+      ${field('宠物名字', '<input name="name" value="团团" maxlength="12" required>')}
+      <button type="submit" class="primary full">确认领养</button>
+    </form>`);
+  }
+
+  function habitatForm() {
+    const { species, habitat, level } = petDetails(current());
+    return sheet('更换背景', `<form data-form="habitat-settings">
+      ${habitatPicker(habitat)}
+      <div class="habitat-choice-preview">${petCanvas(habitatPalette, level, false, false, species, habitat)}</div>
+      <button type="submit" class="primary full">确认背景</button>
+    </form>`);
+  }
+
   function matchForm(record, targetId, merge = false) {
     const choices = state.plans.filter(plan => eligible(state, plan, record));
     return sheet('确认关联', `<p class="sheet-note">${escape(record.title)} · ${dateLabel(record.date)} ${record.start} · ${record.minutes} 分钟</p><form data-form="match">
@@ -1458,9 +1634,8 @@ function createPhone(initial) {
       case 'settings': return sheet('训练提醒', `<button type="button" class="switch-row" data-action="reminders" role="switch" aria-checked="${state.reminders}">
         <span><strong>开启提醒</strong><small>训练当天与进入待补记时提醒</small></span><i class="switch"></i></button>
         <p class="sheet-note">时间均为北京时间。首页会持续显示训练状态与截止时间。</p>`);
-      case 'adopt': return sheet('领养宠物', `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>
-        <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
-        <form data-form="adopt">${field('宠物名字', '<input name="name" value="团团" maxlength="12" required>')}<button type="submit" class="primary full">确认领养</button></form>`);
+      case 'adopt': return adoptForm();
+      case 'habitat-settings': return habitatForm();
       case 'restore': {
         const pet = state.pets.find(entry => entry.id === overlay.value);
         return sheet('恢复 ' + escape(pet.name), `<p class="sheet-note">更正后剩 ${health(state, pet.id)} 格血。恢复后双方的血量和成长都会保留。</p><div class="sheet-buttons">
@@ -1589,6 +1764,7 @@ function createPhone(initial) {
     new: () => open('new'),
     settings: () => open('settings'),
     adopt: () => open('adopt'),
+    'habitat-settings': () => open('habitat-settings'),
     link: value => open('match', '', { record: getRecord(value) }),
     close,
     'pick-week'() {
@@ -1664,6 +1840,12 @@ function createPhone(initial) {
   });
   outlet.addEventListener('change', event => {
     const input = event.target;
+    const preview = input.form?.querySelector('.habitat-choice-preview canvas');
+    if (preview && (input.name === 'species' || input.name === 'habitat')) {
+      preview.dataset[input.name] = input.value;
+      drawScene(preview);
+      return;
+    }
     const picker = input.closest('.week-picker');
     if (!picker || input.tagName !== 'SELECT') return;
     const month = picker.elements.year.value + '-' + picker.elements.month.value;
@@ -1725,11 +1907,14 @@ function createPhone(initial) {
           form.elements.name.setCustomValidity('');
           return;
         }
-        if (!adopt(state, name)) return;
+        if (!adopt(state, name, data.species, data.habitat)) return;
         if (scenario === 'onboarding') open('new');
         else feedback('已领养 ' + escape(name));
         break;
       }
+      case 'habitat-settings':
+        if (setPetHabitat(state, data.habitat)) feedback('已更换背景');
+        break;
       default: break;
     }
   });

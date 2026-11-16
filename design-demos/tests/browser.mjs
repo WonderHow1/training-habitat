@@ -215,8 +215,33 @@ async function demoDirection(index, glass = false) {
     await includes(petSummary, '已离世');
     await clickLead('adopt');
     await change(lead('input[name="name"]'), '点点');
+    if (glass) {
+      const form = lead('form[data-form="adopt"]');
+      await includes(form + ' .species-options', '仓鼠');
+      const previews = await evaluate(`[...document.querySelectorAll(${JSON.stringify(form + ' .species-choice canvas')})].map(canvas => canvas.toDataURL())`);
+      assert.equal(new Set(previews).size, 4);
+      await click(form + ' .species-choice:has(input[value="dog"])');
+      const rooms = new Set();
+      for (const habitat of ['garden', 'dorm', 'living', 'bedroom', 'gym']) {
+        await change(form + ' select[name="habitat"]', habitat);
+        rooms.add(await evaluate(`document.querySelector(${JSON.stringify(form + ' .habitat-choice-preview canvas')}).toDataURL()`));
+      }
+      assert.equal(rooms.size, 5);
+      await screenshot('ios-prototype-adoption');
+    }
     await submit();
     await includes(petSummary, '点点');
+    if (glass) {
+      const portrait = JSON.stringify(lead('.habitat-landscape'));
+      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.species`), 'dog');
+      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'gym');
+      await clickLead('habitat-settings');
+      await change(lead('.sheet select[name="habitat"]'), 'living');
+      await submit();
+      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'living');
+      await clickLead('tab', 'home');
+      assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.pixel-scene[data-species="dog"][data-habitat="living"]'))}))`));
+    }
     await clickLead('tab', 'log');
     await clickLead('import');
     await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));

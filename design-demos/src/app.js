@@ -76,12 +76,14 @@ function createPhone(initial) {
 
   function petDetails(pet) {
     const count = pet ? points(state, pet.id) : 0;
+    const species = pet?.species ?? 'cat';
+    const habitat = pet?.habitat ?? 'garden';
     const level = count >= 5 ? 3 : count >= 2 ? 2 : 1;
     const hp = pet ? health(state, pet.id) : 0;
     const name = pet ? escape(pet.name) : '待领养';
     const stage = pet ? (hp ? ['幼苗期', '成长期', '成熟期'][level - 1] : '已离世') : '还没有在养宠物';
     const lives = `<div class="hearts" role="img" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
-    return { count, level, hp, name, stage, lives };
+    return { count, level, hp, name, stage, lives, species, habitat };
   }
 
   function petGrowth(count) {
@@ -89,11 +91,11 @@ function createPhone(initial) {
   }
 
   function profile(pet, full = false) {
-    const { count, level, hp, name, stage, lives } = petDetails(pet);
+    const { count, level, hp, name, stage, lives, species, habitat } = petDetails(pet);
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
-      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp)}<span class="scene-label">${label}</span></div>
+      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp, false, species, habitat)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       ${petGrowth(count)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
@@ -110,11 +112,11 @@ function createPhone(initial) {
     habitatEntry.inert = !active || Boolean(overlay);
     if (tab !== 'home' && !petTab) return;
     const pet = current();
-    const { name, stage, lives, hp, level, count } = petDetails(pet);
+    const { name, stage, lives, hp, level, count, species, habitat } = petDetails(pet);
     const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
@@ -122,7 +124,8 @@ function createPhone(initial) {
         ${!petTab && pet ? petGrowth(count) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="成长与血量">
-        <h3>成长与血量</h3>
+        <header class="pet-panel-header"><h3>成长与血量</h3>
+          ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
         ${petGrowth(count)}
         ${petOptions(pet)}
         ${petTimeline(pet)}
@@ -327,6 +330,36 @@ function createPhone(initial) {
     </form>`);
   }
 
+  function habitatPicker(habitat) {
+    return field('栖息地背景', `<select name="habitat">${Object.entries(habitatStyles).map(([key, label]) =>
+      `<option value="${key}" ${key === habitat ? 'selected' : ''}>${label}</option>`
+    ).join('')}</select>`);
+  }
+
+  function adoptForm() {
+    const choices = Object.entries(petSpecies).map(([species, label]) => `<label class="species-choice">
+      <input type="radio" name="species" value="${species}" ${species === 'cat' ? 'checked' : ''}>
+      <span aria-hidden="true">${petCanvas(habitatPalette, 1, false, true, species)}</span><span>${label}</span>
+    </label>`).join('');
+    return sheet('领养宠物', `<form data-form="adopt">
+      ${usesGlass ? `<fieldset class="species-picker"><legend>选择宠物</legend><div class="species-options">${choices}</div></fieldset>
+        ${habitatPicker('garden')}
+        <div class="habitat-choice-preview">${petCanvas(habitatPalette)}</div>` : `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>`}
+      <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
+      ${field('宠物名字', '<input name="name" value="团团" maxlength="12" required>')}
+      <button type="submit" class="primary full">确认领养</button>
+    </form>`);
+  }
+
+  function habitatForm() {
+    const { species, habitat, level } = petDetails(current());
+    return sheet('更换背景', `<form data-form="habitat-settings">
+      ${habitatPicker(habitat)}
+      <div class="habitat-choice-preview">${petCanvas(habitatPalette, level, false, false, species, habitat)}</div>
+      <button type="submit" class="primary full">确认背景</button>
+    </form>`);
+  }
+
   function matchForm(record, targetId, merge = false) {
     const choices = state.plans.filter(plan => eligible(state, plan, record));
     return sheet('确认关联', `<p class="sheet-note">${escape(record.title)} · ${dateLabel(record.date)} ${record.start} · ${record.minutes} 分钟</p><form data-form="match">
@@ -377,9 +410,8 @@ function createPhone(initial) {
       case 'settings': return sheet('训练提醒', `<button type="button" class="switch-row" data-action="reminders" role="switch" aria-checked="${state.reminders}">
         <span><strong>开启提醒</strong><small>训练当天与进入待补记时提醒</small></span><i class="switch"></i></button>
         <p class="sheet-note">时间均为北京时间。首页会持续显示训练状态与截止时间。</p>`);
-      case 'adopt': return sheet('领养宠物', `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>
-        <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
-        <form data-form="adopt">${field('宠物名字', '<input name="name" value="团团" maxlength="12" required>')}<button type="submit" class="primary full">确认领养</button></form>`);
+      case 'adopt': return adoptForm();
+      case 'habitat-settings': return habitatForm();
       case 'restore': {
         const pet = state.pets.find(entry => entry.id === overlay.value);
         return sheet('恢复 ' + escape(pet.name), `<p class="sheet-note">更正后剩 ${health(state, pet.id)} 格血。恢复后双方的血量和成长都会保留。</p><div class="sheet-buttons">
@@ -508,6 +540,7 @@ function createPhone(initial) {
     new: () => open('new'),
     settings: () => open('settings'),
     adopt: () => open('adopt'),
+    'habitat-settings': () => open('habitat-settings'),
     link: value => open('match', '', { record: getRecord(value) }),
     close,
     'pick-week'() {
@@ -583,6 +616,12 @@ function createPhone(initial) {
   });
   outlet.addEventListener('change', event => {
     const input = event.target;
+    const preview = input.form?.querySelector('.habitat-choice-preview canvas');
+    if (preview && (input.name === 'species' || input.name === 'habitat')) {
+      preview.dataset[input.name] = input.value;
+      drawScene(preview);
+      return;
+    }
     const picker = input.closest('.week-picker');
     if (!picker || input.tagName !== 'SELECT') return;
     const month = picker.elements.year.value + '-' + picker.elements.month.value;
@@ -644,11 +683,14 @@ function createPhone(initial) {
           form.elements.name.setCustomValidity('');
           return;
         }
-        if (!adopt(state, name)) return;
+        if (!adopt(state, name, data.species, data.habitat)) return;
         if (scenario === 'onboarding') open('new');
         else feedback('已领养 ' + escape(name));
         break;
       }
+      case 'habitat-settings':
+        if (setPetHabitat(state, data.habitat)) feedback('已更换背景');
+        break;
       default: break;
     }
   });

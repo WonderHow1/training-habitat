@@ -5,9 +5,9 @@ import vm from 'node:vm';
 
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth } = vm.runInNewContext(model + `
+  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth })`);
+     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -29,6 +29,20 @@ test('the calendar has the correct length for each month', () => {
   assert.equal(daysInMonth('2100-02'), 28);
   assert.equal(daysInMonth('2026-11'), 30);
   assert.equal(daysInMonth('2026-12'), 31);
+});
+
+test('adoption records the pet species and chosen habitat independently of health', () => {
+  const state = seed('onboarding');
+  assert.equal(adopt(state, '米粒', 'dog', 'unsupported'), false);
+  assert.equal(adopt(state, '米粒', 'unsupported', 'gym'), false);
+  assert.equal(adopt(state, '米粒', 'rabbit', 'dorm'), true);
+  const pet = state.pets.find(entry => entry.id === state.active);
+  assert.equal(pet.species, 'rabbit');
+  assert.equal(pet.habitat, 'dorm');
+  assert.equal(setPetHabitat(state, 'bedroom'), true);
+  assert.equal(setPetHabitat(state, 'unsupported'), false);
+  assert.equal(pet.habitat, 'bedroom');
+  assert.equal(health(state, pet.id), 3);
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {
