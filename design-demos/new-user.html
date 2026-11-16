@@ -1025,6 +1025,10 @@ button.heat-cell[aria-pressed="true"] { background-image: radial-gradient(circle
 button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .heatmap-footer { min-height: 32px; }
 .heatmap-footer .text-button { min-height: 32px; font-size: 12px; padding: 4px; }
+.review-actions { display: flex; justify-content: end; margin-block-end: 16px; }
+.review-day + .review-day { margin-block-start: 18px; }
+.review-day h3 { color: var(--muted); font-size: 13px; font-weight: 680; padding-inline: 2px; }
+.review-record-actions { margin-block-start: 8px; }
 .heat-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
 .heat-legend i { --heat-size: 8px; }
 
@@ -1098,7 +1102,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
   backdrop-filter: none;
 }
 [data-glass] .phone-app[data-screen="log"] .segments { background-color: transparent; padding-inline: 0; }
-[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.round, .record-actions button) > svg {
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.round, .review-actions button) > svg {
   width: 25px;
   height: 25px;
   padding: 5px;
@@ -2446,6 +2450,7 @@ const icons = {
   home: 'M3 10.5 12 3l9 7.5V20H3z M9 20v-6h6v6', week: 'M4 6h16v14H4z M4 10h16 M8 4v4 M16 4v4',
   log: 'M5 4h14v16H5z M8 9h8 M8 13h8 M8 17h5', pet: 'M5 11V5l5 4h4l5-4v6l2 3v3l-4 3H7l-4-3v-3z M8 14h.1 M16 14h.1 M11 17h2',
   plus: 'M5 12h14 M12 5v14', arrow: 'm9 6 6 6-6 6', back: 'm15 6-6 6 6 6',
+  review: 'M4 10a8 8 0 1 1 1 6 M4 5v5h5 M12 8v5l3 2',
   run: 'M14 4a1.6 1.6 0 1 0 0 .1 M6 10l5-2 4 2 3 3h3 M11 8l-2 6 4 2-2 5 M9 14l-3 4H3',
   dumbbell: 'M8 5v14 M4 8v8 M16 5v14 M20 8v8 M8 12h8', stretch: 'M12 4a1.5 1.5 0 1 0 0 .1 M4 8l8 3 8-3 M12 11v4 M12 15l-5 5 M12 15l5 5',
   check: 'm5 12 4 4L19 6', watch: 'M8 6l1-4h6l1 4 M8 18l1 4h6l1-4 M7 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M12 9v3l2 1',
@@ -2513,8 +2518,8 @@ function createPhone(container) {
   const phone = iosFrame();
   const outlet = phone.querySelector('.ios-content');
   outlet.innerHTML = `<div class="phone-app"><div class="app-scroll"></div>
-    <nav class="tabbar" aria-label="App 导航">${Object.entries(tabNames).map(([key, title]) =>
-      `<button type="button" data-action="tab" data-value="${key}">${icon(key)}<span>${title}</span></button>`).join('')}</nav>
+    <nav class="tabbar" aria-label="App 导航">${Object.entries(usesGlass ? { ...tabNames, log: '回顾' } : tabNames).map(([key, title]) =>
+      `<button type="button" data-action="tab" data-value="${key}">${icon(usesGlass && key === 'log' ? 'review' : key)}<span>${title}</span></button>`).join('')}</nav>
     <div class="app-overlays"></div></div>`;
   const app = outlet.querySelector('.phone-app');
   const scrollArea = outlet.querySelector('.app-scroll');
@@ -2759,6 +2764,7 @@ function createPhone(container) {
     const records = state.records.filter(record => logFilter === 'all' || logFilter === record.source);
     const entries = records.filter(record => !logDay || logDay === record.date)
       .sort((a, b) => bj(b.date, b.start) - bj(a.date, a.start));
+    if (usesGlass) return review(records, entries);
     const sourceLabel = source => source === 'device' ? '设备' : '手动';
     const rows = entries.map((record, index) => {
       const diaryDate = theme === 'diary' && entries[index - 1]?.date !== record.date ? `<h3>${dateLabel(record.date)} ${weekday(record.date)}</h3>` : '';
@@ -2768,11 +2774,30 @@ function createPhone(container) {
       <span class="list-end"><strong>${record.minutes} 分钟</strong><small>${record.plan ? '已匹配计划' : '仅训练记录'}</small></span>`,
       'record', record.id, managementActions('record', record.id));
     }).join('');
-    return head('训练记录', usesGlass ? '' : '训练历史', round('plus', '手动记录', 'manual')) +
-      (usesGlass ? trainingHeatmap(records, today(), logDay, initial) : '') +
+    return head('训练记录', '训练历史', round('plus', '手动记录', 'manual')) +
       `<div class="record-actions">${button(icon('plus', 20) + '手动记录', 'manual', 'secondary')}${button(icon('watch', 20) + '导入设备', 'import', 'primary')}</div>
       <div class="segments" aria-label="按来源筛选">${options.map(([value, label]) => `<button type="button" data-action="filter" data-value="${value}" aria-pressed="${value === logFilter}">${label}</button>`).join('')}</div>
       <section class="record-feed">${rows || '<p class="empty-copy">暂无此来源的训练记录</p>'}</section>`;
+  }
+
+  function review(records, entries) {
+    const days = new Map();
+    for (const record of entries) {
+      if (!days.has(record.date)) days.set(record.date, []);
+      days.get(record.date).push(record);
+    }
+    const currentYear = today().slice(0, 4);
+    const groups = [...days].map(([date, sessions]) => {
+      const year = date.slice(0, 4);
+      const heading = (year === currentYear ? '' : year + '年') + dateLabel(date) + ' · ' + weekday(date);
+      const labelId = `${initial}-review-${date}`;
+      return `<section class="review-day" aria-labelledby="${labelId}"><h3 id="${labelId}">${heading}</h3>
+        ${sessions.map(record => button(`<span class="list-copy"><strong>${escape(record.title)}</strong><small>${record.start}</small></span>
+          <span class="list-end"><strong>${record.minutes} 分钟</strong></span>${icon('arrow', 14)}`, 'record', 'list-row', record.id)).join('')}</section>`;
+    }).join('');
+    return head('训练回顾') + trainingHeatmap(records, today(), logDay, initial) +
+      `<div class="review-actions">${button(icon('plus', 18) + '补录或导入', 'review-add', 'secondary')}</div>
+      <div class="record-feed">${groups || '<p class="empty-copy">暂无训练记录</p>'}</div>`;
   }
 
   function petOptions(pet) {
@@ -2967,6 +2992,8 @@ function createPhone(container) {
     switch (overlay.type) {
       case 'detail': return detail(plan);
       case 'pick-week': return weekPicker(overlay.date);
+      case 'review-add': return sheet('补录或导入', `<div class="sheet-buttons">
+        ${button(icon('plus', 20) + '手动记录', 'manual', 'secondary full')}${button(icon('watch', 20) + '导入设备', 'import', 'secondary full')}</div>`);
       case 'manual': return trainingForm(plan);
       case 'new': return dateForm();
       case 'reschedule': return dateForm(plan);
@@ -2989,10 +3016,13 @@ function createPhone(container) {
         ${button('合并记录', 'merge', 'primary')}${button('是另一场训练', 'separate', 'secondary')}</div>`);
       case 'record': {
         const record = getRecord(overlay.value);
-        return sheet(escape(record.title), `<dl><div><dt>开始时间</dt><dd>${dateLabel(record.date)} ${record.start}</dd></div>
+        const linkedPlan = record.plan ? getPlan(record.plan) : null;
+        const relation = linkedPlan ? button('查看关联计划', 'detail', 'secondary full', linkedPlan.id) : button('关联计划', 'link', 'secondary full', record.id);
+        return sheet(escape(record.title), `<dl><div><dt>${usesGlass ? '实际开始' : '开始时间'}</dt><dd>${dateLabel(record.date)} ${record.start}</dd></div>
           <div><dt>实际时长</dt><dd>${record.minutes} 分钟</dd></div><div><dt>来源</dt><dd>${record.source === 'device' ? '设备' : '手动'}${record.deviceId && record.source === 'manual' ? ' + 设备合并' : ''}</dd></div>
-          <div><dt>计划状态</dt><dd>${record.plan ? '已完成 · ' + escape(getPlan(record.plan)?.title ?? '') : '未关联'}</dd></div></dl>
-          ${record.plan ? button('查看关联计划', 'detail', 'secondary full', record.plan) : button('关联计划', 'link', 'secondary full', record.id)}`);
+          <div><dt>${usesGlass ? '关联计划' : '计划状态'}</dt><dd>${linkedPlan ? (usesGlass ? '' : '已完成 · ') + escape(linkedPlan.title) : '未关联'}</dd></div></dl>
+          ${relation}${usesGlass ? `<div class="sheet-buttons review-record-actions">
+            ${button('编辑记录', 'edit-record', 'secondary full', record.id)}${button('删除记录', 'delete-record', 'secondary full destructive', record.id)}</div>` : ''}`);
       }
       case 'settings': return sheet('训练提醒', `<button type="button" class="switch-row" data-action="reminders" role="switch" aria-checked="${state.reminders}">
         <span><strong>开启提醒</strong><small>训练当天与进入待补记时提醒</small></span><i class="switch"></i></button>
@@ -3161,6 +3191,7 @@ function createPhone(container) {
       }
     },
     import: value => open('import', value),
+    'review-add': () => open('review-add'),
     restore: value => open('restore', value),
     new: () => open('new'),
     settings: () => open('settings'),

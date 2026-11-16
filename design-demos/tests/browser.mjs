@@ -260,7 +260,10 @@ async function demoDirection(index, glass = false) {
   }
   await clickLead('tab', 'log');
   await includes(lead('.record-feed'), '校园夜跑');
-  if (glass) await verifyHeatmapAfterSaving();
+  if (glass) {
+    await verifyHeatmapAfterSaving();
+    await clickLead('review-add');
+  }
   await clickLead('import');
   await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
   await submit();
@@ -295,7 +298,9 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.today-task'), '待训练');
     await includes(lead('.habitat .growth'), '0 / 100 XP');
     await clickLead('tab', 'log');
-    await includes(lead(act('record', 'record-2')), '仅训练记录');
+    await clickLead('record', 'record-2');
+    await includes(lead('.sheet dl'), '关联计划未关联');
+    await clickLead('close');
     await clickLead('tab', 'home');
     await clickLead('detail', 'today');
   }
@@ -346,6 +351,7 @@ async function demoDirection(index, glass = false) {
       assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.pixel-scene[data-species="dog"][data-habitat="running-track"]'))}))`));
     }
     await clickLead('tab', 'log');
+    if (glass) await clickLead('review-add');
     await clickLead('import');
     await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
     await submit();
@@ -627,7 +633,16 @@ async function verifyHeatmapAfterSaving() {
   })()`);
   assert.deepEqual(months, ['8月', '9月', '10月', '11月']);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).title`), '11月16日 · 1 次训练');
-  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead('.heatmap'))}).nextElementSibling.classList.contains('record-actions')`));
+  await includes(lead('.tabbar ' + act('tab', 'log')), '回顾');
+  await includes(lead('.record-feed .review-day h3'), '11月16日 · 周一');
+  assert.ok(await evaluate(`(() => {
+    const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
+    const review = heatmap.closest('.app-scroll');
+    const groups = Array.from(review.querySelectorAll('.review-day'), group => group.getAttribute('aria-labelledby'));
+    return heatmap.nextElementSibling.classList.contains('review-actions') && groups.length > 1 &&
+      groups.every((date, index) => index === 0 || date < groups[index - 1]) &&
+      !review.querySelector('[data-action="manual"], [data-action="import"], .swipe-actions, .record-source');
+  })()`), 'Review groups actual workouts by date and exposes one recording entry point');
   await click(cell);
   assert.deepEqual(await heatmapSize(), size, 'The clear-date action keeps the layout steady');
   assert.equal(await countRows(), 1, 'Selecting a date filters the history to that day');
@@ -648,12 +663,13 @@ async function verifyHeatmapAfterSaving() {
   assert.equal(await heatScrollLeft(), earlier);
   await wheel(600);
   await waitForHeatScroll('weeks.scrollLeft === weeks.scrollWidth - weeks.clientWidth');
-  await clickLead('filter', 'device');
-  assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(cell)}))`), false);
   await clickLead('log-day', '2026-11-14');
   assert.equal(await countRows(), 1);
-  await includes(feed, '设备');
-  await clickLead('filter', 'all');
+  await includes(feed, '16:12');
+  await click(feed);
+  await includes(lead('.sheet dl'), '来源设备');
+  await clickLead('close');
+  await click(lead('.heatmap-footer [data-action="log-day"]'));
   assert.equal(await countRows(), allRows);
   await screenshot('ios-prototype-heatmap');
 }
@@ -750,7 +766,7 @@ async function verifyGlass() {
     const weeks = document.querySelector('[data-phone="log"] .heat-weeks');
     return weeks.scrollWidth > weeks.clientWidth && weeks.scrollLeft === weeks.scrollWidth - weeks.clientWidth;
   })()`), 'The standalone record preview opens on the latest week');
-  for (const [tab, title] of [['week', '训练计划'], ['log', '训练记录']]) {
+  for (const [tab, title] of [['week', '训练计划'], ['log', '训练回顾']]) {
     const selector = `[data-phone="${tab}"] .app-head`;
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).textContent.trim()`), title);
   }
@@ -909,7 +925,10 @@ async function verifyCustomProjects() {
   await navigate('ios-prototype.html', 1440, 1100);
   await enterToday();
   await clickLead('tab', 'log');
-  await click(lead('.record-actions [data-action="manual"]'));
+  await clickLead('review-add');
+  await includes(lead('.sheet h3'), '补录或导入');
+  await includes(lead('.sheet-buttons'), '导入设备');
+  await clickLead('manual');
   const input = lead('.sheet input[name="title"]');
   const project = JSON.stringify(input);
   const suggestion = value => lead(act('pick-project', value));
@@ -919,7 +938,7 @@ async function verifyCustomProjects() {
   await submit();
   const entry = lead(act('record', 'record-2'));
   await includes(entry, '自由泳');
-  await includes(entry, '仅训练记录');
+  await includes(entry, '25 分钟');
   await clickLead('tab', 'home');
   assert.equal(await todayHeadline(), '今天已经锻炼0.42小时');
   await includes(lead('.today-remaining'), '你距离目标还有5分钟');
@@ -931,7 +950,9 @@ async function verifyCustomProjects() {
   await clickLead('link', 'record-2');
   await includes(lead('.sheet h3'), '确认关联');
   await submit();
-  await includes(entry, '已匹配计划');
+  await click(entry);
+  await includes(lead('.sheet dl'), '关联计划校园夜跑');
+  await clickLead('close');
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '1 / 3');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-head ' + act('new')))}).getAttribute('aria-label')`), '新增计划');
@@ -948,7 +969,8 @@ async function verifyCustomProjects() {
   await navigate('ios-prototype.html', 1440, 1100);
   await enterToday();
   await clickLead('tab', 'log');
-  await click(lead('.record-actions [data-action="manual"]'));
+  await clickLead('review-add');
+  await clickLead('manual');
   await includes(lead('.project-history'), '自由泳');
   await includes(lead('.project-history'), '瑜伽拉伸');
   await click(suggestion('瑜伽拉伸'));
@@ -1009,9 +1031,7 @@ async function verifyTrainingManagement() {
   await includes(lead('.week-summary dd'), '1 / 2');
 
   await clickLead('tab', 'log');
-  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
-  await swipeWorkout('record-2', 'left', true);
-  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await clickLead('record', 'record-2');
   await clickLead('edit-record', 'record-2');
   await includes(lead('.sheet h3'), '编辑训练记录');
   await change(lead('.sheet input[name="title"]'), '晚间慢跑');
@@ -1019,7 +1039,7 @@ async function verifyTrainingManagement() {
   await change(lead('.sheet input[name="minutes"]'), '105');
   await submit();
   const changedRecord = lead('.record-feed ' + act('record', 'record-2'));
-  for (const content of ['晚间慢跑', '105 分钟', '已匹配计划']) await includes(changedRecord, content);
+  for (const content of ['晚间慢跑', '18:00', '105 分钟']) await includes(changedRecord, content);
   await clickLead('tab', 'home');
   await includes(lead('.today-remaining'), '你距离目标还有0分钟');
   await includes(lead('.habitat .growth'), 'Lv.2');
@@ -1031,7 +1051,7 @@ async function verifyTrainingManagement() {
   await clickLead('close');
   await clickLead('tab', 'log');
   await clickLead('log-day', '2026-11-16');
-  await swipeWorkout('record-2');
+  await clickLead('record', 'record-2');
   await clickLead('delete-record', 'record-2');
   await includes(lead('.sheet h3'), '删除训练记录？');
   await clickLead('confirm-delete');
@@ -1056,7 +1076,7 @@ async function verifyPrototypePalette() {
       const srgb = value / 255;
       return srgb <= .04045 ? srgb / 12.92 : ((srgb + .055) / 1.055) ** 2.4;
     }).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
-    const button = document.querySelector('[data-phone="log"] .record-actions .primary');
+    const button = document.querySelector('[data-phone="log"] .review-actions .secondary');
     const face = colorChannels(getComputedStyle(button).backgroundColor);
     const text = colorChannels(getComputedStyle(button).color);
     const contrast = (luminance(face) + .05) / (luminance(text) + .05);
@@ -1067,7 +1087,6 @@ async function verifyPrototypePalette() {
     const sky = pixel(habitat, 0, 0);
     const white = 'rgb(255, 255, 255)';
     return ['html', 'body', '.ios-screen', '.app-scroll', '.week-card', '.heatmap'].every(selector => background(selector) === white) &&
-      isLightGray(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
       isLightGray(colorChannels(background('.tabbar'))) && isLightGray(face) && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
@@ -1081,24 +1100,22 @@ async function verifyPrototypePalette() {
   })()`), 'Today, Pet, and navigation still use glass highlights and backdrop blur');
   assert.ok(await evaluate(`(() => {
     const styles = selectors => selectors.map(selector => getComputedStyle(document.querySelector(selector)));
-    const pills = styles(['.record-actions .primary', '.record-actions .secondary', '.segments button[aria-pressed="false"]', '.section-add']);
-    const tiles = styles(['.record-feed .activity', '.plan-list .activity']);
-    const icon = getComputedStyle(document.querySelector('.record-actions button > svg'));
+    const pills = styles(['.review-actions .secondary', '.section-add']);
+    const tile = getComputedStyle(document.querySelector('.plan-list .activity'));
+    const icon = getComputedStyle(document.querySelector('.review-actions button > svg'));
     const flatGray = style => style.backgroundColor === 'rgb(232, 232, 232)' && style.backgroundImage === 'none' &&
       style.boxShadow === 'none' && style.backdropFilter === 'none';
-    const selected = getComputedStyle(document.querySelector('.segments button[aria-pressed="true"]'));
     return pills.every(style => flatGray(style) && parseFloat(style.borderRadius) >= 25) &&
-      tiles.every(style => flatGray(style) && style.borderRadius === '13px') &&
-      selected.backgroundColor === 'rgb(217, 217, 217)' && selected.backgroundImage === 'none' &&
+      flatGray(tile) && tile.borderRadius === '13px' &&
       icon.backgroundColor === 'rgb(33, 38, 45)' && icon.borderRadius === '50%';
-  })()`), 'Plan and Records controls use flat gray pills and rounded tiles with dark icon badges');
+  })()`), 'Plan and Review controls use flat gray pills and dark icon badges');
 }
 
 async function verifyOpenSurfaces() {
   assert.ok(await evaluate(`(() => {
     const selectors = [
       '.habitat-link', '.today-task', '.week-card', '.heatmap', '.pet-scene-panel', '.tabbar',
-      '.round', '.board-controls button', '.record-actions .secondary', '.heat-cell'
+      '.round', '.board-controls button', '.review-actions .secondary', '.heat-cell'
     ];
     const preview = document.querySelector('.habitat-link .pixel-scene');
     const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
@@ -1116,7 +1133,7 @@ async function verifyOpenSurfaces() {
       const below = document.querySelector(second).getBoundingClientRect();
       return below.top - above.bottom;
     };
-    const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.record-actions']]
+    const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.review-actions']]
       .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
     const cardFade = getComputedStyle(preview).maskImage;
     const [midpoint, start] = [...cardFade.matchAll(/([0-9.]+)%/g)].map(match => Number(match[1]));

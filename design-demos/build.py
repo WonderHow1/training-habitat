@@ -48,7 +48,7 @@ def build_direction(index, direction, *, glass=False, new_user=False):
     variant = (' data-glass' if glass else '') + (' data-new-user' if new_user else '')
     caption = "iOS 原型" if glass else "iOS 方向稿"
     footer = "" if glass else f"{view_name}是这一版的视觉重点。"
-    devices = (("home", "今天"),) if new_user else (("home", "今天"), ("week", "一周计划"), ("log", "训练记录"), ("pet", "宠物与成长"))
+    devices = (("home", "今天"),) if new_user else (("home", "今天"), ("week", "一周计划"), ("log", "训练回顾" if glass else "训练记录"), ("pet", "宠物与成长"))
     phones = "".join(
         f'<section class="device" id="view-{tab}" data-phone="{tab}"><h2>{label}</h2></section>'
         for tab, label in devices
