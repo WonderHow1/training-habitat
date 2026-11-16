@@ -145,10 +145,10 @@ function createPhone(container) {
     const { level: rank, progress } = experienceProgress(xp);
     const species = pet?.species ?? 'cat';
     const habitat = pet?.habitat ?? 'garden';
-    const level = usesGlass ? Math.min(3, rank) : count >= 5 ? 3 : count >= 2 ? 2 : 1;
+    const level = usesGlass ? petStageLevel(rank) : count >= 5 ? 3 : count >= 2 ? 2 : 1;
     const hp = pet ? health(state, pet.id) : 0;
     const name = pet ? escape(pet.name) : '待领养';
-    const stage = pet ? (hp ? ['幼苗期', '成长期', '成熟期'][level - 1] : '已离世') : '还没有在养宠物';
+    const stage = pet ? (hp ? petStages[level - 1] : '已离世') : '还没有在养宠物';
     const lives = `<div class="hearts" role="img" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
     return { count, rank, progress, awards, level, hp, name, stage, lives, species, habitat };
   }
@@ -427,13 +427,15 @@ function createPhone(container) {
     const slides = Object.entries(petSpecies).map(([key, name]) => `<button type="button" class="pet-guide-portrait"
       aria-label="摸摸${name}" data-species="${key}" tabindex="-1" aria-hidden="true"><span aria-hidden="true">
       ${petCanvas(habitatPalette, 1, false, true, key)}</span></button>`).join('');
+    const stages = petStages.map((stage, index) => `<button type="button" data-stage="${index + 1}"
+      aria-pressed="${index === 0}">${stage}</button>`).join('');
     return sheet('宠物预览', `<div class="pet-guide-view">
       <div class="pet-guide-carousel">${slides}</div>
       <div class="pet-guide-navigation">
         <button type="button" class="round" data-step="-1" aria-label="上一只宠物">${icon('back', 18)}</button>
         <strong aria-live="polite">${petSpecies[species]}</strong>
         <button type="button" class="round" data-step="1" aria-label="下一只宠物">${icon('arrow', 18)}</button>
-      </div></div>`);
+      </div><div class="segments pet-guide-stages" role="group" aria-label="成长阶段">${stages}</div></div>`);
   }
 
   function detail(plan) {

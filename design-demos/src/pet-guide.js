@@ -5,6 +5,7 @@ function bindPetGuideView(view, species) {
   const name = navigation.querySelector('strong');
   const previous = navigation.querySelector('[data-step="-1"]');
   const next = navigation.querySelector('[data-step="1"]');
+  const stages = view.querySelector('.pet-guide-stages');
   const animated = new WeakSet();
   const last = slides.length - 1;
   const clamp = index => Math.max(0, Math.min(last, index));
@@ -45,6 +46,16 @@ function bindPetGuideView(view, species) {
   carousel.addEventListener('scroll', () => select(clamp(Math.round(carousel.scrollLeft / carousel.clientWidth))), { passive: true });
   previous.addEventListener('click', () => go(active - 1));
   next.addEventListener('click', () => go(active + 1));
+  stages.addEventListener('click', event => {
+    const stage = event.target.closest('[data-stage]');
+    if (!stage || stage.getAttribute('aria-pressed') === 'true') return;
+    stages.querySelector('[aria-pressed="true"]').setAttribute('aria-pressed', 'false');
+    stage.setAttribute('aria-pressed', 'true');
+    carousel.querySelectorAll('canvas').forEach(canvas => {
+      canvas.dataset.level = stage.dataset.stage;
+      drawScene(canvas);
+    });
+  });
   view.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     event.preventDefault();

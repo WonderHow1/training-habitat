@@ -169,7 +169,7 @@ function animatePet(canvas, target, { roam = false, previewOffset = null, marker
     }
     const offsetX = position.x * scale;
     const offsetY = position.y * scale;
-    const pose = `${offsetX},${offsetY},${position.x},${position.y},${x},${y},${flip},${blink},${footstep}`;
+    const pose = `${canvas.dataset.level},${offsetX},${offsetY},${position.x},${position.y},${x},${y},${flip},${blink},${footstep}`;
     if (pose === previousPose && frame === previousFrame) return;
     previousPose = pose;
     previousFrame = frame;

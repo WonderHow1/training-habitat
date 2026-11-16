@@ -412,6 +412,7 @@
 .pet-guide-navigation { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .pet-guide-navigation strong { font-size: 18px; }
 .pet-guide-navigation button:disabled { opacity: .4; cursor: default; }
+.pet-guide-stages { margin: 10px 0 0; }
 .habitat-entry-header h2 {
   font-size: 45px;
   line-height: 1.14;

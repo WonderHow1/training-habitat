@@ -210,6 +210,7 @@ async function demoDirection(index, glass = false) {
     assert.equal(await evaluate('document.querySelectorAll(".onboarding, [data-action=open-onboarding], #demo-scene option[value=onboarding]").length'), 0);
     assert.equal(await inHabitat(), true);
     await includes(lead('.habitat-entry-header > h2:first-child'), '团团');
+    await includes(lead('.habitat-entry-status'), '幼年');
     await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
     await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
     await clickLead('toggle-pet-age');
@@ -1263,6 +1264,7 @@ async function verifyTrainingManagement() {
   await clickLead('tab', 'home');
   await includes(lead('.today-remaining'), '你距离目标还有0分钟');
   await includes(lead('.habitat .growth'), 'Lv.2');
+  await includes(lead('.habitat .pet-meta'), '青年');
   await includes(lead('.habitat .growth'), '5 / 100 XP');
   await clickLead('tab', 'pet');
   await includes(lead('.pet-scene-panel'), '经验 +105 XP');
@@ -1463,6 +1465,20 @@ async function verifyNarrowTrainingSummary() {
     }
     check();
   })`), 'Tapping the enlarged pet triggers its own reaction');
+  assert.ok(await evaluate(`(() => {
+    const stages = [...document.querySelectorAll(${JSON.stringify(lead('.pet-guide-stages button'))})];
+    const canvases = [...document.querySelector(${carousel}).querySelectorAll('canvas')];
+    const frames = stages.map(stage => {
+      stage.click();
+      return canvases.map(canvas => {
+        const still = canvas.cloneNode();
+        drawScene(still);
+        return still.toDataURL();
+      });
+    });
+    return stages.map(stage => stage.textContent.trim()).join(',') === '幼年,青年,成年' && canvases.length === 10 &&
+      canvases.every((_, index) => new Set(frames.map(stage => stage[index])).size === 3);
+  })()`), 'All ten pets have three distinct growth previews');
   const waitForPet = expected => evaluate(`new Promise((resolve, reject) => {
     const strip = document.querySelector(${carousel});
     const end = performance.now() + 1600;
@@ -1487,6 +1503,8 @@ async function verifyNarrowTrainingSummary() {
   }
   await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await waitForPet('hedgehog');
+  await includes(lead('.pet-guide-stages [aria-pressed="true"]'), '成年');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(activePet + ' canvas')}).dataset.level`), '3');
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
   await cmd('Input.dispatchMouseEvent', { type: 'mousePressed', x: dragPoint.left, y: dragPoint.y, button: 'left', clickCount: 1 });
   await cmd('Input.dispatchMouseEvent', { type: 'mouseMoved', x: dragPoint.left + 145, y: dragPoint.y, buttons: 1 });

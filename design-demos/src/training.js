@@ -3,6 +3,7 @@ const DEMO_AT = '2026-11-16T20:00';
 const DEFAULT_DAILY_GOAL = 30;
 const MIN_DAILY_GOAL = 10;
 const XP_PER_LEVEL = 100;
+const petStages = ['幼年', '青年', '成年'];
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
 const petSpecies = {
@@ -117,6 +118,10 @@ function petExperienceRecords(state, petId) {
     workouts.push({ record, end });
   }
   return workouts.filter(({ record, end }) => dailyTotals.get(record.date) >= goal && petAt(state, end) === petId);
+}
+
+function petStageLevel(level) {
+  return Math.min(petStages.length, level);
 }
 
 function experienceProgress(xp) {

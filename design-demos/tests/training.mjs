@@ -6,10 +6,10 @@ import vm from 'node:vm';
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
   adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays, petSpecies } = vm.runInNewContext(model + `
+  editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays, petSpecies, petStages, petStageLevel } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
      adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes,
-     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays, petSpecies })`);
+     editPlan, editRecord, deletePlan, deleteRecord, petExperienceRecords, experienceProgress, petAgeInDays, petSpecies, petStages, petStageLevel })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -83,6 +83,12 @@ test('each 100 experience points advances the level and carries over the remaind
   assert.deepEqual({ ...experienceProgress(0) }, { level: 1, progress: 0 });
   assert.deepEqual({ ...experienceProgress(100) }, { level: 2, progress: 0 });
   assert.deepEqual({ ...experienceProgress(205) }, { level: 3, progress: 5 });
+});
+
+test('growth progresses through three stages as experience levels increase', () => {
+  for (const [xp, name] of [[0, '幼年'], [99, '幼年'], [100, '青年'], [199, '青年'], [200, '成年'], [500, '成年']]) {
+    assert.equal(petStages[petStageLevel(experienceProgress(xp).level) - 1], name);
+  }
 });
 
 test('adoption records the pet species and chosen habitat independently of health', () => {
