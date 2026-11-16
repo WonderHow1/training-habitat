@@ -299,15 +299,21 @@ async function demoDirection(index, glass = false) {
     await clickLead('confirm-restore', 'moss');
     await includes(petSummary, '团团');
     await change('#demo-scene', 'onboarding');
-    await submit();
+    if (glass) {
+      await verifyOnboarding();
+      await enterToday();
+      await includes(lead('.app-head .kicker'), '目标 121 分钟');
+      await click(lead('.today-task [data-action="new"]'));
+    } else await submit();
     await change(lead('input[name="title"]'), '校园夜跑');
     await change(lead('input[name="date"]'), '2026-11-17');
     await submit();
-    await click(lead('.sheet [data-action="onboard-finish"].secondary'));
     if (glass) {
-      await clickLead('tab', 'week');
       await includes(lead(act('detail', 'plan-3')), '11月17日');
-    } else await includes(lead('.following'), '11月17日');
+    } else {
+      await click(lead('.sheet [data-action="onboard-finish"].secondary'));
+      await includes(lead('.following'), '11月17日');
+    }
     await change('#demo-time', '2026-11-19T01:00');
     await click('#advance');
     await includes('#demo-feedback', '已按北京时间更新结算');
@@ -342,6 +348,53 @@ async function demoDirection(index, glass = false) {
     })()`));
     await screenshot(name + '-mobile-pet');
   }
+}
+
+async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
+  const screen = JSON.stringify(lead('.onboarding'));
+  const background = () => evaluate(`document.querySelector(${screen}).style.backgroundColor`);
+  const heading = lead('.onboarding h2');
+  const submitStep = () => click(lead('.onboarding button[type="submit"]'));
+  const goal = lead('.onboarding input[name="minutes"]');
+  await includes(heading, '设定每日训练目标');
+  assert.ok(await evaluate(`(() => {
+    const view = document.querySelector(${screen});
+    const phone = view.closest('.ios-screen');
+    const rect = view.getBoundingClientRect();
+    return !view.hidden && rect.height === phone.getBoundingClientRect().height &&
+      rect.width === phone.getBoundingClientRect().width && getComputedStyle(view).backgroundImage === 'none' &&
+      phone.querySelector('.tabbar').inert && view.scrollWidth === view.clientWidth;
+  })()`), 'Onboarding covers the phone with a solid color');
+  const goalColor = await background();
+  const warning = lead('.onboarding-warning');
+  await change(goal, '120');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(warning)}).textContent`), '');
+  await change(goal, '121');
+  await includes(warning, '超过 2 小时');
+  await screenshot(screenshotPrefix + '-goal');
+  await submitStep();
+  await includes(heading, '领养宠物');
+  assert.notEqual(await background(), goalColor);
+  await click(lead('.onboarding .species-choice:has(input[value="rabbit"])'));
+  await change(lead('.onboarding input[name="name"]'), '小栗');
+  await click(lead('.onboarding [data-back]'));
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(goal)}).value`), '121');
+  await includes(warning, '避免过度训练');
+  await submitStep();
+  await screenshot(screenshotPrefix + '-pet');
+  assert.equal(await evaluate(`document.querySelector(${screen}).querySelector('input[name="species"]:checked').value`), 'rabbit');
+  await submitStep();
+  await includes(heading, '选择栖息地');
+  const preview = JSON.stringify(lead('.onboarding-preview canvas'));
+  const grass = await evaluate(`document.querySelector(${preview}).toDataURL()`);
+  await change(lead('.onboarding select[name="habitat"]'), 'running-track');
+  assert.notEqual(await evaluate(`document.querySelector(${preview}).toDataURL()`), grass);
+  await screenshot(screenshotPrefix + '-habitat');
+  await submitStep();
+  assert.equal(await evaluate(`document.querySelector(${screen}).hidden`), true);
+  assert.equal(await inHabitat(), true);
+  await includes(lead('.habitat-entry-header'), '小栗');
+  assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.habitat-landscape[data-species="rabbit"][data-habitat="running-track"]'))}))`));
 }
 
 async function habitatPoint() {
@@ -797,6 +850,8 @@ async function verifyNarrowTrainingSummary() {
   await waitForHeatScroll(`weeks.scrollLeft < ${latest - 40}`);
   assert.equal(await evaluate('document.documentElement.scrollLeft'), 0);
   await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await change('#demo-scene', 'onboarding');
+  await verifyOnboarding('ios-prototype-mobile-onboarding');
 }
 let failed = false;
 try {

@@ -1442,6 +1442,19 @@ function createPhone(container) {
   let notice = '';
   let restoreFocus = null;
   let clickTrigger = null;
+  const onboarding = usesGlass && initial === 'home' ? createOnboarding(phoneScreen, {
+    palette: habitatPalette, speciesPicker, habitatPicker,
+    finish({ minutes, name, species, habitat }) {
+      if (!adopt(state, name.trim(), species, habitat)) return;
+      state.dailyGoal = Number(minutes);
+      scenario = 'standard';
+      tab = 'home';
+      showHabitat = true;
+      onboarding.stop();
+      render();
+      habitatEntry.querySelector('button').focus({ preventScroll: true });
+    }
+  }) : null;
 
   const current = () => state.pets.find(pet => pet.id === state.active) ??
     state.pets.reduce((last, pet) => !last || pet.spans.at(-1)[1] >= last.spans.at(-1)[1] ? pet : last, null);
@@ -1553,7 +1566,8 @@ function createPhone(container) {
     const todayPlan = now[0];
     const stage = todayPlan && status(state, todayPlan);
     const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span></span>` : '今天';
-    const intro = head(title, dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
+    const subtitle = dateLabel(today()) + ' ' + weekday(today()) + (state.dailyGoal ? ` · 目标 ${state.dailyGoal} 分钟` : '');
+    const intro = head(title, subtitle, round('bell', '训练提醒', 'settings'));
     const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
       : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;
     const empty = `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`;
@@ -1737,13 +1751,17 @@ function createPhone(container) {
     ).join('')}</select>`);
   }
 
-  function adoptForm() {
+  function speciesPicker(selected = 'cat') {
     const choices = Object.entries(petSpecies).map(([species, label]) => `<label class="species-choice">
-      <input type="radio" name="species" value="${species}" ${species === 'cat' ? 'checked' : ''}>
+      <input type="radio" name="species" value="${species}" ${species === selected ? 'checked' : ''}>
       <span aria-hidden="true">${petCanvas(habitatPalette, 1, false, true, species)}</span><span>${label}</span>
     </label>`).join('');
+    return `<fieldset class="species-picker"><legend>选择宠物</legend><div class="species-options">${choices}</div></fieldset>`;
+  }
+
+  function adoptForm() {
     return sheet('领养宠物', `<form data-form="adopt">
-      ${usesGlass ? `<fieldset class="species-picker"><legend>选择宠物</legend><div class="species-options">${choices}</div></fieldset>
+      ${usesGlass ? `${speciesPicker()}
         ${habitatPicker('garden')}
         <div class="habitat-choice-preview">${petCanvas(habitatPalette)}</div>` : `<div class="adopt-avatar">${petCanvas(theme, 1, false, true)}</div>`}
       <p class="sheet-note">它有 3 格血。完成计划会成长，确认漏练会扣 1 格血。</p>
@@ -1836,8 +1854,8 @@ function createPhone(container) {
     const heatmapOffset = preserve ? scrollArea.querySelector('.heat-weeks')?.scrollLeft : undefined;
     scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
     positionHeatmap(heatmapOffset);
-    scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay);
-    tabbar.inert = Boolean(overlay) || showHabitat;
+    scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay) || Boolean(onboarding?.active);
+    tabbar.inert = Boolean(overlay) || showHabitat || Boolean(onboarding?.active);
     const index = tabButtons.findIndex(button => button.dataset.value === tab);
     tabButtons.forEach((button, i) => {
       if (i === index) button.setAttribute('aria-current', 'page');
@@ -1904,6 +1922,8 @@ function createPhone(container) {
   }
 
   function load(nextScenario) {
+    onboarding?.stop();
+    if (usesGlass && !onboarding && nextScenario === 'onboarding') nextScenario = 'standard';
     scenario = nextScenario;
     state = demoState(nextScenario === 'no-plan' ? 'standard' : nextScenario);
     if (nextScenario === 'no-plan') {
@@ -1914,13 +1934,14 @@ function createPhone(container) {
     selectedDay = null;
     logFilter = 'all';
     logDay = null;
-    tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
+    tab = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
     showHabitat = Boolean(habitatEntry) && nextScenario === 'standard' && tab === 'home';
     overlay = null;
     restoreFocus = null;
     notice = '';
+    if (nextScenario === 'onboarding' && onboarding) onboarding.start();
     render();
-    if (nextScenario === 'onboarding' && initial === 'home') open('adopt');
+    if (nextScenario === 'onboarding' && !onboarding && initial === 'home') open('adopt');
   }
 
   function selectDevice(record, target) {
@@ -2002,7 +2023,7 @@ function createPhone(container) {
 
   if (habitatEntry) bindHabitatGesture({
     screen: phoneScreen, habitatEntry, scrollArea,
-    getMode: () => !overlay && tab === 'home' ? showHabitat : null,
+    getMode: () => !overlay && !onboarding?.active && tab === 'home' ? showHabitat : null,
     setHabitat
   });
   if (usesGlass) bindWorkoutSwipe(scrollArea);

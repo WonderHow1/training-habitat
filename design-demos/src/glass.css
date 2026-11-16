@@ -405,6 +405,80 @@
 .habitat-open:hover { background: #33333309; }
 .habitat-open:active { background: #33333315; }
 
+.onboarding {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 76px clamp(20px, 5.6vw, 32px) 39px;
+  transition: background-color 520ms var(--glass-ease);
+}
+.onboarding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100%;
+  max-width: 370px;
+  margin-inline: auto;
+}
+.onboarding-head progress {
+  display: block;
+  width: 76px;
+  height: 4px;
+  accent-color: var(--muted);
+  margin-bottom: 20px;
+}
+.onboarding-head h2 {
+  max-width: 11em;
+  font-size: clamp(28px, 7.6vw, 38px);
+  line-height: 1.14;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+  outline: none;
+}
+.onboarding-content { margin-block: auto; }
+.onboarding-content .field { margin: 0; }
+.onboarding-content fieldset { border: 0; padding: 0; margin: 0 0 20px; min-width: 0; }
+.onboarding-content legend { padding: 0; margin-bottom: 9px; font-size: 13px; color: var(--muted); }
+.onboarding-content .species-choice { min-height: 69px; align-content: center; }
+.onboarding-goal {
+  display: grid;
+  gap: 4px;
+  padding: 18px 16px 15px;
+  border-radius: 22px;
+}
+.goal-caption { font-size: 13px; font-weight: 600; color: var(--muted); }
+.goal-entry { display: flex; align-items: baseline; gap: 9px; }
+.goal-entry input {
+  width: 4ch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  appearance: textfield;
+  background: transparent;
+  color: var(--ink);
+  font-size: clamp(38px, 12vw, 52px);
+  font-weight: 720;
+  letter-spacing: -.055em;
+  font-variant-numeric: tabular-nums;
+}
+.goal-entry input::-webkit-inner-spin-button, .goal-entry input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.goal-entry span { color: var(--muted); font-size: 14px; }
+.onboarding-warning {
+  min-height: 3em;
+  padding: 9px 2px 0;
+  color: #704425;
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 1.5;
+}
+.onboarding-preview { margin-bottom: 14px; border-radius: 20px; }
+.onboarding-actions { display: flex; gap: 9px; }
+.onboarding-actions button { min-height: 48px; border-radius: 30px; }
+.onboarding-actions .primary { flex: 1; }
+
 .heatmap {
   --heat-size: 14px;
   margin-block-end: var(--section-gap);
@@ -479,7 +553,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 .heat-legend i { --heat-size: 8px; }
 
 /* Use the same material on the controls inside each screen and sheet. */
-[data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
+[data-glass] :is(.phone-app, .habitat-entry, .onboarding) :is(.primary, .secondary, .notice-link, .week-trigger, .day, .onboarding-goal,
   .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select)) {
   border: 0;
   background-color: var(--control-tint);
@@ -488,7 +562,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
   -webkit-backdrop-filter: blur(10px) saturate(135%);
   backdrop-filter: blur(10px) saturate(135%);
 }
-[data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .day[aria-pressed="true"], .picker-day[aria-pressed="true"],
+[data-glass] :is(.phone-app, .habitat-entry, .onboarding) :is(.primary, .day[aria-pressed="true"], .picker-day[aria-pressed="true"],
   .species-choice:has(input:checked), .switch-row[aria-checked="true"] .switch) {
   background-color: var(--control-selected);
 }
@@ -511,10 +585,10 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
   background-image: var(--control-glint);
   box-shadow: var(--control-shadow);
 }
-[data-glass] .phone-app :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button) {
+[data-glass] :is(.phone-app, .onboarding) :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button) {
   transition: transform 160ms var(--glass-ease), box-shadow 160ms var(--glass-ease);
 }
-[data-glass] .phone-app :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button):active {
+[data-glass] :is(.phone-app, .onboarding) :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button):active {
   transform: scale(.96);
 }
 .heat-weeks button.heat-cell { background-image: linear-gradient(150deg, #ffffff33, #fff0 65%, #25252512); }
@@ -557,7 +631,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  [data-glass] :is(.phone-app, .habitat-entry) :is(.primary, .secondary, .notice-link, .week-trigger, .day,
+  [data-glass] :is(.phone-app, .habitat-entry, .onboarding) :is(.primary, .secondary, .notice-link, .week-trigger, .day, .onboarding-goal,
     .picker-day, .text-button, .segments, .switch, .species-choice, .scene-label, .field :is(input, select),
     .list-row, .choice, .switch-row) {
     -webkit-backdrop-filter: none;
@@ -566,7 +640,7 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
   [data-glass] .tabbar::before { background: var(--accent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-glass] :is(.tabbar button, .round, .phone-app :is(.primary, .secondary, .day, .picker-day,
+  [data-glass] :is(.tabbar button, .round, :is(.phone-app, .onboarding) :is(.primary, .secondary, .day, .picker-day,
     .week-trigger, .segments button, .text-button)):active { transform: none; }
   .ios-screen:has(.habitat-entry) :is(.habitat-entry, .app-scroll) { transform: none; }
   .ios-screen:has(.habitat-entry) { --habitat-progress: 0; }

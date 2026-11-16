@@ -60,7 +60,7 @@ def build_direction(index, direction, *, glass=False):
   <div><p>{lead}</p><p id="demo-feedback" role="status"></p></div>
   <div class="board-controls">
     <label>场景<select id="demo-scene" aria-label="场景">
-      <option value="standard">日常训练</option><option value="onboarding">首次领养</option>
+      <option value="standard">日常训练</option><option value="onboarding">{'新用户引导' if glass else '首次领养'}</option>
       <option value="death">宠物离世</option><option value="no-plan">无计划日</option>
     </select></label>
     <label>北京时间<input id="demo-time" type="datetime-local" value="2026-11-16T20:00" min="2026-11-16T20:00"></label>
@@ -69,7 +69,7 @@ def build_direction(index, direction, *, glass=False):
 </div>
 <main id="board">{phones}</main>
 <footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。{footer}</p></footer>
-<script>{(SRC / "heatmap.js").read_text() if glass else ""}
+<script>{(SRC / "heatmap.js").read_text() + (SRC / "onboarding.js").read_text() if glass else ""}
 {JS}</script></body></html>
 """
 
