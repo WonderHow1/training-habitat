@@ -188,6 +188,8 @@ async function demoDirection(index, glass = false) {
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
   if (glass) {
+    await includes(lead('.sheet button[type="submit"]'), '保存记录');
+    await includes(lead('.sheet-note'), '保存后会计入「校园夜跑」');
     assert.ok(await evaluate(`(() => {
       const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
       const field = sheet.querySelector('input[name="title"]');
@@ -199,8 +201,11 @@ async function demoDirection(index, glass = false) {
     await screenshot(name + '-record');
   }
   await submit();
-  await includes(lead('.sheet h3'), '确认关联');
-  await submit();
+  if (glass) assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
+  else {
+    await includes(lead('.sheet h3'), '确认关联');
+    await submit();
+  }
   await includes(lead('.today-task'), '已完成');
   await includes(lead('.habitat'), '成长 2 次');
   if (glass) {
@@ -239,7 +244,7 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.sheet'), '补记截止');
   await clickLead('manual', 'grace');
   await submit();
-  await submit();
+  if (!glass) await submit();
   await clickLead('detail', 'grace');
   await includes(lead('.sheet .sheet-status'), '已完成');
   await clickLead('close');
@@ -247,6 +252,16 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.equal(await inHabitat(), true);
     await enterToday();
+    await swipeWorkout('today');
+    await clickLead('manual', 'today');
+    await change(lead('.sheet input[name="minutes"]'), '10');
+    await submit();
+    await includes(lead('.toast'), '已保存训练记录，计划尚未完成');
+    await includes(lead('.today-task'), '待训练');
+    await includes(lead('.habitat'), '成长 1 次');
+    await clickLead('tab', 'log');
+    await includes(lead(act('record', 'record-2')), '仅训练记录');
+    await clickLead('tab', 'home');
     await swipeWorkout('today');
   }
   await clickLead('reschedule', 'today');
@@ -727,15 +742,23 @@ async function verifyCustomProjects() {
   assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(lead('.project-history button'))}).length`), 0);
   await change(input, '  自由泳  ');
   await submit();
-  await click(lead('label.choice:has(input[name="plan"][value=""])'));
-  await submit();
-  await includes(lead('.record-feed'), '自由泳');
+  const entry = lead(act('record', 'record-2'));
+  await includes(entry, '自由泳');
+  await includes(entry, '仅训练记录');
   await clickLead('tab', 'home');
   assert.equal(await todayHeadline(), '今天已经锻炼0.42小时');
   await includes(lead('.today-remaining'), '你距离目标还有5分钟');
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '0 / 3');
   await includes(lead('.week-summary > div:nth-child(2) dd'), '25 分钟');
+  await clickLead('tab', 'log');
+  await clickLead('record', 'record-2');
+  await clickLead('link', 'record-2');
+  await includes(lead('.sheet h3'), '确认关联');
+  await submit();
+  await includes(entry, '已匹配计划');
+  await clickLead('tab', 'week');
+  await includes(lead('.week-summary dd'), '1 / 3');
   await click(lead('.app-head [data-action="new"]'));
   await click(suggestion('自由泳'));
   assert.equal(await evaluate(`document.querySelector(${project}).value`), '自由泳');
@@ -759,7 +782,6 @@ async function verifyTrainingManagement() {
   await settleHabitatAnimation();
   await swipeWorkout('today');
   await clickLead('manual', 'today');
-  await submit();
   await submit();
 
   await clickLead('tab', 'week');

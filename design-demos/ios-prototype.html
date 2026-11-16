@@ -2598,7 +2598,8 @@ function createPhone(container) {
       ${field('开始时间', `<input type="time" name="start" value="${target?.start ?? '18:30'}" required>`)}</div>
       ${field('实际时长（分钟）', `<input type="number" name="minutes" min="1" max="1440" value="${target?.minutes ?? 25}" required>`)}
       ${editing && target.plan ? '<p class="sheet-note">若修改后的记录不再满足原计划，系统会重新结算该计划。</p>' : ''}
-      <p class="form-error" role="alert"></p><button class="primary full" type="submit">${editing ? '保存记录' : '下一步：确认关联'}</button></form>`);
+      ${usesGlass && !editing && target ? `<p class="sheet-note">符合计划要求时，保存后会计入「${escape(target.title)}」。</p>` : ''}
+      <p class="form-error" role="alert"></p><button class="primary full" type="submit">${editing || usesGlass ? '保存记录' : '下一步：确认关联'}</button></form>`);
   }
 
   function dateForm(plan, editing = false) {
@@ -3027,11 +3028,20 @@ function createPhone(container) {
         break;
       case 'manual': {
         const record = { ...data, minutes: Number(data.minutes), source: 'manual' };
-        if (bj(record.date, record.start) + record.minutes * 60_000 > state.now) {
+        const end = bj(record.date, record.start) + record.minutes * 60_000;
+        if (!Number.isFinite(end) || end > state.now) {
           form.querySelector('.form-error').textContent = '请填写已结束的训练。';
           return;
         }
-        open('match', overlay.value, { record });
+        if (!usesGlass) {
+          open('match', overlay.value, { record });
+          break;
+        }
+        const plan = getPlan(overlay.value);
+        const saved = saveRecord(state, record);
+        rememberProject(saved.title);
+        if (plan && match(state, plan, saved)) feedback('训练计划已完成');
+        else feedback(plan ? '已保存训练记录，计划尚未完成' : '训练记录已保存');
         break;
       }
       case 'match': {
