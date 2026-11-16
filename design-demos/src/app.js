@@ -48,7 +48,7 @@ function createPhone(initial) {
     habitatEntry.setAttribute('aria-label', '栖息地');
     phoneScreen.append(habitatEntry);
   }
-  let showHabitat = Boolean(habitatEntry) && (initial === 'home' || initial === 'pet');
+  let showHabitat = Boolean(habitatEntry) && initial === 'home';
   let state = demoState('standard');
   let tab = initial;
   let overlay = null;
@@ -67,6 +67,7 @@ function createPhone(initial) {
   const getRecord = id => state.records.find(record => record.id === id);
   const today = () => dateAt(state.now);
   const weekday = date => '周' + '日一二三四五六'[new Date(date + 'T00:00:00Z').getUTCDay()];
+  const isPetHabitat = () => Boolean(habitatEntry) && tab === 'pet';
 
   function head(title, sub, action = '') {
     return `<header class="app-head"><div><p class="kicker">${sub}</p><h2>${title}</h2></div>${action}</header>`;
@@ -77,9 +78,13 @@ function createPhone(initial) {
     const level = count >= 5 ? 3 : count >= 2 ? 2 : 1;
     const hp = pet ? health(state, pet.id) : 0;
     const name = pet ? escape(pet.name) : '待领养';
-    const stage = pet && !hp ? '已离世' : ['幼苗期', '成长期', '成熟期'][level - 1];
+    const stage = pet ? (hp ? ['幼苗期', '成长期', '成熟期'][level - 1] : '已离世') : '还没有在养宠物';
     const lives = `<div class="hearts" role="img" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
     return { count, level, hp, name, stage, lives };
+  }
+
+  function petGrowth(count) {
+    return `<div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>`;
   }
 
   function profile(pet, full = false) {
@@ -89,28 +94,40 @@ function createPhone(initial) {
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
       <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
-      <div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>
+      ${petGrowth(count)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
     </section>`;
   }
 
-  function renderHabitat() {
+  function renderHabitat(preserve) {
     if (!habitatEntry) return;
-    phoneScreen.toggleAttribute('data-habitat', showHabitat);
-    phoneScreen.toggleAttribute('data-habitat-tabs', tab === 'pet');
-    habitatEntry.toggleAttribute('data-active', showHabitat);
-    habitatEntry.inert = !showHabitat;
-    if (tab !== 'home' && tab !== 'pet') return;
-    const { name, stage, lives, hp, level } = petDetails(current());
-    const petTab = tab === 'pet';
+    const petTab = isPetHabitat();
+    const active = showHabitat || petTab;
+    phoneScreen.toggleAttribute('data-habitat', active);
+    phoneScreen.toggleAttribute('data-habitat-tabs', petTab);
+    habitatEntry.toggleAttribute('data-active', active);
+    habitatEntry.inert = !active || Boolean(overlay);
+    if (tab !== 'home' && !petTab) return;
+    const pet = current();
+    const { name, stage, lives, hp, level, count } = petDetails(pet);
+    const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
+    habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait data-palette="${theme}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${theme}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
-        <div class="habitat-entry-status">${lives}<span>${stage}</span></div>
+        <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
+        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
       </header>
-      <button type="button" class="habitat-continue">${icon('arrow', 16)}<span>${petTab ? '上滑查看成长' : '上滑查看今天'}</span></button>`;
+      ${petTab ? `<section class="pet-scene-panel" aria-label="成长与血量">
+        <h3>成长与血量</h3>
+        ${petGrowth(count)}
+        ${petOptions(pet)}
+        ${petTimeline(pet)}
+      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     drawScene(habitatEntry.querySelector('canvas'));
+    const panel = habitatEntry.querySelector('.pet-scene-panel');
+    if (panel) panel.scrollTop = panelOffset;
   }
 
   function setHabitat(visible) {
@@ -197,21 +214,31 @@ function createPhone(initial) {
       <section class="record-feed">${rows || '<p class="empty-copy">暂无此来源的训练记录</p>'}</section>`;
   }
 
-  function petScreen() {
-    const pet = current();
+  function petOptions(pet) {
     const recovered = recoverable(state);
+    if (state.active && !recovered.length) return '';
+    return `<section class="pet-options">${state.active ? '' : button(pet ? '领养新宠物' : '领养宠物', 'adopt')}${recovered.map(entry => button('恢复 ' + escape(entry.name), 'restore', 'secondary', entry.id)).join('')}
+      ${pet && !state.active ? '<p class="empty-copy">仍可继续训练。原计划和记录会保留。</p>' : ''}</section>`;
+  }
+
+  function petTimeline(pet) {
     const effects = [
       ...Object.entries(state.finished).filter(([, event]) => event.pet === pet?.id)
         .map(([id, event]) => ({ id, date: event.at, title: '成长 +1', cls: 'done' })),
       ...Object.entries(state.misses).filter(([id, owner]) => owner === pet?.id && !state.finished[id])
         .map(([id]) => ({ id, date: deadline(getPlan(id)) + DAY, title: '血量 −1', cls: 'missed' }))
     ].sort((a, b) => b.date - a.date);
-    return head('我的宠物', pet ? '领养于 ' + dateLabel(pet.born) : '还没有在养宠物') +
-      profile(pet, true) + `<section class="pet-options">${state.active ? '' : button(pet ? '领养新宠物' : '领养宠物', 'adopt')}${recovered.map(entry => button('恢复 ' + escape(entry.name), 'restore', 'secondary', entry.id)).join('')}
-      ${pet && !state.active ? '<p class="empty-copy">仍可继续训练。原计划和记录会保留。</p>' : ''}</section>` +
-      `<section class="pet-effects"><h3>成长与血量</h3>${effects.map(event => `<button type="button" class="list-row" data-action="detail" data-value="${event.id}">
+    return effects.map(event => `<button type="button" class="list-row" data-action="detail" data-value="${event.id}">
       <span class="activity ${event.cls}">${event.cls === 'done' ? icon('check') : heart(true)}</span><span class="list-copy"><strong>${event.title}</strong>
-      <small>${dateLabel(getPlan(event.id).date)} · ${escape(getPlan(event.id).title)}</small></span>${icon('arrow', 14)}</button>`).join('') || '<p class="empty-copy">完成训练后，成长记录会出现在这里。</p>'}</section>`;
+      <small>${dateLabel(getPlan(event.id).date)} · ${escape(getPlan(event.id).title)}</small></span>${icon('arrow', 14)}</button>`).join('') ||
+      '<p class="empty-copy">完成训练后，成长记录会出现在这里。</p>';
+  }
+
+  function petScreen() {
+    const pet = current();
+    return head('我的宠物', pet ? '领养于 ' + dateLabel(pet.born) : '还没有在养宠物') +
+      profile(pet, true) + petOptions(pet) +
+      `<section class="pet-effects"><h3>成长与血量</h3>${petTimeline(pet)}</section>`;
   }
 
   function sheet(title, body) {
@@ -331,9 +358,9 @@ function createPhone(initial) {
 
   function render({ preserve = false, focusSheet = false } = {}) {
     const offset = preserve ? scrollArea.scrollTop : 0;
-    scrollArea.innerHTML = screens[tab]();
-    scrollArea.inert = showHabitat || Boolean(overlay);
-    tabbar.inert = Boolean(overlay) || (showHabitat && tab !== 'pet');
+    scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
+    scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay);
+    tabbar.inert = Boolean(overlay) || showHabitat;
     const index = tabButtons.findIndex(button => button.dataset.value === tab);
     tabButtons.forEach((button, i) => {
       if (i === index) button.setAttribute('aria-current', 'page');
@@ -343,7 +370,7 @@ function createPhone(initial) {
     layers.innerHTML = `${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}`;
     outlet.querySelectorAll('canvas').forEach(drawScene);
     scrollArea.scrollTop = offset;
-    renderHabitat();
+    renderHabitat(preserve);
     if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });
   }
 
@@ -379,7 +406,7 @@ function createPhone(initial) {
     overlay = null;
     restoreFocus = null;
     render({ preserve: true });
-    if (focus) [...outlet.querySelectorAll('[data-action]')].find(button =>
+    if (focus) [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
       button.dataset.action === focus.action && button.dataset.value === focus.value
     )?.focus({ preventScroll: true });
   }
@@ -407,8 +434,7 @@ function createPhone(initial) {
     logFilter = 'all';
     logDay = null;
     tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
-    showHabitat = Boolean(habitatEntry) && (nextScenario === 'death' ||
-      (nextScenario === 'standard' && (tab === 'home' || tab === 'pet')));
+    showHabitat = Boolean(habitatEntry) && nextScenario === 'standard' && tab === 'home';
     overlay = null;
     restoreFocus = null;
     notice = '';
@@ -429,7 +455,7 @@ function createPhone(initial) {
 
   const handle = {
     tab(value) {
-      if (tab !== value) showHabitat = Boolean(habitatEntry) && value === 'pet';
+      if (tab !== value) showHabitat = false;
       tab = value;
       notice = '';
       render();
@@ -479,18 +505,20 @@ function createPhone(initial) {
 
   if (habitatEntry) bindHabitatGesture({
     screen: phoneScreen, habitatEntry, scrollArea,
-    getMode: () => !overlay && (tab === 'home' || tab === 'pet') ? showHabitat : null,
+    getMode: () => !overlay && tab === 'home' ? showHabitat : null,
     setHabitat
   });
 
-  outlet.addEventListener('click', event => {
+  function handleClick(event) {
     const control = event.target.closest('[data-action]');
     if (control) {
       clickTrigger = control;
       handle[control.dataset.action]?.(control.dataset.value);
       clickTrigger = null;
     } else if (event.target.classList.contains('shade')) close();
-  });
+  }
+  outlet.addEventListener('click', handleClick);
+  habitatEntry?.addEventListener('click', handleClick);
   outlet.addEventListener('keydown', event => {
     if (!overlay) return;
     if (event.key === 'Escape') {

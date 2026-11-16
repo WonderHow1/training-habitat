@@ -189,22 +189,21 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.following'), '11月17日');
 
   if (index === 1) {
+    const petSummary = lead(glass ? '.habitat-entry-header' : '.habitat');
     await change('#demo-scene', 'death');
-    await includes(lead('.habitat'), '已离世');
-    if (glass) await enterToday();
+    await includes(petSummary, '已离世');
     await clickLead('adopt');
     await change(lead('input[name="name"]'), '点点');
     await submit();
-    await includes(lead('.habitat'), '点点');
+    await includes(petSummary, '点点');
     await clickLead('tab', 'log');
     await clickLead('import');
     await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
     await submit();
     await clickLead('tab', 'pet');
-    if (glass) await enterToday();
     await clickLead('restore', 'moss');
     await clickLead('confirm-restore', 'moss');
-    await includes(lead('.habitat'), '团团');
+    await includes(petSummary, '团团');
     await change('#demo-scene', 'onboarding');
     await submit();
     await change(lead('input[name="date"]'), '2026-11-17');
@@ -229,6 +228,18 @@ async function demoDirection(index, glass = false) {
   await screenshot(name + '-mobile-record');
   await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
   assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
+  if (glass) {
+    await clickLead('tab', 'pet');
+    await includes(lead('.pet-scene-panel'), '成长 1 次');
+    await settleHabitatAnimation();
+    assert.ok(await evaluate(`(() => {
+      const petScene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+      const panel = petScene.querySelector('.pet-scene-panel').getBoundingClientRect();
+      const nav = document.querySelector(${JSON.stringify(lead('.tabbar'))}).getBoundingClientRect();
+      return petScene.getBoundingClientRect().height === innerHeight && panel.bottom < nav.top;
+    })()`));
+    await screenshot(name + '-mobile-pet');
+  }
 }
 
 async function habitatPoint() {
@@ -321,6 +332,8 @@ async function waitForHabitat(visible) {
   })`), 'The wheel gesture settles in the expected view');
 }
 
+const settleHabitatAnimation = () => evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
   const { x, y } = await habitatPoint();
@@ -353,10 +366,20 @@ async function verifyGlass() {
   assert.ok(await evaluate(`testNav.getAnimations({ subtree: true }).some(a => a.transitionProperty === 'transform')`));
   assert.equal(await inHabitat(), true, 'Pet opens with the full-screen habitat');
   await includes(lead('.habitat-entry-header'), '我的宠物');
-  await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+  await includes(lead('.habitat-entry-header'), '领养于 11月9日');
+  await includes(lead('.pet-scene-panel'), '成长与血量');
+  assert.ok(await evaluate(`(() => {
+    const scene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+    const scroll = document.querySelector(${JSON.stringify(lead('.app-scroll'))});
+    return !scene.querySelector('.habitat-continue') && !scroll.firstElementChild && !testNav.inert;
+  })()`), 'The full-screen scene contains the pet controls and leaves the tabs accessible');
+  await settleHabitatAnimation();
   await screenshot('ios-prototype-pet');
-  await enterToday();
-  await includes(lead('.pet-effects'), '成长与血量');
+  await clickLead('detail', 'old');
+  await includes(lead('.sheet h3'), '校园夜跑');
+  await clickLead('close');
+  assert.ok(await evaluate('document.activeElement.closest(".pet-scene-panel") && document.activeElement.dataset.value === "old"'));
+  assert.equal(await inHabitat(), true, 'Closing an event detail stays in the full-screen pet scene');
   await clickLead('tab', 'week');
   await clickLead('tab', 'pet');
   await clickLead('tab', 'home');

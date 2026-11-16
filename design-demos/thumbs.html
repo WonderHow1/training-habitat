@@ -127,7 +127,8 @@ function drawScene(canvas) {
   const level = Number(canvas.dataset.level ?? 1);
   const faded = canvas.dataset.faded === 'true';
   if (canvas.hasAttribute('data-portrait')) {
-    drawHabitatPortrait(ctx, p, level, faded);
+    const petY = canvas.dataset.portrait === 'pet' ? 77 : 103;
+    drawHabitatPortrait(ctx, p, level, faded, petY, canvas.hasAttribute('data-empty'));
     return;
   }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
@@ -194,7 +195,7 @@ function drawScene(canvas) {
   }
 }
 
-function drawHabitatPortrait(ctx, p, level, faded) {
+function drawHabitatPortrait(ctx, p, level, faded, petY, empty) {
   const box = (x, y, w, h, color) => {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
@@ -228,16 +229,17 @@ function drawHabitatPortrait(ctx, p, level, faded) {
     const y = 86 + (i * 19) % 101;
     const bank = Math.round(66 - (y - 84) * .38 + Math.sin(y / 11) * 5);
     const x = 2 + (i * 17) % bank;
-    if (x > 18 && x < 51 && y > 97 && y < 135) continue;
+    if (!empty && x > 18 && x < 51 && y > petY - 6 && y < petY + 32) continue;
     box(x, y, 3, 1, p.turf);
     box(x + 2, y - 2, 1, 2, p.turf);
     if (i % 3 === 0) box(x + 1, y - 2, 3, 1, p.flower);
   }
-  box(20, 126, 28, 2, p.turf);
-  box(24, 128, 22, 1, p.turf);
-  paintPet(ctx, 22, 103, 1, level, faded);
-  box(54, 104, 1, 5, p.flower);
-  box(52, 106, 5, 1, p.flower);
+  if (empty) return;
+  box(20, petY + 23, 28, 2, p.turf);
+  box(24, petY + 25, 22, 1, p.turf);
+  paintPet(ctx, 22, petY, 1, level, faded);
+  box(54, petY + 1, 1, 5, p.flower);
+  box(52, petY + 3, 5, 1, p.flower);
 }
 
 function petCanvas(theme, level = 1, faded = false, avatar = false) {
