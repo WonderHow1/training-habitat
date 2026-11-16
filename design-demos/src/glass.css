@@ -425,6 +425,7 @@
   mask-image: linear-gradient(to bottom, #000 73%, #000b 88%, transparent);
 }
 .habitat-link .pet-meta { padding-top: 3px; }
+.habitat-link .pet-attributes { margin: 0 6px 8px; }
 .habitat-open {
   position: absolute;
   inset: 0;

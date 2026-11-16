@@ -164,6 +164,8 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.equal(await inHabitat(), true);
     await includes(lead('.habitat-entry-header'), '团团');
+    await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
+    await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
     await includes(habitatGrowth, 'Lv.1');
     await includes(habitatGrowth, '0 / 100 XP');
     assert.ok(await evaluate(`(() => {
@@ -174,6 +176,8 @@ async function demoDirection(index, glass = false) {
       return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
     })()`));
     await enterToday();
+    await includes(lead('.habitat-link .pet-attributes'), '年龄7 天');
+    await includes(lead('.habitat-link .pet-attributes'), '体重3.2 公斤');
     await includes(lead('.today-task'), '今日训练');
     assert.equal(await todayHeadline(), '今天已经锻炼0小时');
     await includes(lead('.app-head h2 + .today-remaining'), '你距离目标还有30分钟');
@@ -427,6 +431,8 @@ async function verifyOnboarding(screenshotPrefix = 'ios-prototype-onboarding') {
   assert.equal(await evaluate(`document.querySelector(${screen}).hidden`), true);
   assert.equal(await inHabitat(), true);
   await includes(lead('.habitat-entry-header'), '小栗');
+  await includes(lead('.habitat-entry-header .pet-attributes'), '年龄0 天');
+  await includes(lead('.habitat-entry-header .pet-attributes'), '体重1.8 公斤');
   assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.habitat-landscape[data-species="rabbit"][data-habitat="running-track"]'))}))`));
 }
 
@@ -715,6 +721,10 @@ async function verifyGlass() {
   await click('#advance');
   await includes(lead('.pet-attributes'), '8 天');
   await includes(lead('.pet-attributes'), '3.2 公斤');
+  await clickLead('tab', 'home');
+  await includes(lead('.habitat-link .pet-attributes'), '年龄8 天');
+  await clickLead('habitat');
+  await includes(lead('.habitat-entry-header .pet-attributes'), '年龄8 天');
 }
 
 async function verifyWeekPicker() {

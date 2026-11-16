@@ -814,6 +814,7 @@ a { color: inherit; }
   mask-image: linear-gradient(to bottom, #000 73%, #000b 88%, transparent);
 }
 .habitat-link .pet-meta { padding-top: 3px; }
+.habitat-link .pet-attributes { margin: 0 6px 8px; }
 .habitat-open {
   position: absolute;
   inset: 0;
@@ -2435,6 +2436,7 @@ function createPhone(container) {
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
       <div class="habitat-art">${petCanvas(habitatPalette, level, !hp, false, species, habitat)}<span class="scene-label">${label}</span></div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
+      ${openScene && pet ? petAttributes(pet, species) : ''}
       ${petGrowth(details)}
       ${openScene ? '<button type="button" class="habitat-open" data-action="habitat" aria-label="打开全屏栖息地"></button>' : ''}
     </section>`;
@@ -2468,8 +2470,9 @@ function createPhone(container) {
       <header class="habitat-entry-header">
         <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
-        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>${petAttributes(pet, species)}` : ''}
+        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
         ${!petTab && pet ? petGrowth(details) : ''}
+        ${pet ? petAttributes(pet, species) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">
         <header class="pet-panel-header"><h3>经验与血量</h3>
