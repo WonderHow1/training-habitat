@@ -810,8 +810,11 @@ a { color: inherit; }
 }
 .habitat-link .habitat-art { border-radius: var(--r) var(--r) 0 0; }
 .habitat-link .pixel-scene {
-  -webkit-mask-image: linear-gradient(to bottom, #000 81%, #000b 93%, transparent);
-  mask-image: linear-gradient(to bottom, #000 81%, #000b 93%, transparent);
+  aspect-ratio: 144 / 77;
+  /* Measure the original 8.4- and 18.9-row fade stops from the new bottom edge. */
+  --preview-fade: linear-gradient(to top, transparent, #000b calc(100% * 8.4 / 77), #000 calc(100% * 18.9 / 77));
+  -webkit-mask-image: var(--preview-fade);
+  mask-image: var(--preview-fade);
 }
 .habitat-link .pet-meta { padding-top: 3px; }
 .habitat-link .pet-attributes { margin: 0 6px 8px; }

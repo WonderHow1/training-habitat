@@ -1020,7 +1020,7 @@ async function verifyOpenSurfaces() {
       '.habitat-link', '.today-task', '.week-card', '.heatmap', '.pet-scene-panel', '.tabbar',
       '.round', '.board-controls button', '.record-actions .secondary', '.heat-cell'
     ];
-    const canvas = getComputedStyle(document.querySelector('.habitat-link .pixel-scene'));
+    const preview = document.querySelector('.habitat-link .pixel-scene');
     const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
     const blockDividers = ['.board-header', '.board-footer p', '.week-summary', '.plan-list .list-row', '.record-feed .list-row', '.pet-scene-panel .list-row'];
     const hasOpenSpacing = blockDividers.every(selector => {
@@ -1038,9 +1038,13 @@ async function verifyOpenSurfaces() {
     };
     const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.record-actions']]
       .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
-    const cardFade = canvas.maskImage;
+    const cardFade = getComputedStyle(preview).maskImage;
+    const [midpoint, start] = [...cardFade.matchAll(/([0-9.]+)%/g)].map(match => Number(match[1]));
+    const fadeMovesWithArtwork = Math.abs(preview.clientHeight - preview.clientWidth * 77 / 144) < 1 &&
+      Math.abs(preview.clientHeight * midpoint / 100 - preview.clientWidth * 8.4 / 144) < 1 &&
+      Math.abs(preview.clientHeight * start / 100 - preview.clientWidth * 18.9 / 144) < 1;
     return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
-      cardFade.includes('linear-gradient') && cardFade.includes('81%') && cardFade.includes('93%') &&
+      cardFade.includes('linear-gradient(to top') && fadeMovesWithArtwork &&
       portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap && compactWeek;
   })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
 }
