@@ -1,7 +1,6 @@
 const DAY = 86_400_000;
 const DEMO_AT = '2026-11-16T20:00';
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
-const sports = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸', '户外跑步', '其他训练'];
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
 const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
 const habitatStyles = { garden: '草地', gym: '健身房', 'running-track': '操场跑道', living: '客厅', bedroom: '卧室' };

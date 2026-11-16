@@ -2,6 +2,7 @@ const HEATMAP_WEEKS = 12;
 
 function sampleTrainingHistory() {
   const anchor = DEMO_AT.split('T')[0];
+  const sampleTitles = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸'];
   const sampleDays = [
     [-74, 1], [-72, 1], [-69, 2], [-64, 1], [-60, 2], [-56, 1], [-51, 3],
     [-45, 1], [-42, 2], [-39, 1], [-35, 1], [-32, 2], [-29, 1], [-26, 1],
@@ -12,7 +13,7 @@ function sampleTrainingHistory() {
     date: dayPlus(anchor, offset),
     start: ['17:50', '19:15', '21:00'][session],
     minutes: [20, 25, 15][(index + session) % 3],
-    title: sports[(index + session) % 4],
+    title: sampleTitles[(index + session) % sampleTitles.length],
     source: (index + session) % 3 === 0 ? 'device' : 'manual'
   })));
 }

@@ -302,6 +302,11 @@ a { color: inherit; }
 }
 .form-pair { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 7px; }
 .form-error { color: var(--bad-ink); font-size: 13px; margin-bottom: 5px; }
+.project-history:empty { display: none; }
+.project-history { margin: 0 0 12px; }
+.project-history p { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+.project-history-options { display: flex; flex-wrap: wrap; gap: 5px; }
+.project-history-options .secondary { min-height: 30px; max-width: 100%; padding: 4px 9px; font-size: 12px; overflow-wrap: anywhere; }
 .sheet fieldset { border: 0; margin: 0 0 10px; padding: 0; min-width: 0; }
 .sheet legend { font-weight: 650; font-size: 15px; margin-bottom: 4px; padding: 0; }
 .choice { display: flex; align-items: center; padding: 9px 0; gap: 6px; font-size: 14px; border-bottom: 1px solid var(--line); }

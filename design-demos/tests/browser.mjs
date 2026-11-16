@@ -154,7 +154,7 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.ok(await evaluate(`(() => {
       const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
-      const field = sheet.querySelector('select');
+      const field = sheet.querySelector('input[name="title"]');
       return sheet.contains(document.activeElement) && sheet.getAnimations().length > 0 &&
         getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px';
     })()`));
@@ -253,6 +253,7 @@ async function demoDirection(index, glass = false) {
     await includes(petSummary, '团团');
     await change('#demo-scene', 'onboarding');
     await submit();
+    await change(lead('input[name="title"]'), '校园夜跑');
     await change(lead('input[name="date"]'), '2026-11-17');
     await submit();
     await click(lead('.sheet [data-action="onboard-finish"].secondary'));
@@ -492,6 +493,40 @@ async function verifyWeekPicker() {
   await includes(week('.week-trigger'), '2024 年第 9 周');
 }
 
+async function verifyCustomProjects() {
+  await navigate('ios-prototype.html', 1440, 1100);
+  await evaluate('localStorage.removeItem("pixel-fitness.training-projects")');
+  await navigate('ios-prototype.html', 1440, 1100);
+  await enterToday();
+  await clickLead('tab', 'log');
+  await click(lead('.record-actions [data-action="manual"]'));
+  const input = lead('.sheet input[name="title"]');
+  const project = JSON.stringify(input);
+  const suggestion = value => lead(act('pick-project', value));
+  assert.equal(await evaluate(`document.querySelector(${project}).value`), '');
+  assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(lead('.project-history button'))}).length`), 0);
+  await change(input, '  自由泳  ');
+  await submit();
+  await submit();
+  await includes(lead('.record-feed'), '自由泳');
+  await clickLead('tab', 'week');
+  await click(lead('.app-head [data-action="new"]'));
+  await click(suggestion('自由泳'));
+  assert.equal(await evaluate(`document.querySelector(${project}).value`), '自由泳');
+  await change(input, '瑜伽拉伸');
+  await submit();
+  await includes(lead('.plan-list'), '瑜伽拉伸');
+  await navigate('ios-prototype.html', 1440, 1100);
+  await enterToday();
+  await clickLead('tab', 'log');
+  await click(lead('.record-actions [data-action="manual"]'));
+  await includes(lead('.project-history'), '自由泳');
+  await includes(lead('.project-history'), '瑜伽拉伸');
+  await click(suggestion('瑜伽拉伸'));
+  assert.equal(await evaluate(`document.querySelector(${project}).value`), '瑜伽拉伸');
+  await clickLead('close');
+}
+
 async function verifyPrototypePalette() {
   assert.ok(await evaluate(`(() => {
     const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
@@ -555,6 +590,7 @@ try {
   for (const direction of [1, 2, 3]) await demoDirection(direction);
   await demoDirection(1, true);
   await verifyGlass();
+  await verifyCustomProjects();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb] a").length'), 3);

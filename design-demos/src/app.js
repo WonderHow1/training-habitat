@@ -24,6 +24,40 @@ const activity = name => name.includes('跑') ? 'run' : name.includes('拉伸') 
 const heart = filled => `<svg width="19" height="17" viewBox="0 0 11 10" aria-hidden="true" class="${filled ? 'filled' : 'empty'}"><path fill="currentColor" d="M1 0h3v1h3V0h3v1h1v4h-1v1H9v1H8v1H7v1H6v1H5V9H4V8H3V7H2V6H1V5H0V1h1z"/></svg>`;
 const orderByDate = (a, b) => a.date.localeCompare(b.date);
 const clocks = date => date.split('T');
+const projectHistoryKey = 'pixel-fitness.training-projects';
+let projectHistory = [];
+try {
+  const saved = JSON.parse(localStorage.getItem(projectHistoryKey) ?? '[]');
+  if (Array.isArray(saved)) projectHistory = saved.filter(item => typeof item === 'string' && item.trim());
+} catch {
+  // Local files can run in browsers that disable storage.
+}
+
+function rememberProject(title) {
+  const key = title.toLowerCase();
+  projectHistory = [title, ...projectHistory.filter(item => item.toLowerCase() !== key)];
+  try {
+    localStorage.setItem(projectHistoryKey, JSON.stringify(projectHistory));
+  } catch {
+    // The current demo session can still offer recently used projects.
+  }
+}
+
+function projectSuggestions(value) {
+  const search = value.trim().toLowerCase();
+  const matches = projectHistory.filter(title => {
+    const key = title.toLowerCase();
+    return key !== search && key.includes(search);
+  }).slice(0, 6);
+  if (!matches.length) return '';
+  return `<p>最近使用</p><div class="project-history-options">${matches
+    .map(title => button(escape(title), 'pick-project', 'secondary', title)).join('')}</div>`;
+}
+
+function projectField(value = '') {
+  return field('训练项目', `<input name="title" type="text" autocomplete="off" placeholder="输入训练项目" value="${escape(value)}" required>`) +
+    `<div class="project-history">${projectSuggestions(value)}</div>`;
+}
 
 function demoState(scenario) {
   const state = seed(scenario);
@@ -280,7 +314,7 @@ function createPhone(initial) {
   function trainingForm(target) {
     const date = target ? target.date : today();
     return sheet('手动记录', `<form data-form="manual">
-      ${field('训练项目', `<select name="title">${sports.map(sport => `<option ${(target?.title ?? sports[0]) === sport ? 'selected' : ''}>${sport}</option>`).join('')}</select>`)}
+      ${projectField(target?.title)}
       <div class="form-pair">${field('实际日期', `<input type="date" name="date" value="${date}" max="${today()}" required>`)}
       ${field('开始时间', '<input type="time" name="start" value="18:30" required>')}</div>
       ${field('实际时长（分钟）', `<input type="number" name="minutes" min="1" max="1440" value="${target?.minutes ?? 25}" required>`)}
@@ -294,7 +328,7 @@ function createPhone(initial) {
     const picked = plan?.date ?? (selectedDay && selectedDay >= min ? selectedDay : min);
     return sheet(plan ? '改期' : '新增训练', `<form data-form="${plan ? 'reschedule' : 'new'}">
       ${plan ? `<p class="sheet-note">${escape(plan.title)} · ${plan.minutes} 分钟。请选择同一周内的日期。</p>` :
-        field('训练项目', `<select name="title">${sports.map(sport => `<option>${sport}</option>`).join('')}</select>`)}
+        projectField()}
       ${field('计划日期', `<input type="date" name="date" min="${min}" ${plan ? `max="${max}"` : ''} value="${picked}" required>`)}
       ${plan ? '' : field('目标时长（分钟）', '<input type="number" name="minutes" min="1" max="1439" value="20" required>')}
       <p class="form-error" role="alert"></p><button type="submit" class="primary full">${plan ? '保存改期' : '保存计划'}</button></form>`);
@@ -543,6 +577,12 @@ function createPhone(initial) {
     'habitat-settings': () => open('habitat-settings'),
     link: value => open('match', '', { record: getRecord(value) }),
     close,
+    'pick-project'(value) {
+      const input = layers.querySelector('input[name="title"]');
+      input.value = value;
+      input.form.querySelector('.project-history').innerHTML = projectSuggestions(value);
+      input.focus({ preventScroll: true });
+    },
     'pick-week'() {
       const date = selectedDay ?? (week === monday(today()) ? today() : week);
       open('pick-week', '', { date });
@@ -614,6 +654,12 @@ function createPhone(initial) {
       items[0]?.focus();
     }
   });
+  outlet.addEventListener('input', event => {
+    const input = event.target;
+    if (input.name !== 'title') return;
+    const history = input.form?.querySelector('.project-history');
+    if (history) history.innerHTML = projectSuggestions(input.value);
+  });
   outlet.addEventListener('change', event => {
     const input = event.target;
     const preview = input.form?.querySelector('.habitat-choice-preview canvas');
@@ -634,6 +680,14 @@ function createPhone(initial) {
     const form = event.target;
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form));
+    if (form.dataset.form === 'manual' || form.dataset.form === 'new') {
+      data.title = data.title.trim();
+      if (!data.title) {
+        form.querySelector('.form-error').textContent = '请输入训练项目。';
+        form.elements.title.focus();
+        return;
+      }
+    }
     switch (form.dataset.form) {
       case 'pick-week':
         selectedDay = overlay.date;
@@ -652,6 +706,7 @@ function createPhone(initial) {
       case 'match': {
         const { record, merge, incoming } = overlay;
         const saved = record.id && !merge ? record : saveRecord(state, incoming ?? record, merge);
+        if (!record.id && record.source === 'manual') rememberProject(saved.title);
         const plan = getPlan(data.plan);
         const previousStatus = plan && status(state, plan);
         const updated = plan && match(state, plan, saved);
@@ -669,6 +724,7 @@ function createPhone(initial) {
       case 'new': {
         const plan = { ...data, minutes: Number(data.minutes), id: 'plan-' + ++state.serial, effective: state.now };
         state.plans.push(plan);
+        rememberProject(plan.title);
         week = monday(plan.date);
         selectedDay = null;
         if (scenario === 'onboarding') open('health');
