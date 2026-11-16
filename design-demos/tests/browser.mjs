@@ -65,8 +65,11 @@ async function evaluate(expression) {
 }
 async function navigate(file, width, height) {
   await cmd('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+  await cmd('Page.navigate', { url: new URL(file, root).href });
+  await waitForPage(file);
+}
+async function waitForPage(file) {
   const url = new URL(file, root).href;
-  await cmd('Page.navigate', { url });
   await evaluate(`new Promise((resolve, reject) => {
     let attempts = 0;
     const interval = setInterval(() => {
@@ -1725,6 +1728,13 @@ try {
   await verifyGrowthFromTraining();
   await verifyNarrowTrainingSummary();
   await verifyOnboarding();
+  await navigate('ios-prototype.html', 900, 1000);
+  await click('.board-nav a[href="new-user.html"]');
+  await waitForPage('new-user.html');
+  await includes(lead('.onboarding h2'), '设定每日训练目标');
+  await click('.board-nav a[href="ios-prototype.html"]');
+  await waitForPage('ios-prototype.html');
+  assert.equal(await inHabitat(), true);
   await captureGrowthAudit();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
