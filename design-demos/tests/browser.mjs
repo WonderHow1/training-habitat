@@ -170,6 +170,14 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
     await includes(habitatGrowth, 'Lv.1');
     await includes(habitatGrowth, '0 / 100 XP');
+    assert.ok(await evaluate(`(() => {
+      const growth = document.querySelector(${JSON.stringify(habitatGrowth)});
+      const pill = getComputedStyle(growth);
+      const attribute = getComputedStyle(growth.nextElementSibling.firstElementChild);
+      const [red, green, blue, alpha] = pill.backgroundColor.match(/[\\d.]+/g).map(Number);
+      return red === 255 && green === 255 && blue === 255 && alpha >= .9 &&
+        pill.borderRadius === attribute.borderRadius && parseFloat(pill.paddingLeft) > 0;
+    })()`), 'The full-screen experience row has a near-opaque white pill matching the pet attributes');
     await assertPetCentered(lead('.habitat-landscape'));
     assert.ok(await evaluate(`(() => {
       const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
