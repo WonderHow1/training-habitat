@@ -690,11 +690,13 @@ async function verifyOnboarding() {
     const view = preview.closest('.onboarding').getBoundingClientRect();
     const options = preview.parentElement.nextElementSibling;
     const icons = [...options.querySelectorAll('canvas.avatar')];
+    const actions = preview.closest('form').querySelector('.onboarding-actions').getBoundingClientRect();
     return preview.dataset.species === 'rabbit' && rect.bottom <= options.getBoundingClientRect().top &&
+      rect.width >= 170 && Math.abs(rect.width - rect.height) < 1 && actions.bottom <= view.bottom &&
       (rect.top + rect.height / 2 - view.top) / view.height < .47 && icons.length === 10 &&
       new Set(icons.map(icon => icon.toDataURL())).size === 10 && options.scrollWidth === options.clientWidth &&
       getComputedStyle(options.parentElement.querySelector('input[name="name"]')).textAlign === 'center';
-  })()`), 'The preview fits above all ten illustrated choices on a 320px screen');
+  })()`), 'The larger square preview fits above all ten choices with the actions visible on a 320px screen');
   await change(lead('.onboarding input[name="name"]'), '小栗');
   await back();
   await verifyTransition(-1, 'pet', 'goal');
