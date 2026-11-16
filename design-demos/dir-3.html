@@ -1832,7 +1832,7 @@ function createPhone(container) {
       ${stage === 'missed' ? `<div><dt>设备更正截止</dt><dd>${stamp(deadline(plan) + 7 * DAY)}</dd></div>` : ''}
       <div><dt>关联记录</dt><dd>${record ? escape(record.title) + ' · ' + record.minutes + ' 分钟' : '暂无'}</dd></div></dl>
       <p class="sheet-note">${reason}</p><div class="sheet-buttons">${['upcoming', 'grace'].includes(stage) ? button(stage === 'grace' ? '补记训练' : '记录训练', 'manual', 'primary', plan.id) : ''}
-      ${stage === 'upcoming' ? button('改期', 'reschedule', 'secondary', plan.id) : ''}
+      ${stage === 'upcoming' ? button('编辑', 'edit-plan', 'secondary', plan.id) : ''}
       ${stage === 'missed' && state.now < deadline(plan) + 7 * DAY ? button('导入设备记录', 'import', 'primary', plan.id) : ''}</div>`);
   }
 

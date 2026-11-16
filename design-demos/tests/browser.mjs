@@ -299,7 +299,7 @@ async function demoDirection(index, glass = false) {
     await clickLead('tab', 'home');
     await clickLead('detail', 'today');
   }
-  await clickLead('reschedule', 'today');
+  await (glass ? click(lead('.sheet ' + act('edit-plan', 'today'))) : clickLead('reschedule', 'today'));
   await change(lead('input[name="date"]'), '2026-11-17');
   await submit();
   await includes(lead('.today-task'), '今天无计划训练');
@@ -963,6 +963,16 @@ async function verifyTrainingManagement() {
   await swipeWorkout('next');
   await clickLead('edit-plan', 'next');
   await includes(lead('.sheet h3'), '编辑训练计划');
+  const editForm = JSON.stringify(lead('.sheet form[data-form="edit-plan"]'));
+  const formMarkup = await evaluate(`document.querySelector(${editForm}).outerHTML`);
+  await clickLead('close');
+  await clickLead('detail', 'next');
+  const detailEdit = lead('.sheet ' + act('edit-plan', 'next'));
+  await includes(detailEdit, '编辑');
+  await click(detailEdit);
+  await includes(lead('.sheet h3'), '编辑训练计划');
+  assert.equal(await evaluate(`document.querySelector(${editForm}).outerHTML`), formMarkup,
+    'Plan details and the swipe action open the same edit form');
   assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backgroundImage`), 'none');
   await change(lead('.sheet input[name="title"]'), '负重深蹲');
   await change(lead('.sheet input[name="date"]'), '2026-11-20');
