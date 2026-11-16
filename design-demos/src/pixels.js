@@ -64,6 +64,10 @@ function drawScene(canvas) {
   const wide = canvas.hasAttribute('data-wide');
   const level = Number(canvas.dataset.level ?? 1);
   const faded = canvas.dataset.faded === 'true';
+  if (canvas.hasAttribute('data-portrait')) {
+    drawHabitatPortrait(ctx, p, level, faded);
+    return;
+  }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
   if (compact) {
     paintPet(ctx, 4, 5, 1, level, faded);
@@ -126,6 +130,52 @@ function drawScene(canvas) {
     box(x + 32, 43, 5, 1, p.flower);
     box(x - 5, 46, 2, 2, p.flower);
   }
+}
+
+function drawHabitatPortrait(ctx, p, level, faded) {
+  const box = (x, y, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  };
+  box(0, 0, 88, 192, p.land);
+  box(0, 0, 88, 71, p.sky);
+  box(0, 35, 88, 36, p.haze);
+  for (const [x, y, w] of [[8, 13, 19], [59, 20, 21], [37, 42, 17]]) {
+    box(x, y, w, 3, p.cloud);
+    box(x + 5, y - 3, w - 10, 4, p.cloud);
+  }
+  for (let x = 0; x < 88; x += 2) {
+    const ridge = Math.round(55 + Math.sin(x / 8) * 3 + Math.sin(x / 17) * 5);
+    const near = Math.round(65 + Math.sin(x / 13 + 3) * 4);
+    box(x, ridge, 2, 22, p.far);
+    box(x, near, 2, 81 - near, p.mid);
+  }
+  for (const [x, y, size] of [[2, 57, 5], [12, 65, 3], [79, 56, 6], [70, 65, 4], [84, 73, 4]]) {
+    box(x + size - 1, y, 3, size * 4, p.trees);
+    box(x - 1, y + size, size * 2 + 2, size * 2, p.trees);
+    box(x - 3, y + size * 2, size * 2 + 6, size, p.trees);
+    box(x + size, y + size * 3, 2, size * 2, p.turf);
+  }
+  for (let y = 84; y < 192; y += 3) {
+    const left = Math.round(73 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+    box(left, y, 88 - left, 3, p.shore);
+    box(left + 3, y, 88 - left, 3, p.water);
+    if (y % 9 === 0) box(left + 9 + y % 13, y + 1, 7 + y % 8, 1, p.wave);
+  }
+  for (let i = 0; i < 38; i++) {
+    const y = 86 + (i * 19) % 101;
+    const bank = Math.round(66 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+    const x = 2 + (i * 17) % bank;
+    if (x > 18 && x < 51 && y > 97 && y < 135) continue;
+    box(x, y, 3, 1, p.turf);
+    box(x + 2, y - 2, 1, 2, p.turf);
+    if (i % 3 === 0) box(x + 1, y - 2, 3, 1, p.flower);
+  }
+  box(20, 126, 28, 2, p.turf);
+  box(24, 128, 22, 1, p.turf);
+  paintPet(ctx, 22, 103, 1, level, faded);
+  box(54, 104, 1, 5, p.flower);
+  box(52, 106, 5, 1, p.flower);
 }
 
 function petCanvas(theme, level = 1, faded = false, avatar = false) {

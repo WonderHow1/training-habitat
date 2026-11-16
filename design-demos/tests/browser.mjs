@@ -86,7 +86,7 @@ async function click(selector) {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return [];
     if (!el.checkVisibility()) throw new Error('Control is not visible');
-    await Promise.allSettled((el.closest('.sheet')?.getAnimations() ?? []).map(animation => animation.finished));
+    await Promise.allSettled((el.closest('.sheet, .habitat-entry')?.getAnimations() ?? []).map(animation => animation.finished));
     el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
@@ -104,6 +104,8 @@ const lead = selector => '[data-phone="home"] ' + selector;
 const act = (action, value) => `[data-action="${action}"]${value ? `[data-value="${value}"]` : ''}`;
 const clickLead = (action, value) => click(lead(act(action, value)));
 const submit = () => click(lead('.sheet button[type="submit"]'));
+const enterToday = () => click(lead('.habitat-continue'));
+const inHabitat = () => evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.habitat-entry[data-active]'))}))`);
 async function includes(selector, text) {
   const actual = await evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent`);
   assert.ok(actual?.includes(text), `Expected "${text}" in ${selector}. Found "${actual}".`);
@@ -124,6 +126,21 @@ async function demoDirection(index, glass = false) {
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-shell")].every(x => x.getBoundingClientRect().width >= 300)'));
   assert.ok(await evaluate('document.querySelector("canvas").getContext("2d").getImageData(70,55,1,1).data[3] === 255'));
   await screenshot(name);
+  if (glass) {
+    assert.equal(await inHabitat(), true);
+    await includes(lead('.habitat-entry-header'), '团团');
+    assert.ok(await evaluate(`(() => {
+      const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+      const rect = entry.getBoundingClientRect();
+      const frame = entry.closest('.ios-screen').getBoundingClientRect();
+      const behind = entry.closest('.ios-screen').querySelector('.app-scroll');
+      return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
+    })()`));
+    await enterToday();
+    await includes(lead('.today-task'), '今日训练');
+    await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+    await screenshot(name + '-today');
+  }
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
   if (glass) {
@@ -160,6 +177,10 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.sheet .sheet-status'), '已完成');
   await clickLead('close');
   await click('#reset');
+  if (glass) {
+    assert.equal(await inHabitat(), true);
+    await enterToday();
+  }
   await clickLead('reschedule', 'today');
   await change(lead('input[name="date"]'), '2026-11-17');
   await submit();
@@ -195,10 +216,11 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.sheet .sheet-status'), '已漏练');
   }
 
-  await navigate(name + '.html', 390, 1120);
+  await navigate(name + '.html', 390, glass ? 844 : 1120);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-status")].every(el => { const island = el.nextElementSibling.getBoundingClientRect(); return el.children[0].getBoundingClientRect().right < island.left && el.children[1].getBoundingClientRect().left > island.right; })'));
   await screenshot(name + '-mobile');
+  if (glass) await verifySwipe();
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
   await screenshot(name + '-mobile-record');
@@ -206,8 +228,39 @@ async function demoDirection(index, glass = false) {
   assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
 }
 
+async function habitatPoint() {
+  return evaluate(`(() => {
+    const rect = document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getBoundingClientRect();
+    return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height * 0.62) };
+  })()`);
+}
+
+async function verifySwipe() {
+  assert.ok(await evaluate(`(() => {
+    const { top, bottom } = document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getBoundingClientRect();
+    return top === 0 && bottom === innerHeight;
+  })()`), 'The habitat fills the first mobile viewport');
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  const { x, y } = await habitatPoint();
+  await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 23 }] });
+  await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  assert.equal(await inHabitat(), true, 'A short drag keeps the full-screen habitat open');
+  await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (const distance of [28, 64, 118]) {
+    await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - distance }] });
+  }
+  await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  assert.equal(await inHabitat(), false, 'An upward touch swipe opens Today');
+  await includes(lead('.today-task'), '校园夜跑');
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+}
+
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
+  const { x, y } = await habitatPoint();
+  await cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY: 108 });
+  assert.equal(await inHabitat(), false, 'A downward wheel scroll opens Today');
   const nav = lead('.tabbar');
   const scroller = lead('.app-scroll');
   await evaluate(`window.testNav = document.querySelector(${JSON.stringify(nav)}); true`);
@@ -228,6 +281,10 @@ async function verifyGlass() {
   })()`));
   assert.ok(await evaluate(`testNav.getAnimations({ subtree: true }).some(a => a.transitionProperty === 'transform')`));
   await clickLead('tab', 'home');
+  assert.equal(await inHabitat(), false, 'Returning to the Today tab keeps the training view');
+  await clickLead('habitat');
+  assert.equal(await inHabitat(), true, 'The habitat label reopens the full-screen view');
+  await enterToday();
   await clickLead('settings');
   const toggle = lead('[role="switch"]');
   await click(toggle);

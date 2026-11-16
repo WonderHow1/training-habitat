@@ -38,7 +38,7 @@ def build_direction(index, direction, *, glass=False):
     )
     if glass:
         links = '<span aria-current="page">Liquid Glass</span><a href="dir-1.html">A 版方向稿</a>'
-        lead = "滚动手机界面、切换标签，或点「记录训练」体验玻璃控件。"
+        lead = "从全屏栖息地上滑，进入今天的训练。"
     elif index == 1:
         links = '<a href="ios-prototype.html">试用 Liquid Glass</a>' + links
     css = STYLE + ((SRC / "glass.css").read_text() if glass else "")

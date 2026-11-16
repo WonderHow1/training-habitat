@@ -645,6 +645,10 @@ function drawScene(canvas) {
   const wide = canvas.hasAttribute('data-wide');
   const level = Number(canvas.dataset.level ?? 1);
   const faded = canvas.dataset.faded === 'true';
+  if (canvas.hasAttribute('data-portrait')) {
+    drawHabitatPortrait(ctx, p, level, faded);
+    return;
+  }
   const box = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
   if (compact) {
     paintPet(ctx, 4, 5, 1, level, faded);
@@ -707,6 +711,52 @@ function drawScene(canvas) {
     box(x + 32, 43, 5, 1, p.flower);
     box(x - 5, 46, 2, 2, p.flower);
   }
+}
+
+function drawHabitatPortrait(ctx, p, level, faded) {
+  const box = (x, y, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  };
+  box(0, 0, 88, 192, p.land);
+  box(0, 0, 88, 71, p.sky);
+  box(0, 35, 88, 36, p.haze);
+  for (const [x, y, w] of [[8, 13, 19], [59, 20, 21], [37, 42, 17]]) {
+    box(x, y, w, 3, p.cloud);
+    box(x + 5, y - 3, w - 10, 4, p.cloud);
+  }
+  for (let x = 0; x < 88; x += 2) {
+    const ridge = Math.round(55 + Math.sin(x / 8) * 3 + Math.sin(x / 17) * 5);
+    const near = Math.round(65 + Math.sin(x / 13 + 3) * 4);
+    box(x, ridge, 2, 22, p.far);
+    box(x, near, 2, 81 - near, p.mid);
+  }
+  for (const [x, y, size] of [[2, 57, 5], [12, 65, 3], [79, 56, 6], [70, 65, 4], [84, 73, 4]]) {
+    box(x + size - 1, y, 3, size * 4, p.trees);
+    box(x - 1, y + size, size * 2 + 2, size * 2, p.trees);
+    box(x - 3, y + size * 2, size * 2 + 6, size, p.trees);
+    box(x + size, y + size * 3, 2, size * 2, p.turf);
+  }
+  for (let y = 84; y < 192; y += 3) {
+    const left = Math.round(73 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+    box(left, y, 88 - left, 3, p.shore);
+    box(left + 3, y, 88 - left, 3, p.water);
+    if (y % 9 === 0) box(left + 9 + y % 13, y + 1, 7 + y % 8, 1, p.wave);
+  }
+  for (let i = 0; i < 38; i++) {
+    const y = 86 + (i * 19) % 101;
+    const bank = Math.round(66 - (y - 84) * .38 + Math.sin(y / 11) * 5);
+    const x = 2 + (i * 17) % bank;
+    if (x > 18 && x < 51 && y > 97 && y < 135) continue;
+    box(x, y, 3, 1, p.turf);
+    box(x + 2, y - 2, 1, 2, p.turf);
+    if (i % 3 === 0) box(x + 1, y - 2, 3, 1, p.flower);
+  }
+  box(20, 126, 28, 2, p.turf);
+  box(24, 128, 22, 1, p.turf);
+  paintPet(ctx, 22, 103, 1, level, faded);
+  box(54, 104, 1, 5, p.flower);
+  box(52, 106, 5, 1, p.flower);
 }
 
 function petCanvas(theme, level = 1, faded = false, avatar = false) {
@@ -942,6 +992,13 @@ function createPhone(initial) {
   const tabbar = outlet.querySelector('.tabbar');
   const tabButtons = [...tabbar.querySelectorAll('button')];
   const layers = outlet.querySelector('.app-overlays');
+  const habitatEntry = usesGlass && initial === 'home' ? document.createElement('section') : null;
+  if (habitatEntry) {
+    habitatEntry.className = 'habitat-entry';
+    habitatEntry.setAttribute('aria-label', '栖息地');
+    outlet.closest('.ios-screen').append(habitatEntry);
+  }
+  let showHabitat = Boolean(habitatEntry);
   let state = seed();
   let tab = initial;
   let overlay = null;
@@ -964,17 +1021,50 @@ function createPhone(initial) {
     return `<header class="app-head"><div><p class="kicker">${sub}</p><h2>${title}</h2></div>${action}</header>`;
   }
 
-  function profile(pet, full = false) {
+  function petDetails(pet) {
     const count = pet ? points(state, pet.id) : 0;
     const level = count >= 5 ? 3 : count >= 2 ? 2 : 1;
     const hp = pet ? health(state, pet.id) : 0;
     const name = pet ? escape(pet.name) : '待领养';
-    const lives = `<div class="hearts" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
+    const stage = pet && !hp ? '已离世' : ['幼苗期', '成长期', '成熟期'][level - 1];
+    const lives = `<div class="hearts" role="img" aria-label="${hp} 格血，共 3 格">${[1, 2, 3].map(i => heart(i <= hp)).join('')}</div>`;
+    return { count, level, hp, name, stage, lives };
+  }
+
+  function profile(pet, full = false) {
+    const { count, level, hp, name, stage, lives } = petDetails(pet);
+    const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
+    const sceneLabel = habitatEntry && tab === 'home' ? button(label, 'habitat', 'scene-label') : `<span class="scene-label">${label}</span>`;
     return `<section class="habitat ${full ? 'expanded' : ''}">
-      <div class="habitat-art">${petCanvas(theme, level, !hp)}<span class="scene-label">${hp ? '栖息地' : pet ? '纪念画像' : '待领养'}</span></div>
-      <div class="pet-meta"><div><strong>${name}</strong><span>${pet && !hp ? '已离世' : ['幼苗期', '成长期', '成熟期'][level - 1]}</span></div>${lives}</div>
+      <div class="habitat-art">${petCanvas(theme, level, !hp)}${sceneLabel}</div>
+      <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       <div class="growth"><div class="growth-bar" aria-hidden="true"><i style="width:${Math.min(100, count * 20)}%"></i></div><span>成长 ${count} 次</span></div>
     </section>`;
+  }
+
+  function renderHabitat() {
+    if (!habitatEntry) return;
+    habitatEntry.toggleAttribute('data-active', showHabitat);
+    habitatEntry.inert = !showHabitat;
+    if (!showHabitat) return;
+    const { name, stage, lives, hp, level } = petDetails(current());
+    habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
+      data-portrait data-palette="${theme}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      <header class="habitat-entry-header">
+        <p>栖息地</p><h2>${name}</h2>
+        <div class="habitat-entry-status">${lives}<span>${stage}</span></div>
+      </header>
+      <button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`;
+    drawScene(habitatEntry.querySelector('canvas'));
+  }
+
+  function enterToday() {
+    if (!showHabitat) return;
+    showHabitat = false;
+    render();
+    const heading = scrollArea.querySelector('.app-head h2');
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
   }
 
   function planRow(plan, showDate = true) {
@@ -1185,8 +1275,8 @@ function createPhone(initial) {
   function render({ preserve = false, focusSheet = false } = {}) {
     const offset = preserve ? scrollArea.scrollTop : 0;
     scrollArea.innerHTML = screens[tab]();
-    scrollArea.inert = Boolean(overlay);
-    tabbar.inert = Boolean(overlay);
+    scrollArea.inert = showHabitat || Boolean(overlay);
+    tabbar.inert = scrollArea.inert;
     const index = tabButtons.findIndex(button => button.dataset.value === tab);
     tabButtons.forEach((button, i) => {
       if (i === index) button.setAttribute('aria-current', 'page');
@@ -1196,6 +1286,7 @@ function createPhone(initial) {
     layers.innerHTML = `${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}`;
     outlet.querySelectorAll('canvas').forEach(drawScene);
     scrollArea.scrollTop = offset;
+    renderHabitat();
     if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });
   }
 
@@ -1258,6 +1349,7 @@ function createPhone(initial) {
     selectedDay = null;
     logFilter = 'all';
     tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
+    showHabitat = Boolean(habitatEntry) && nextScenario === 'standard';
     overlay = null;
     restoreFocus = null;
     notice = '';
@@ -1278,6 +1370,7 @@ function createPhone(initial) {
 
   const handle = {
     tab(value) { tab = value; notice = ''; render(); outlet.querySelector('[aria-current="page"]')?.focus({ preventScroll: true }); },
+    habitat() { showHabitat = true; render(); habitatEntry.querySelector('button').focus({ preventScroll: true }); },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),
@@ -1307,6 +1400,45 @@ function createPhone(initial) {
     },
     'onboard-finish'() { scenario = 'standard'; tab = 'home'; feedback('可以开始训练了'); }
   };
+
+  if (habitatEntry) {
+    let gesture = null;
+    const finishGesture = event => {
+      if (event.pointerId !== gesture?.id) return;
+      const climb = gesture.y - event.clientY;
+      const sideways = Math.abs(gesture.x - event.clientX);
+      gesture = null;
+      habitatEntry.removeAttribute('data-dragging');
+      if (event.type === 'pointerup' && climb >= 55 && climb > sideways) enterToday();
+      habitatEntry.style.removeProperty('--entry-offset');
+    };
+
+    habitatEntry.addEventListener('pointerdown', event => {
+      if (!event.isPrimary || event.button !== 0) return;
+      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    });
+    habitatEntry.addEventListener('pointermove', event => {
+      if (event.pointerId !== gesture?.id) return;
+      const climb = gesture.y - event.clientY;
+      if (climb < 8 || climb < Math.abs(gesture.x - event.clientX)) return;
+      if (event.pointerType === 'mouse' && !habitatEntry.hasPointerCapture(event.pointerId)) {
+        habitatEntry.setPointerCapture(event.pointerId);
+      }
+      habitatEntry.setAttribute('data-dragging', '');
+      habitatEntry.style.setProperty('--entry-offset', `${-climb}px`);
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      habitatEntry.addEventListener(type, finishGesture);
+    }
+    habitatEntry.addEventListener('wheel', event => {
+      if (event.deltaY <= 0 || Math.abs(event.deltaX) >= event.deltaY) return;
+      event.preventDefault();
+      enterToday();
+    }, { passive: false });
+    habitatEntry.addEventListener('click', event => {
+      if (event.target.closest('.habitat-continue')) enterToday();
+    });
+  }
 
   outlet.addEventListener('click', event => {
     const control = event.target.closest('[data-action]');
