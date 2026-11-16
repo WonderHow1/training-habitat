@@ -206,7 +206,7 @@ function createPhone(container) {
     habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
       data-portrait data-centered-pet ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
-      ${hp ? `<button type="button" class="scene-pet-touch" aria-label="摸摸${name}"></button>` : ''}
+      ${hp ? `<span class="scene-destination" aria-hidden="true" hidden></span><button type="button" class="scene-pet-touch" aria-label="摸摸${name}"></button>` : ''}
       <header class="habitat-entry-header">
         <h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
@@ -222,7 +222,9 @@ function createPhone(container) {
       </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     const landscape = habitatEntry.querySelector('canvas');
     drawScene(landscape);
-    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'), { roam: true });
+    if (hp && !habitatEntry.inert) animatePet(landscape, habitatEntry.querySelector('.scene-pet-touch'), {
+      roam: true, marker: habitatEntry.querySelector('.scene-destination')
+    });
     const panel = habitatEntry.querySelector('.pet-scene-panel');
     if (panel) panel.scrollTop = panelOffset;
   }

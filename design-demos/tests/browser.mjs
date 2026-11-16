@@ -114,29 +114,42 @@ async function guidePetTo(fractionX, fractionY, touch = false) {
     const bounds = canvas.getBoundingClientRect();
     const x = Math.round(bounds.left + bounds.width * ${fractionX});
     const y = Math.round(bounds.top + bounds.height * ${fractionY});
-    return document.elementFromPoint(x, y) === canvas ? { x, y } : null;
+    if (document.elementFromPoint(x, y) !== canvas) return null;
+    const target = canvas.parentElement.querySelector('.scene-pet-touch');
+    const destination = habitatDestination(canvas, target, x, y);
+    const scale = coverScale(canvas, bounds.width, bounds.height);
+    return { x, y, endX: bounds.left + bounds.width / 2 + destination.x * scale, endY: bounds.top + bounds.height / 2 + destination.y * scale };
   })()`);
   assert.ok(point, 'The destination is on the exposed habitat');
+  const { x, y, endX, endY } = point;
   if (touch) {
     await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
-    await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
   } else {
-    await cmd('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
-    await cmd('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
+    await cmd('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
+    await cmd('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
   }
+  const marker = JSON.stringify(lead('.scene-destination'));
+  assert.ok(await evaluate(`(() => {
+    const marker = document.querySelector(${marker});
+    const rect = marker.getBoundingClientRect();
+    return !marker.hidden && rect.width === 18 && Math.hypot(rect.left + rect.width / 2 - ${endX}, rect.top + rect.height / 2 - ${endY}) < 2;
+  })()`), 'The pixel marker is visible at the reachable destination');
   assert.ok(await evaluate(`new Promise(resolve => {
     const target = document.querySelector(${JSON.stringify(lead('.scene-pet-touch'))});
+    const marker = document.querySelector(${marker});
     const end = performance.now() + 2400;
     function check() {
       const rect = target.getBoundingClientRect();
-      if (Math.hypot(rect.left + rect.width / 2 - ${point.x}, rect.top + rect.height / 2 - ${point.y}) < 5) resolve(true);
+      if (marker.hidden && Math.hypot(rect.left + rect.width / 2 - ${endX}, rect.top + rect.height / 2 - ${endY}) < 2) resolve(true);
       else if (performance.now() >= end) resolve(false);
       else requestAnimationFrame(check);
     }
     check();
-  })`), 'The pet reaches the tapped position together with its interaction button');
+  })`), 'The pet reaches its destination and the marker disappears');
+  return point;
 }
 async function includes(selector, text) {
   const actual = await evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent`);
@@ -272,7 +285,7 @@ async function demoDirection(index, glass = false) {
       }
       return heart && rows.size === petSprites.cat.pixels.length;
     })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
-    await guidePetTo(.77, .61, true);
+    await guidePetTo(.23, .57, true);
     assert.ok(await evaluate(`new Promise(resolve => {
       const target = document.querySelector(${JSON.stringify(pet)});
       const x = () => parseFloat(target.style.getPropertyValue('--pet-offset-x'));
@@ -282,7 +295,7 @@ async function demoDirection(index, glass = false) {
         const elapsed = performance.now() - start;
         if (elapsed < 200) requestAnimationFrame(check);
         else if ((arrived ??= x()) !== x() && elapsed < 1600) resolve(false);
-        else if (Math.abs(x() - arrived) >= 8) resolve(x() > 55);
+        else if (Math.abs(x() - arrived) >= 8) resolve(x() < -45);
         else if (elapsed > 3800) resolve(false);
         else requestAnimationFrame(check);
       }
@@ -965,7 +978,8 @@ async function verifyGlass() {
     return !scene.querySelector('.habitat-continue') && !scroll.firstElementChild && !testNav.inert;
   })()`), 'The full-screen scene contains the pet controls and leaves the tabs accessible');
   await settleHabitatAnimation();
-  await guidePetTo(.25, .43);
+  const sky = await guidePetTo(.25, .35);
+  assert.ok(sky.endY > sky.y + 18, 'A tap on sky projects onto the ground');
   await screenshot('ios-prototype-pet');
   assert.ok(await evaluate(`(() => {
     const guide = document.querySelector(${JSON.stringify(lead(act('pet-guide')))});

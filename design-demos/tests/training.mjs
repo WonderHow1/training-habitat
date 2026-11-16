@@ -200,27 +200,40 @@ test('a scene tap lets a walking pet change destination and start its next strol
   const location = () => ({ x: pose.walk.x, y: pose.walk.y });
   const tick = count => { for (let index = 0; index < count; index++) nextFrame(now += 80); };
   const tap = (clientX, clientY) => listeners.click({ clientX, clientY });
+  const marker = { hidden: true, style: new Map() };
+  marker.style.setProperty = (name, value) => marker.style.set(name, value);
 
   assert.deepEqual({ ...habitatDestination(canvas, target, 16, 664) }, { x: -29, y: 65 });
-  animatePet(canvas, target, { roam: true });
-  tap(272, 464);
+  canvas.dataset.habitat = 'bedroom';
+  assert.deepEqual({ ...habitatDestination(canvas, target, 112, 120) }, { x: -20, y: -5 });
+  canvas.dataset.habitat = 'garden';
+  const pond = habitatDestination(canvas, target, 332, 544);
+  const terrain = vm.runInContext('sceneTerrain', context)(canvas, target);
+  assert.ok(pond.x <= terrain.rightAt(pond.y) && pond.x < 29, 'A tap over the lake finds a point on the bank');
+  animatePet(canvas, target, { roam: true, marker });
+  tap(112, 424);
+  assert.equal(marker.hidden, false);
+  assert.equal(marker.style.get('--target-x'), '-80px');
   tick(5);
   const previous = location();
-  assert.ok(previous.x > 0 && previous.y > 0);
-  tap(112, 264);
+  assert.ok(previous.x < 0 && previous.y > 0);
+  tap(176, 352);
   assert.deepEqual(location(), previous);
+  assert.equal(marker.style.get('--target-x'), '-16px');
+  assert.equal(marker.style.get('--target-y'), '8px');
   tick(20);
-  assert.deepEqual(location(), { x: -20, y: -20 });
-  assert.equal(pose.flip, false, 'The left-facing cat turns left when redirected');
+  assert.deepEqual(location(), { x: -4, y: 2 });
+  assert.equal(marker.hidden, true);
+  assert.equal(pose.flip, true, 'The left-facing cat turns right when redirected');
   const destination = location();
-  tick(18);
+  tick(12);
   assert.deepEqual(location(), destination, 'The pet pauses at the destination');
   for (let index = 0; index < 35 && location().x === destination.x && location().y === destination.y; index++) tick(1);
   const resumed = location();
   const distance = Math.hypot(resumed.x - destination.x, resumed.y - destination.y);
   assert.ok(distance > 0 && distance <= 2, 'The first step of the stroll starts at the destination');
   tick(28);
-  assert.ok(location().x > destination.x && location().y < -10, 'The pet strolls near the destination');
+  assert.ok(location().x > destination.x && location().y >= destination.y, 'The pet strolls near the destination');
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {
