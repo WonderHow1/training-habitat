@@ -52,7 +52,6 @@ function paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose) {
 
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   const pet = petSprites[species] ?? petSprites.cat;
-  const { colors, scarf } = pet;
   const sprite = pose?.sprite ?? pet;
   const size = petStageDimensions(sprite, level);
   x += (pose?.walk?.x ?? 0) * scale;
@@ -70,20 +69,7 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
     paintPetPixels(ctx, fishBowl, bowlColors, restX + Math.floor((25 - bowl.width) / 2) * scale,
       restY + (25 - bowl.height) * scale, bowl, scale);
   }
-  paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose);
-  if (level > 1 && !pose?.sprite) {
-    const scarfTop = y + (24 - Math.round((24 - scarf) * size.height / sprite.pixels.length)) * scale;
-    ctx.fillStyle = '#6c6564';
-    ctx.fillRect(x + 5 * scale, scarfTop, 15 * scale, 2 * scale);
-    ctx.fillStyle = '#f6d77d';
-    ctx.fillRect(x + 5 * scale, scarfTop, 14 * scale, scale);
-    ctx.fillRect(x + 16 * scale, scarfTop + scale, 3 * scale, 3 * scale);
-  }
-  if (level > 2 && !pose?.sprite) {
-    ctx.fillStyle = '#8da55b';
-    ctx.fillRect(x + 11 * scale, top - 3 * scale, scale, 5 * scale);
-    ctx.fillRect(x + 12 * scale, top - 3 * scale, 4 * scale, 2 * scale);
-  }
+  paintPetPixels(ctx, sprite, pet.colors, left, top, size, scale, pose);
   ctx.restore();
   if (pose?.effect) {
     const [type, dx, dy] = pose.effect;

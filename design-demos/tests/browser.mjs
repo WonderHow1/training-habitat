@@ -1479,16 +1479,25 @@ async function verifyNarrowTrainingSummary() {
         const still = canvas.cloneNode();
         drawScene(still);
         const { width, height } = still;
-        const outline = petSprites[still.dataset.species].colors.I.slice(1).match(/../g).map(value => parseInt(value, 16));
+        const species = still.dataset.species;
+        const colors = petSprites[species].colors;
+        const outline = parseInt(colors.I.slice(1), 16);
+        const allowed = new Set([...Object.values(colors), ...(species === 'goldfish' ? Object.values(bowlColors) : [])]
+          .map(color => parseInt(color.slice(1), 16)));
         const data = still.getContext('2d').getImageData(0, 0, width, height).data;
         let left = width, right = -1, top = height, bottom = -1;
+        let unadorned = true;
         for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
           const offset = (y * width + x) * 4;
-          if (!outline.every((color, index) => data[offset + index] === color)) continue;
+          if (data[offset + 3] === 0) continue;
+          const color = (data[offset] << 16) + (data[offset + 1] << 8) + data[offset + 2];
+          if (!allowed.has(color)) unadorned = false;
+          if (color !== outline) continue;
           left = Math.min(left, x); right = Math.max(right, x);
           top = Math.min(top, y); bottom = Math.max(bottom, y);
         }
-        return { width: right - left + 1, height: bottom - top + 1, fits: left > 0 && right < width - 1 && top > 0 && bottom < height - 1 };
+        return { width: right - left + 1, height: bottom - top + 1,
+          fits: unadorned && left > 0 && right < width - 1 && top > 0 && bottom < height - 1 };
       });
     });
     return stages.map(stage => stage.textContent.trim()).join(',') === '幼年,青年,成年' && canvases.length === 10 &&
@@ -1497,7 +1506,7 @@ async function verifyNarrowTrainingSummary() {
         return young.fits && youth.fits && adult.fits && young.width < youth.width && youth.width < adult.width &&
           young.height < youth.height && youth.height < adult.height;
       });
-  })()`), 'All ten pet outlines get wider and taller at each stage and fit in the preview');
+  })()`), 'All ten pet outlines grow at each stage and render without accessories');
   const waitForPet = expected => evaluate(`new Promise((resolve, reject) => {
     const strip = document.querySelector(${carousel});
     const end = performance.now() + 1600;
