@@ -97,6 +97,7 @@ function createPhone(container) {
   let logFilter = 'all';
   let logDay = null;
   let notice = '';
+  let adoptionDatePet = null;
   let restoreFocus = null;
   let clickTrigger = null;
   const onboarding = newUserPreview ? createOnboarding(phoneScreen, {
@@ -168,13 +169,19 @@ function createPhone(container) {
     </section>`;
   }
 
-  function petAttributes(pet, species) {
+  function petAgeLabel(pet, showDate = false) {
+    if (showDate) return `<span>领养于</span><strong>${pet.born.slice(0, 4)}年${dateLabel(pet.born)}</strong>`;
+    return `<span>年龄</span><strong>${petAgeInDays(pet, state.now)} 天</strong>`;
+  }
+
+  function petAttributes(pet, species, interactiveAge = false) {
     const grams = pet.weightGrams ?? petWeightsInGrams[species];
     const weight = grams < 1000 ? `${grams} 克` : `${grams / 1000} 公斤`;
-    return `<dl class="pet-attributes">
-      <div><dt>年龄</dt><dd>${petAgeInDays(pet, state.now)} 天</dd></div>
-      <div><dt>体重</dt><dd>${weight}</dd></div>
-    </dl>`;
+    const age = petAgeLabel(pet, interactiveAge && adoptionDatePet === pet.id);
+    return `<div class="pet-attributes">
+      ${interactiveAge ? button(age, 'toggle-pet-age', 'pet-age') : `<div>${age}</div>`}
+      <div><span>体重</span><strong>${weight}</strong></div>
+    </div>`;
   }
 
   function renderHabitat(preserve) {
@@ -198,7 +205,7 @@ function createPhone(container) {
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
         ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
         ${!petTab && pet ? petGrowth(details) : ''}
-        ${pet ? petAttributes(pet, species) : ''}
+        ${pet ? petAttributes(pet, species, !petTab) : ''}
       </header>
       ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">
         <header class="pet-panel-header"><h3>经验与血量</h3>
@@ -657,6 +664,7 @@ function createPhone(container) {
     logDay = null;
     tab = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
     showHabitat = Boolean(habitatEntry) && nextScenario === 'standard' && tab === 'home';
+    adoptionDatePet = null;
     overlay = null;
     restoreFocus = null;
     notice = '';
@@ -689,6 +697,12 @@ function createPhone(container) {
       tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
     },
     habitat() { setHabitat(true); },
+    'toggle-pet-age'() {
+      const pet = current();
+      if (!pet) return;
+      adoptionDatePet = adoptionDatePet === pet.id ? null : pet.id;
+      clickTrigger.innerHTML = petAgeLabel(pet, adoptionDatePet === pet.id);
+    },
     detail: value => open('detail', value),
     manual: value => open('manual', value),
     reschedule: value => open('reschedule', value),

@@ -168,6 +168,11 @@ async function demoDirection(index, glass = false) {
     await includes(lead('.habitat-entry-header'), '团团');
     await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
     await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
+    await clickLead('toggle-pet-age');
+    await includes(lead(act('toggle-pet-age')), '领养于2026年11月9日');
+    assert.equal(await inHabitat(), true);
+    await clickLead('toggle-pet-age');
+    await includes(lead(act('toggle-pet-age')), '年龄7 天');
     await includes(habitatGrowth, 'Lv.1');
     await includes(habitatGrowth, '0 / 100 XP');
     assert.ok(await evaluate(`(() => {

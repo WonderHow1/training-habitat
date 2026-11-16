@@ -342,7 +342,7 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.pet-attributes > div {
+.pet-attributes > :is(div, button) {
   display: flex;
   align-items: baseline;
   gap: 5px;
@@ -351,12 +351,13 @@
   background: var(--control-tint);
   background-image: var(--control-glint);
 }
+.pet-age { border: 0; font: inherit; }
 .habitat-entry-header .growth.experience,
-.habitat-entry-header .growth.experience + .pet-attributes > div {
+.habitat-entry-header .growth.experience + .pet-attributes > :is(div, button) {
   background: var(--habitat-pill);
 }
-.pet-attributes dt { color: var(--muted); }
-.pet-attributes dd { margin: 0; font-weight: 680; white-space: nowrap; }
+.pet-attributes span { color: var(--muted); }
+.pet-attributes strong { font-weight: 680; white-space: nowrap; }
 .pet-scene-panel {
   position: absolute;
   inset: auto 12px 106px;
