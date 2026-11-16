@@ -273,6 +273,21 @@ async function demoDirection(index, glass = false) {
       return heart && rows.size === petSprites.cat.pixels.length;
     })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
     await guidePetTo(.77, .61, true);
+    assert.ok(await evaluate(`new Promise(resolve => {
+      const target = document.querySelector(${JSON.stringify(pet)});
+      const x = () => parseFloat(target.style.getPropertyValue('--pet-offset-x'));
+      let arrived;
+      const start = performance.now();
+      function check() {
+        const elapsed = performance.now() - start;
+        if (elapsed < 200) requestAnimationFrame(check);
+        else if ((arrived ??= x()) !== x() && elapsed < 1600) resolve(false);
+        else if (Math.abs(x() - arrived) >= 8) resolve(x() > 55);
+        else if (elapsed > 3800) resolve(false);
+        else requestAnimationFrame(check);
+      }
+      check();
+    })`), 'After pausing, the pet begins walking near the tapped location');
     assert.equal(await inHabitat(), true);
     await enterToday();
     await assertPetCentered(lead('.habitat-link .pixel-scene'));

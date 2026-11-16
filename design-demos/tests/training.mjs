@@ -178,7 +178,7 @@ test('pet sprites face their actual movement across turns and shoreline limits',
   }
 });
 
-test('a scene tap accounts for the canvas crop and lets a walking pet change destination smoothly', () => {
+test('a scene tap lets a walking pet change destination and start its next stroll there', () => {
   let now = 0, nextFrame, pose;
   const context = vm.createContext({
     performance: { now: () => now },
@@ -212,8 +212,15 @@ test('a scene tap accounts for the canvas crop and lets a walking pet change des
   tick(20);
   assert.deepEqual(location(), { x: -20, y: -20 });
   assert.equal(pose.flip, false, 'The left-facing cat turns left when redirected');
-  tick(48);
-  assert.deepEqual(location(), { x: 0, y: 0 }, 'The pet rejoins its automatic route from the destination');
+  const destination = location();
+  tick(18);
+  assert.deepEqual(location(), destination, 'The pet pauses at the destination');
+  for (let index = 0; index < 35 && location().x === destination.x && location().y === destination.y; index++) tick(1);
+  const resumed = location();
+  const distance = Math.hypot(resumed.x - destination.x, resumed.y - destination.y);
+  assert.ok(distance > 0 && distance <= 2, 'The first step of the stroll starts at the destination');
+  tick(28);
+  assert.ok(location().x > destination.x && location().y < -10, 'The pet strolls near the destination');
 });
 
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {
