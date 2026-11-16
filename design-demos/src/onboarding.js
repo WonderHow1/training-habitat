@@ -93,7 +93,7 @@ function createOnboarding(screen, { palette, speciesPicker, habitatPicker, finis
     get active() { return !view.hidden; },
     start() {
       stop();
-      draft = { minutes: '30', name: '团团', species: 'cat', habitat: 'garden' };
+      draft = { minutes: String(DEFAULT_DAILY_GOAL), name: '团团', species: 'cat', habitat: 'garden' };
       view.hidden = false;
       show(0);
       view.scrollIntoView({ block: 'start', inline: 'nearest' });

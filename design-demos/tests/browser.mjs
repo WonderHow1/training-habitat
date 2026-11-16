@@ -175,6 +175,7 @@ async function demoDirection(index, glass = false) {
     await enterToday();
     await includes(lead('.today-task'), '今日训练');
     assert.equal(await todayHeadline(), '今天已经锻炼0小时');
+    await includes(lead('.app-head h2 + .today-remaining'), '你距离目标还有30分钟');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
     assert.equal(await workoutOpen('today'), false);
@@ -204,6 +205,7 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.habitat'), '成长 2 次');
   if (glass) {
     assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
+    await includes(lead('.today-remaining'), '你距离目标还有10分钟');
     await clickLead('habitat');
     assert.equal(await inHabitat(), true);
     await includes(habitatGrowth, '成长 2 次');
@@ -303,6 +305,7 @@ async function demoDirection(index, glass = false) {
       await verifyOnboarding();
       await enterToday();
       await includes(lead('.app-head .kicker'), '目标 121 分钟');
+      await includes(lead('.today-remaining'), '你距离目标还有121分钟');
       await click(lead('.today-task [data-action="new"]'));
     } else await submit();
     await change(lead('input[name="title"]'), '校园夜跑');
@@ -729,6 +732,7 @@ async function verifyCustomProjects() {
   await includes(lead('.record-feed'), '自由泳');
   await clickLead('tab', 'home');
   assert.equal(await todayHeadline(), '今天已经锻炼0.42小时');
+  await includes(lead('.today-remaining'), '你距离目标还有5分钟');
   await clickLead('tab', 'week');
   await includes(lead('.week-summary dd'), '0 / 3');
   await includes(lead('.week-summary > div:nth-child(2) dd'), '25 分钟');
@@ -786,10 +790,13 @@ async function verifyTrainingManagement() {
   await clickLead('edit-record', 'record-2');
   await includes(lead('.sheet h3'), '编辑训练记录');
   await change(lead('.sheet input[name="title"]'), '晚间慢跑');
-  await change(lead('.sheet input[name="minutes"]'), '25');
+  await change(lead('.sheet input[name="minutes"]'), '35');
   await submit();
   const changedRecord = lead(act('record', 'record-2'));
-  for (const content of ['晚间慢跑', '25 分钟', '已匹配计划']) await includes(changedRecord, content);
+  for (const content of ['晚间慢跑', '35 分钟', '已匹配计划']) await includes(changedRecord, content);
+  await clickLead('tab', 'home');
+  await includes(lead('.today-remaining'), '你距离目标还有0分钟');
+  await clickLead('tab', 'log');
   await clickLead('log-day', '2026-11-16');
   await swipeWorkout('record-2');
   await clickLead('delete-record', 'record-2');
@@ -802,6 +809,7 @@ async function verifyTrainingManagement() {
   await includes(lead('.week-summary > div:nth-child(2) dd'), '0 分钟');
   await clickLead('tab', 'home');
   assert.equal(await todayHeadline(), '今天已经锻炼0小时');
+  await includes(lead('.today-remaining'), '你距离目标还有30分钟');
   await includes(lead('.habitat'), '成长 1 次');
 }
 

@@ -119,8 +119,8 @@ function createPhone(container) {
   const weekday = date => '周' + '日一二三四五六'[new Date(date + 'T00:00:00Z').getUTCDay()];
   const isPetHabitat = () => Boolean(habitatEntry) && tab === 'pet';
 
-  function head(title, sub, action = '') {
-    return `<header class="app-head"><div>${sub ? `<p class="kicker">${sub}</p>` : ''}<h2>${title}</h2></div>${action}</header>`;
+  function head(title, sub, action = '', afterTitle = '') {
+    return `<header class="app-head"><div>${sub ? `<p class="kicker">${sub}</p>` : ''}<h2>${title}</h2>${afterTitle}</div>${action}</header>`;
   }
 
   function petDetails(pet) {
@@ -228,9 +228,12 @@ function createPhone(container) {
     const pet = current();
     const todayPlan = now[0];
     const stage = todayPlan && status(state, todayPlan);
-    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span></span>` : '今天';
+    const minutes = usesGlass ? trainingMinutes(state.records, today()) : 0;
+    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(minutes / 60)}小时</span></span>` : '今天';
     const subtitle = dateLabel(today()) + ' ' + weekday(today()) + (state.dailyGoal ? ` · 目标 ${state.dailyGoal} 分钟` : '');
-    const intro = head(title, subtitle, round('bell', '训练提醒', 'settings'));
+    const remaining = Math.max(0, (state.dailyGoal ?? DEFAULT_DAILY_GOAL) - minutes);
+    const afterTitle = usesGlass ? `<p class="today-remaining">你距离目标还有${remaining}分钟</p>` : '';
+    const intro = head(title, subtitle, round('bell', '训练提醒', 'settings'), afterTitle);
     const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
       : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;
     const empty = `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`;

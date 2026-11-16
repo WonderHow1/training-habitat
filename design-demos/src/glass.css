@@ -125,7 +125,7 @@
   margin-bottom: 10px;
   isolation: isolate;
 }
-[data-glass] .app-head:not(:has(.kicker)) { align-items: center; }
+[data-glass] .app-head:is(:not(:has(.kicker)), :has(.today-remaining)) { align-items: center; }
 .today-duration {
   display: block;
   font-size: clamp(20px, 5vw, 23px);
@@ -133,6 +133,13 @@
   letter-spacing: -.035em;
 }
 .today-duration .duration-value { white-space: nowrap; }
+.today-remaining {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
 [data-glass] .app-head::before {
   content: "";
   position: absolute;

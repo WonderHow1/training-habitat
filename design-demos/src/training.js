@@ -1,5 +1,6 @@
 const DAY = 86_400_000;
 const DEMO_AT = '2026-11-16T20:00';
+const DEFAULT_DAILY_GOAL = 30;
 const statuses = { upcoming: '待训练', grace: '待补记', missed: '已漏练', done: '已完成' };
 const tabNames = { home: '今天', week: '计划', log: '记录', pet: '宠物' };
 const petSpecies = { cat: '猫', dog: '狗', rabbit: '兔子', hamster: '仓鼠' };
