@@ -1,9 +1,10 @@
-const HEATMAP_WEEKS = 12;
+const HEATMAP_WEEKS = 16;
 
 function sampleTrainingHistory() {
   const anchor = DEMO_AT.split('T')[0];
   const sampleTitles = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸'];
   const sampleDays = [
+    [-102, 1], [-94, 2], [-86, 1], [-79, 2],
     [-74, 1], [-72, 1], [-69, 2], [-64, 1], [-60, 2], [-56, 1], [-51, 3],
     [-45, 1], [-42, 2], [-39, 1], [-35, 1], [-32, 2], [-29, 1], [-26, 1],
     [-23, 1], [-21, 2], [-19, 1], [-18, 3], [-16, 1], [-13, 2], [-10, 1], [-8, 1]
@@ -51,7 +52,7 @@ function trainingHeatmap(records, today, selection, id) {
   const titleId = id + '-heatmap-title';
   return `<section class="heatmap" aria-labelledby="${titleId}">
     <header class="heatmap-head"><h3 id="${titleId}">训练热力图</h3><p>近 ${HEATMAP_WEEKS} 周 <span>·</span> <strong>${total}</strong> 次</p></header>
-    <div class="heat-calendar">
+    <div class="heat-calendar" style="--heatmap-weeks: ${HEATMAP_WEEKS}">
       <div class="heat-week heat-weekdays" aria-hidden="true"><span></span><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span></span></div>
       ${weeks}
     </div>

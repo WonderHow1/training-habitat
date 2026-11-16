@@ -356,6 +356,7 @@ async function verifyHeatmapAfterSaving() {
   const countRows = () => evaluate(`document.querySelectorAll(${JSON.stringify(feed)}).length`);
   const allRows = await countRows();
   assert.ok(allRows > 4, 'The heatmap has a populated sample history');
+  await includes(lead('.heatmap-head p'), '近 16 周');
   await includes(lead('.heatmap-head strong'), String(allRows));
   const heatmapSize = () => evaluate(`(() => {
     const heatmap = document.querySelector(${JSON.stringify(lead('.heatmap'))});
@@ -363,10 +364,11 @@ async function verifyHeatmapAfterSaving() {
     return { height: heatmap.offsetHeight, width: calendar.offsetWidth };
   })()`);
   const size = await heatmapSize();
-  assert.ok(size.height <= 172 && size.width <= 193, 'The heatmap takes less room above the record list');
+  assert.ok(size.height <= 172 && size.width === 253, 'The heatmap adds four week columns at the same height');
+  assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(lead('.heat-calendar .heat-cell'))}).length`), 16 * 7);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).offsetWidth`), 14);
   const months = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.heat-month'))})].map(label => label.textContent).filter(Boolean)`);
-  assert.deepEqual(months, ['9月', '10月', '11月']);
+  assert.deepEqual(months, ['8月', '9月', '10月', '11月']);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(cell)}).title`), '11月16日 · 1 次训练');
   assert.ok(await evaluate(`document.querySelector(${JSON.stringify(lead('.heatmap'))}).nextElementSibling.classList.contains('record-actions')`));
   await click(cell);
@@ -375,6 +377,9 @@ async function verifyHeatmapAfterSaving() {
   await includes(feed, '校园夜跑');
   await click(lead('.heatmap-footer [data-action="log-day"]'));
   assert.equal(await countRows(), allRows);
+  await clickLead('log-day', '2026-08-06');
+  assert.equal(await countRows(), 1, 'Dates in the newly visible month can be selected');
+  await includes(lead('.heatmap-footer'), '8月6日 · 1 次');
   await clickLead('filter', 'device');
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(cell)}))`), false);
   await clickLead('log-day', '2026-11-14');
@@ -705,6 +710,15 @@ async function verifyNarrowTrainingSummary() {
     const [completed, duration] = [...summary.children].map(metric => metric.getBoundingClientRect());
     return summary.scrollWidth === summary.clientWidth && completed.top === duration.top && completed.right < duration.left;
   })()`), 'Both weekly metrics fit side by side on a narrow screen');
+  await clickLead('tab', 'log');
+  assert.ok(await evaluate(`(() => {
+    const calendar = document.querySelector(${JSON.stringify(lead('.heat-calendar'))});
+    const weeks = calendar.querySelectorAll('.heat-week:not(.heat-weekdays)');
+    const grid = calendar.getBoundingClientRect();
+    const first = weeks[0].getBoundingClientRect();
+    const last = weeks[weeks.length - 1].getBoundingClientRect();
+    return weeks.length === 16 && first.top === last.top && last.right <= grid.right && calendar.scrollWidth === calendar.clientWidth;
+  })()`), 'All 16 weeks fit in a 320px viewport');
 }
 let failed = false;
 try {

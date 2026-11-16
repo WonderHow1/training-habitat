@@ -814,10 +814,12 @@ a { color: inherit; }
 .heatmap-head p, .heatmap-footer p { color: var(--muted); font-size: 12px; }
 .heatmap-head strong { color: var(--ink); font-weight: 750; }
 .heat-calendar {
+  --weekday-width: 13px;
+  --week-gap: 1px;
   display: grid;
-  grid-template-columns: 13px repeat(12, minmax(0, 1fr));
-  gap: 1px;
-  max-width: 193px;
+  grid-template-columns: var(--weekday-width) repeat(var(--heatmap-weeks), minmax(0, 1fr));
+  column-gap: var(--week-gap);
+  max-width: calc(var(--weekday-width) + var(--heatmap-weeks) * (var(--heat-size) + var(--week-gap)));
   margin: 5px auto 2px;
 }
 .heat-week {
@@ -920,12 +922,13 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 </div>
 <main id="board"><section class="device" id="view-home" data-phone="home"><h2>今天</h2></section><section class="device" id="view-week" data-phone="week"><h2>一周计划</h2></section><section class="device" id="view-log" data-phone="log"><h2>训练记录</h2></section><section class="device" id="view-pet" data-phone="pet"><h2>宠物与成长</h2></section></main>
 <footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。</p></footer>
-<script>const HEATMAP_WEEKS = 12;
+<script>const HEATMAP_WEEKS = 16;
 
 function sampleTrainingHistory() {
   const anchor = DEMO_AT.split('T')[0];
   const sampleTitles = ['校园夜跑', '核心训练', '下肢力量', '舒展拉伸'];
   const sampleDays = [
+    [-102, 1], [-94, 2], [-86, 1], [-79, 2],
     [-74, 1], [-72, 1], [-69, 2], [-64, 1], [-60, 2], [-56, 1], [-51, 3],
     [-45, 1], [-42, 2], [-39, 1], [-35, 1], [-32, 2], [-29, 1], [-26, 1],
     [-23, 1], [-21, 2], [-19, 1], [-18, 3], [-16, 1], [-13, 2], [-10, 1], [-8, 1]
@@ -973,7 +976,7 @@ function trainingHeatmap(records, today, selection, id) {
   const titleId = id + '-heatmap-title';
   return `<section class="heatmap" aria-labelledby="${titleId}">
     <header class="heatmap-head"><h3 id="${titleId}">训练热力图</h3><p>近 ${HEATMAP_WEEKS} 周 <span>·</span> <strong>${total}</strong> 次</p></header>
-    <div class="heat-calendar">
+    <div class="heat-calendar" style="--heatmap-weeks: ${HEATMAP_WEEKS}">
       <div class="heat-week heat-weekdays" aria-hidden="true"><span></span><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span></span></div>
       ${weeks}
     </div>
