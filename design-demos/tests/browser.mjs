@@ -118,6 +118,39 @@ async function change(selector, value) {
     return control.value;
   })()`);
 }
+const workout = id => lead(`.swipe-workout[data-workout="${id}"]`);
+const workoutOpen = id => evaluate(`document.querySelector(${JSON.stringify(workout(id))}).hasAttribute('data-open')`);
+async function swipeWorkout(id, direction = 'left', touch = false) {
+  const left = direction === 'left';
+  const selector = JSON.stringify(workout(id));
+  const { x, y } = await evaluate(`(() => {
+    const row = document.querySelector(${selector});
+    row.scrollIntoView({ block: 'center', behavior: 'instant' });
+    const rect = row.getBoundingClientRect();
+    return { x: Math.round(rect.${left ? 'right - 35' : 'left + 40'}), y: Math.round((rect.top + rect.bottom) / 2) };
+  })()`);
+  const endX = x + (left ? -102 : 102);
+  if (touch) {
+    await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await cmd('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: endX, y }] });
+    assert.ok(await evaluate(`(() => {
+      const row = document.querySelector(${selector});
+      const face = row.querySelector('.list-row');
+      const offset = ${left ? '-102' : '102 - row.querySelector(".swipe-actions").offsetWidth'};
+      return row.hasAttribute('data-swiping') && Math.abs(face.getBoundingClientRect().left - row.getBoundingClientRect().left - offset) < 1;
+    })()`), 'The workout row tracks the touch before release');
+    await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  } else {
+    await cmd('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
+    await cmd('Input.dispatchMouseEvent', { type: 'mouseMoved', x: endX, y, buttons: 1 });
+    await cmd('Input.dispatchMouseEvent', { type: 'mouseReleased', x: endX, y, button: 'left', clickCount: 1 });
+  }
+  await evaluate(`Promise.allSettled(document.querySelector(${selector} + ' .list-row').getAnimations().map(animation => animation.finished)).then(() => true)`);
+  assert.equal(await workoutOpen(id), left, `Swiping ${direction} changes actions for ${id}`);
+  assert.equal(await evaluate(`document.querySelector(${selector} + ' .swipe-actions').inert`), !left);
+  assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.sheet'))}))`), false);
+}
+
 async function demoDirection(index, glass = false) {
   const name = glass ? 'ios-prototype' : `dir-${index}`;
   const habitatGrowth = lead('.habitat-entry-header .growth');
@@ -141,13 +174,13 @@ async function demoDirection(index, glass = false) {
     await enterToday();
     await includes(lead('.today-task'), '今日训练');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
-    assert.ok(await evaluate(`(() => {
-      const reminder = document.querySelector(${JSON.stringify(lead('.attention .notice-link'))}).getBoundingClientRect();
-      const upcoming = document.querySelector(${JSON.stringify(lead('.following h3'))}).getBoundingClientRect();
-      return Math.abs(upcoming.top - reminder.bottom - 29) < .5;
-    })()`), 'There are 29 CSS pixels between the reminder and the next workout');
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
+    assert.equal(await workoutOpen('today'), false);
+    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .swipe-actions')}).inert`), true);
     await evaluate('window.scrollTo(0, 0)');
     await screenshot(name + '-today');
+    await swipeWorkout('today');
+    await screenshot(name + '-workout-swipe');
   }
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
@@ -202,12 +235,16 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.equal(await inHabitat(), true);
     await enterToday();
+    await swipeWorkout('today');
   }
   await clickLead('reschedule', 'today');
   await change(lead('input[name="date"]'), '2026-11-17');
   await submit();
   await includes(lead('.today-task'), '今天无计划训练');
-  await includes(lead('.following'), '11月17日');
+  if (glass) {
+    await clickLead('tab', 'week');
+    await includes(lead(act('detail', 'today')), '11月17日');
+  } else await includes(lead('.following'), '11月17日');
 
   if (index === 1) {
     const petSummary = lead(glass ? '.habitat-entry-header' : '.habitat');
@@ -257,7 +294,10 @@ async function demoDirection(index, glass = false) {
     await change(lead('input[name="date"]'), '2026-11-17');
     await submit();
     await click(lead('.sheet [data-action="onboard-finish"].secondary'));
-    await includes(lead('.following'), '11月17日');
+    if (glass) {
+      await clickLead('tab', 'week');
+      await includes(lead(act('detail', 'plan-3')), '11月17日');
+    } else await includes(lead('.following'), '11月17日');
     await change('#demo-time', '2026-11-19T01:00');
     await click('#advance');
     await includes('#demo-feedback', '已按北京时间更新结算');
@@ -271,7 +311,10 @@ async function demoDirection(index, glass = false) {
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-status")].every(el => { const island = el.nextElementSibling.getBoundingClientRect(); return el.children[0].getBoundingClientRect().right < island.left && el.children[1].getBoundingClientRect().left > island.right; })'));
   if (glass) assert.ok(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar')}).getBoundingClientRect().width > 80`));
   await screenshot(name + '-mobile');
-  if (glass) await verifySwipe();
+  if (glass) {
+    await verifySwipe();
+    await swipeWorkout('today');
+  }
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
   await screenshot(name + '-mobile-record');
@@ -343,7 +386,34 @@ async function verifySwipe() {
   await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   assert.equal(await inHabitat(), false, 'An upward touch swipe opens Today');
   await includes(lead('.today-task'), '校园夜跑');
+  await settleHabitatAnimation();
+  await swipeWorkout('today', 'left', true);
+  await swipeWorkout('today', 'right', true);
 
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await clickLead('tab', 'week');
+  for (const title of ['游泳', '瑜伽', '跳绳', '骑行', '舞蹈']) {
+    await click(lead('.app-head [data-action="new"]'));
+    await change(lead('input[name="title"]'), title);
+    await change(lead('input[name="date"]'), '2026-11-16');
+    await submit();
+  }
+  await clickLead('tab', 'home');
+  const workoutIds = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.swipe-workout'))})].map(row => row.dataset.workout)`);
+  assert.equal(workoutIds.length, 6);
+  const another = workoutIds.find(id => id !== 'today');
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await swipeWorkout('today', 'left', true);
+  await swipeWorkout(another, 'left', true);
+  assert.equal(await workoutOpen('today'), false, 'Only one workout can reveal actions at a time');
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await click(workout(another) + ' ' + act('manual', another));
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))}).value`), '游泳');
+  await clickLead('close');
+  assert.equal(await evaluate('document.activeElement.closest(".swipe-workout").dataset.workout'), another);
+  assert.equal(await workoutOpen(another), false);
+
+  await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
   const scroller = JSON.stringify(lead('.app-scroll'));
   await evaluate(`document.querySelector(${scroller}).scrollTop = 40`);
   await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: y - 210 }] });
@@ -401,6 +471,7 @@ async function verifyGlass() {
   await wheel(-102);
   await waitForHabitat(true);
   await enterToday();
+  await clickLead('tab', 'log');
   const nav = lead('.tabbar');
   const scroller = lead('.app-scroll');
   await evaluate(`window.testNav = document.querySelector(${JSON.stringify(nav)}); true`);
@@ -457,6 +528,11 @@ async function verifyGlass() {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }, { name: 'prefers-contrast', value: 'more' }]
   });
   assert.ok(await evaluate(`getComputedStyle(testNav).backdropFilter === 'none' && getComputedStyle(testNav, '::before').transitionDuration === '0s'`));
+  await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .list-row')}).focus()`);
+  await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowLeft', code: 'ArrowLeft', windowsVirtualKeyCode: 37 });
+  assert.equal(await workoutOpen('today'), true);
+  await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  assert.equal(await evaluate('document.activeElement.dataset.action'), 'manual');
   await clickLead('manual', 'today');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length`), 0);
   await clickLead('close');

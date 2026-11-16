@@ -178,33 +178,47 @@ function createPhone(initial) {
     target.focus({ preventScroll: true });
   }
 
-  function planRow(plan, showDate = true) {
+  function planRow(plan, showDate = true, swipeable = false) {
     const stage = status(state, plan);
     const hint = stage === 'grace' ? '补记至 ' + stamp(deadline(plan) + DAY) :
-      showDate ? weekday(plan.date) + ' · ' + dateLabel(plan.date) : '目标 ' + plan.minutes + ' 分钟';
-    return `<button type="button" class="list-row" data-action="detail" data-value="${plan.id}">
+      showDate ? weekday(plan.date) + ' · ' + dateLabel(plan.date) :
+      '目标 ' + plan.minutes + ' 分钟' + (swipeable ? ' · 今日结束前' : '');
+    return `<button type="button" class="list-row" data-action="detail" data-value="${plan.id}"${swipeable ? ' aria-keyshortcuts="ArrowLeft ArrowRight"' : ''}>
       <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
       <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${icon('arrow', 14)}
     </button>`;
   }
 
+  function todaysPlanRow(plan) {
+    if (status(state, plan) !== 'upcoming') return planRow(plan, false);
+    return `<div class="swipe-workout" data-workout="${plan.id}">${planRow(plan, false, true)}
+      <div class="swipe-actions" inert>
+        ${button('记录训练', 'manual', 'primary', plan.id)}
+        ${button('改期', 'reschedule', 'secondary', plan.id)}
+      </div></div>`;
+  }
+
   function home() {
     const now = state.plans.filter(plan => plan.date === today()).sort(orderByDate);
-    const next = state.plans.filter(plan => plan.date > today()).sort(orderByDate)[0];
     const due = state.plans.filter(plan => status(state, plan) === 'grace').sort(orderByDate)[0];
     const missed = state.plans.filter(plan => status(state, plan) === 'missed').sort(orderByDate).at(-1);
     const pet = current();
     const todayPlan = now[0];
     const stage = todayPlan && status(state, todayPlan);
     const intro = head('今天', dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
+    const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
+      : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;
+    const empty = `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`;
+    if (usesGlass) return intro + profile(pet) + `<section class="today-task">
+      <div class="task-heading"><h3>今日训练</h3></div>
+      ${now.length ? now.map(todaysPlanRow).join('') : empty}</section>` + pulse;
+    const next = state.plans.filter(plan => plan.date > today()).sort(orderByDate)[0];
     const task = `<section class="today-task"><div class="task-heading"><h3>今日训练</h3>${todayPlan ? chip(stage) : ''}</div>
       ${todayPlan ? `<div class="task-main"><span class="activity">${icon(activity(todayPlan.title), 24)}</span><div><h4>${escape(todayPlan.title)}</h4><p>目标 ${todayPlan.minutes} 分钟 <span>·</span> 今日结束前</p></div></div>
       ${stage === 'upcoming' ? `<div class="task-actions">${button('记录训练', 'manual', 'primary', todayPlan.id)}${button('改期', 'reschedule', 'secondary', todayPlan.id)}</div>` : button('查看训练', 'detail', 'secondary full', todayPlan.id)}
       ${now.slice(1).map(plan => planRow(plan, false)).join('')}` :
-      `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`}</section>`;
+      empty}</section>`;
     const following = `<section class="following"><h3>下一次训练</h3>${next ? planRow(next) : '<p class="empty-copy">暂无后续安排</p>'}</section>`;
-    const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
-      : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;
     if (theme === 'track') return intro + task + `<div class="track-readout">${profile(pet)}</div>` + pulse + following;
     const lastGrowth = pet && Object.entries(state.finished).filter(([, event]) => event.pet === pet.id)
       .sort(([, a], [, b]) => b.at - a.at)[0];
@@ -509,9 +523,13 @@ function createPhone(initial) {
     overlay = null;
     restoreFocus = null;
     render({ preserve: true });
-    if (focus) [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
-      button.dataset.action === focus.action && button.dataset.value === focus.value
-    )?.focus({ preventScroll: true });
+    if (focus) {
+      const target = [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
+        button.dataset.action === focus.action && button.dataset.value === focus.value
+      );
+      const accessibleTarget = target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target;
+      accessibleTarget?.focus({ preventScroll: true });
+    }
   }
 
   function feedback(message) {
@@ -627,6 +645,7 @@ function createPhone(initial) {
     getMode: () => !overlay && tab === 'home' ? showHabitat : null,
     setHabitat
   });
+  if (usesGlass) bindWorkoutSwipe(scrollArea);
 
   function handleClick(event) {
     const control = event.target.closest('[data-action]');

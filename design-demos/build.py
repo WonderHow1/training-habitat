@@ -19,7 +19,7 @@ CANDIDATES = [
 ]
 PIXELS = (SRC / "pixels.js").read_text()
 STYLE = (SRC / "style.css").read_text()
-JS = "\n".join((SRC / name).read_text() for name in ("training.js", "pixels.js", "frame.js", "habitat.js", "app.js"))
+JS = "\n".join((SRC / name).read_text() for name in ("training.js", "pixels.js", "frame.js", "habitat.js", "workout-swipe.js", "app.js"))
 
 MARK = '<svg viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M4 2h3v4h10V2h3v7h2v8h-2v3H4v-3H2V9h2z"/><path fill="var(--accent)" d="M6 10h3v3H6zm9 0h3v3h-3zm-5 5h4v2h-4z"/></svg>'
 

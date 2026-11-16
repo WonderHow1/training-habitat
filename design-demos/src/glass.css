@@ -36,7 +36,6 @@
 [data-glass] :is(.habitat, .today-task, .week-card, .primary, .secondary, .day, .toast) { border: 0; }
 [data-glass] :is(.board-header, .board-footer p, .week-total, .list-row, .sheet dl div, .choice) { border-block: 0; }
 [data-glass] :is(.today-task, .week-card) { padding-inline: 0; }
-[data-glass] .following { margin-block-start: var(--section-gap); }
 [data-glass] .week-card { margin-block-end: var(--section-gap); }
 [data-glass] .week-days { gap: 3px; margin-block: 12px 8px; }
 [data-glass] .week-total { padding-top: 11px; }
@@ -57,6 +56,37 @@
 .week-trigger span { font-size: 12px; color: var(--muted); }
 [data-glass] .day[aria-pressed="true"] { background: var(--accent); }
 [data-glass] .list-row { padding-block: 13px; gap: 10px; border-radius: 10px; }
+.swipe-workout {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  touch-action: pan-y;
+}
+.swipe-workout > .list-row {
+  position: relative;
+  z-index: 1;
+  background: var(--layer);
+  transform: translateX(var(--swipe-offset, 0px));
+  transition: transform 200ms var(--glass-ease);
+  user-select: none;
+}
+.swipe-workout > .list-row:focus-visible { outline-offset: -3px; }
+.swipe-workout .list-copy { overflow-wrap: anywhere; }
+.swipe-workout[data-swiping] > .list-row { transition: none; }
+.swipe-actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  gap: 4px;
+  width: min(55%, 156px);
+  padding: 5px 0 5px 5px;
+}
+.swipe-actions > button {
+  padding-inline: 9px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.swipe-actions > .primary { flex: 1; }
 [data-glass] :is(.sheet dl div, .choice) { padding-block: 11px; }
 [data-glass] .app-scroll {
   background: var(--surface);
