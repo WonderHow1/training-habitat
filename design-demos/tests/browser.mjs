@@ -222,9 +222,10 @@ async function demoDirection(index, glass = false) {
       assert.equal(new Set(previews).size, 4);
       await click(form + ' .species-choice:has(input[value="dog"])');
       const rooms = new Set();
-      for (const habitat of ['garden', 'dorm', 'living', 'bedroom', 'gym']) {
+      for (const habitat of ['garden', 'running-track', 'living', 'bedroom', 'gym']) {
         await change(form + ' select[name="habitat"]', habitat);
         rooms.add(await evaluate(`document.querySelector(${JSON.stringify(form + ' .habitat-choice-preview canvas')}).toDataURL()`));
+        if (habitat === 'running-track') await screenshot('ios-prototype-running-track');
       }
       assert.equal(rooms.size, 5);
       await screenshot('ios-prototype-adoption');
@@ -236,11 +237,11 @@ async function demoDirection(index, glass = false) {
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.species`), 'dog');
       assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'gym');
       await clickLead('habitat-settings');
-      await change(lead('.sheet select[name="habitat"]'), 'living');
+      await change(lead('.sheet select[name="habitat"]'), 'running-track');
       await submit();
-      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'living');
+      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'running-track');
       await clickLead('tab', 'home');
-      assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.pixel-scene[data-species="dog"][data-habitat="living"]'))}))`));
+      assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.pixel-scene[data-species="dog"][data-habitat="running-track"]'))}))`));
     }
     await clickLead('tab', 'log');
     await clickLead('import');

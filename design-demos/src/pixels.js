@@ -118,6 +118,10 @@ function drawScene(canvas) {
   const faded = canvas.dataset.faded === 'true';
   const species = canvas.dataset.species ?? 'cat';
   const habitat = canvas.dataset.habitat ?? 'garden';
+  if (!compact && habitat === 'running-track') {
+    drawRunningTrack(ctx, canvas, level, faded, species);
+    return;
+  }
   if (!compact && habitat !== 'garden') {
     drawIndoorHabitat(ctx, canvas, habitat, level, faded, species);
     return;
@@ -191,9 +195,55 @@ function drawScene(canvas) {
   }
 }
 
+function drawRunningTrack(ctx, canvas, level, faded, species) {
+  const { width, height } = canvas;
+  const portrait = canvas.hasAttribute('data-portrait');
+  const horizon = Math.round(height * .39);
+  const box = (x, y, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x), Math.round(y), w, h);
+  };
+  box(0, 0, width, horizon, '#cae5fb');
+  box(0, horizon - 13, width, 13, '#e5f0f5');
+  for (const [left, top] of [[.09, .10], [.62, .17], [.39, .27]]) {
+    const x = width * left;
+    const y = height * top;
+    box(x, y, 20, 3, '#f9fcff');
+    box(x + 4, y - 3, 11, 3, '#f9fcff');
+  }
+  box(0, horizon, width, height - horizon, '#88ac62');
+  const standX = Math.round(width * .07);
+  box(standX - 2, horizon - 14, 28, 3, '#60788d');
+  box(standX, horizon - 11, 24, 11, '#99b0bc');
+  box(standX + 1, horizon - 8, 21, 2, '#e0eced');
+  box(standX + 3, horizon - 4, 18, 2, '#e0eced');
+  const lightX = Math.round(width * .87);
+  box(lightX, horizon - 23, 2, 26, '#6a8393');
+  box(lightX - 4, horizon - 24, 10, 4, '#819ba9');
+  box(lightX - 2, horizon - 23, 6, 2, '#fff5d9');
+
+  for (let y = horizon; y < height; y++) {
+    const depth = (y - horizon) / (height - horizon);
+    const center = width * (.59 - .3 * depth * depth);
+    const laneWidth = width * (.035 + .245 * depth);
+    const left = center - 2 * laneWidth;
+    box(left, y, Math.ceil(4 * laneWidth), 1, '#bd725f');
+    for (let lane = 0; lane <= 4; lane++) {
+      box(left + lane * laneWidth, y, depth > .52 ? 2 : 1, 1, '#f9eee5');
+    }
+    if (y % 9 === 0) box(left + laneWidth * .4, y, 2, 1, '#ca8873');
+  }
+
+  if (canvas.hasAttribute('data-empty')) return;
+  const petY = portrait ? (canvas.dataset.portrait === 'pet' ? 81 : 103) : 42;
+  const petX = Math.round(width * .55) - 12;
+  box(petX - 2, petY + 22, 29, 2, '#885445');
+  box(petX + 1, petY + 24, 23, 1, '#885445');
+  paintPet(ctx, petX, petY, 1, level, faded, species);
+}
+
 const roomPalettes = {
   gym: ['#dbe9eb', '#aac2c4', '#dae2df', '#b7c6be', '#355754'],
-  dorm: ['#f4e8d8', '#d7baa2', '#ecd5b9', '#d1ad91', '#886751'],
   living: ['#e8edd9', '#becba8', '#efddc3', '#d9bf9f', '#647457'],
   bedroom: ['#efe7f2', '#cbbad3', '#e4d1db', '#cfb9c7', '#795f79']
 };
@@ -235,18 +285,6 @@ function drawIndoorHabitat(ctx, canvas, habitat, level, faded, species) {
     box(right - 3, floor - 20, 12, 4, '#536e6f');
     box(right - 7, floor - 4, 25, 7, '#526e6c');
     box(right - 5, floor - 3, 21, 3, '#9eafac');
-  } else if (habitat === 'dorm') {
-    box(4, floor - 32, 25, 34, outline);
-    for (const y of [floor - 29, floor - 14]) {
-      box(6, y, 21, 9, '#f7f0de');
-      box(11, y, 15, 7, '#9cb3b8');
-    }
-    box(24, floor - 26, 2, 28, '#ac815f');
-    for (let y = floor - 23; y < floor; y += 6) box(24, y, 5, 2, '#ac815f');
-    box(right - 1, floor - 11, 21, 4, outline);
-    box(right, floor - 7, 3, 10, outline);
-    box(right + 16, floor - 7, 3, 10, outline);
-    box(right + 6, floor - 18, 8, 7, '#d49872');
   } else if (habitat === 'living') {
     box(6, floor - 23, 27, 17, '#7f9b82');
     box(3, floor - 14, 33, 13, '#75917c');

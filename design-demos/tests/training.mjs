@@ -35,10 +35,10 @@ test('adoption records the pet species and chosen habitat independently of healt
   const state = seed('onboarding');
   assert.equal(adopt(state, '米粒', 'dog', 'unsupported'), false);
   assert.equal(adopt(state, '米粒', 'unsupported', 'gym'), false);
-  assert.equal(adopt(state, '米粒', 'rabbit', 'dorm'), true);
+  assert.equal(adopt(state, '米粒', 'rabbit', 'running-track'), true);
   const pet = state.pets.find(entry => entry.id === state.active);
   assert.equal(pet.species, 'rabbit');
-  assert.equal(pet.habitat, 'dorm');
+  assert.equal(pet.habitat, 'running-track');
   assert.equal(setPetHabitat(state, 'bedroom'), true);
   assert.equal(setPetHabitat(state, 'unsupported'), false);
   assert.equal(pet.habitat, 'bedroom');
