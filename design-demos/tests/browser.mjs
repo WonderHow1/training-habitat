@@ -923,6 +923,7 @@ async function verifyTrainingManagement() {
   await swipeWorkout('next');
   await clickLead('edit-plan', 'next');
   await includes(lead('.sheet h3'), '编辑训练计划');
+  assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backgroundImage`), 'none');
   await change(lead('.sheet input[name="title"]'), '负重深蹲');
   await change(lead('.sheet input[name="date"]'), '2026-11-20');
   await change(lead('.sheet input[name="minutes"]'), '35');
@@ -1006,12 +1007,24 @@ async function verifyPrototypePalette() {
       isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
   })()`), 'Main surfaces are white, controls use light gray, and the habitat has green grass and trees');
   assert.ok(await evaluate(`(() => {
-    return ['.record-actions .primary', '.record-actions .secondary', '.segments', '.week-trigger',
-      '.week-days .day', '.scene-control', '.today-task .list-row'].every(selector => {
+    return ['.scene-control', '.today-task .list-row', '.tabbar'].every(selector => {
       const style = getComputedStyle(document.querySelector(selector));
       return style.backgroundImage.includes('linear-gradient') && style.backdropFilter.includes('blur');
     });
-  })()`), 'Internal controls use glass highlights and backdrop blur');
+  })()`), 'Today, Pet, and navigation still use glass highlights and backdrop blur');
+  assert.ok(await evaluate(`(() => {
+    const styles = selectors => selectors.map(selector => getComputedStyle(document.querySelector(selector)));
+    const pills = styles(['.record-actions .primary', '.record-actions .secondary', '.segments button[aria-pressed="false"]', '.week-trigger', '.section-add']);
+    const tiles = styles(['.week-days .day.actual', '.record-feed .activity', '.plan-list .activity']);
+    const icon = getComputedStyle(document.querySelector('.record-actions button > svg'));
+    const flatGray = style => style.backgroundColor === 'rgb(232, 232, 232)' && style.backgroundImage === 'none' &&
+      style.boxShadow === 'none' && style.backdropFilter === 'none';
+    const selected = getComputedStyle(document.querySelector('.segments button[aria-pressed="true"]'));
+    return pills.every(style => flatGray(style) && parseFloat(style.borderRadius) >= 25) &&
+      tiles.every(style => flatGray(style) && style.borderRadius === '13px') &&
+      selected.backgroundColor === 'rgb(217, 217, 217)' && selected.backgroundImage === 'none' &&
+      icon.backgroundColor === 'rgb(33, 38, 45)' && icon.borderRadius === '50%';
+  })()`), 'Plan and Records controls use flat gray pills and rounded tiles with dark icon badges');
 }
 
 async function verifyOpenSurfaces() {

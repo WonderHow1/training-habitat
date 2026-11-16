@@ -75,6 +75,7 @@ function createPhone(container) {
     <nav class="tabbar" aria-label="App 导航">${Object.entries(tabNames).map(([key, title]) =>
       `<button type="button" data-action="tab" data-value="${key}">${icon(key)}<span>${title}</span></button>`).join('')}</nav>
     <div class="app-overlays"></div></div>`;
+  const app = outlet.querySelector('.phone-app');
   const scrollArea = outlet.querySelector('.app-scroll');
   const tabbar = outlet.querySelector('.tabbar');
   const tabButtons = [...tabbar.querySelectorAll('button')];
@@ -569,6 +570,7 @@ function createPhone(container) {
   function render({ preserve = false, focusSheet = false } = {}) {
     const offset = preserve ? scrollArea.scrollTop : 0;
     const heatmapOffset = preserve ? scrollArea.querySelector('.heat-weeks')?.scrollLeft : undefined;
+    app.dataset.screen = tab;
     scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
     positionHeatmap(heatmapOffset);
     scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay) || Boolean(onboarding?.active);

@@ -1069,6 +1069,45 @@ button.heat-cell:focus-visible { outline: 2px solid var(--focus); outline-offset
 [data-glass] .phone-app :is(.primary, .secondary, .day, .picker-day, .week-trigger, .segments button, .text-button):active {
   transform: scale(.96);
 }
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) {
+  --training-control: #e8e8e8;
+  --training-selected: #d9d9d9;
+}
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.app-scroll, .sheet)
+  :is(.round, .primary, .secondary, .week-trigger, .day, .picker-day, .text-button, .segments button, .activity, .field :is(input, select)) {
+  background: var(--training-control);
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.primary, .secondary, .week-trigger, .text-button, .segments button) {
+  border-radius: 999px;
+}
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.day, .picker-day, .activity, .field :is(input, select)) {
+  border-radius: 13px;
+}
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.day, .picker-day, .segments button)[aria-pressed="true"] {
+  background: var(--training-selected);
+}
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.day:not(.actual, [aria-pressed="true"]), .picker-day:not([aria-current], [aria-pressed="true"])) {
+  background: #f3f3f3;
+}
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.segments, .list-row, .choice) {
+  background-image: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+[data-glass] .phone-app[data-screen="log"] .segments { background-color: transparent; padding-inline: 0; }
+[data-glass] .phone-app:is([data-screen="week"], [data-screen="log"]) :is(.round, .record-actions button) > svg {
+  width: 25px;
+  height: 25px;
+  padding: 5px;
+  border-radius: 50%;
+  color: #fff;
+  background: #21262d;
+}
 .heat-weeks button.heat-cell { background-image: linear-gradient(150deg, #ffffff33, #fff0 65%, #25252512); }
 .heat-weeks button.heat-cell[aria-pressed="true"] {
   background-image: radial-gradient(circle, var(--ink) 1.6px, transparent 2px), linear-gradient(150deg, #ffffff33, #fff0 65%, #25252512);
@@ -2317,6 +2356,7 @@ function createPhone(container) {
     <nav class="tabbar" aria-label="App 导航">${Object.entries(tabNames).map(([key, title]) =>
       `<button type="button" data-action="tab" data-value="${key}">${icon(key)}<span>${title}</span></button>`).join('')}</nav>
     <div class="app-overlays"></div></div>`;
+  const app = outlet.querySelector('.phone-app');
   const scrollArea = outlet.querySelector('.app-scroll');
   const tabbar = outlet.querySelector('.tabbar');
   const tabButtons = [...tabbar.querySelectorAll('button')];
@@ -2811,6 +2851,7 @@ function createPhone(container) {
   function render({ preserve = false, focusSheet = false } = {}) {
     const offset = preserve ? scrollArea.scrollTop : 0;
     const heatmapOffset = preserve ? scrollArea.querySelector('.heat-weeks')?.scrollLeft : undefined;
+    app.dataset.screen = tab;
     scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
     positionHeatmap(heatmapOffset);
     scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay) || Boolean(onboarding?.active);
