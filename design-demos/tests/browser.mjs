@@ -141,6 +141,7 @@ async function demoDirection(index, glass = false) {
     await enterToday();
     await includes(lead('.today-task'), '今日训练');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+    await evaluate('window.scrollTo(0, 0)');
     await screenshot(name + '-today');
   }
   await clickLead('manual', 'today');
@@ -148,7 +149,9 @@ async function demoDirection(index, glass = false) {
   if (glass) {
     assert.ok(await evaluate(`(() => {
       const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
-      return sheet.contains(document.activeElement) && sheet.getAnimations().length > 0;
+      const field = sheet.querySelector('select');
+      return sheet.contains(document.activeElement) && sheet.getAnimations().length > 0 &&
+        getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px';
     })()`));
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().map(animation => animation.finished))`);
     await screenshot(name + '-record');
@@ -347,6 +350,7 @@ const settleHabitatAnimation = () => evaluate(`Promise.allSettled(document.query
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
   await verifyPrototypePalette();
+  await verifyOpenSurfaces();
   const { x, y } = await habitatPoint();
   const wheel = deltaY => cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY });
   await wheel(42);
@@ -444,6 +448,19 @@ async function verifyPrototypePalette() {
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
       isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
   })()`), 'Main surfaces are white, secondary controls are pale blue, and the habitat has green grass and trees');
+}
+
+async function verifyOpenSurfaces() {
+  assert.ok(await evaluate(`(() => {
+    const selectors = [
+      '.habitat-link', '.today-task', '.week-card', '.heatmap', '.pet-scene-panel', '.tabbar',
+      '.round', '.board-controls button', '.record-actions .secondary', '.heat-cell'
+    ];
+    const canvas = getComputedStyle(document.querySelector('.habitat-link .pixel-scene'));
+    const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
+    return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
+      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none';
+  })()`), 'Cards and controls have no perimeter strokes, and landscape cards fade into their content');
 }
 let failed = false;
 try {
