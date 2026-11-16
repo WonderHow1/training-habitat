@@ -346,7 +346,7 @@ const settleHabitatAnimation = () => evaluate(`Promise.allSettled(document.query
 
 async function verifyGlass() {
   await navigate('ios-prototype.html', 1440, 1100);
-  await verifyLightBluePalette();
+  await verifyPrototypePalette();
   const { x, y } = await habitatPoint();
   const wheel = deltaY => cmd('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY });
   await wheel(42);
@@ -418,7 +418,7 @@ async function verifyGlass() {
   await cmd('Emulation.setEmulatedMedia', { features: [] });
 }
 
-async function verifyLightBluePalette() {
+async function verifyPrototypePalette() {
   assert.ok(await evaluate(`(() => {
     const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
     const colorChannels = color => color.match(/[0-9]+/g).slice(0, 3).map(Number);
@@ -431,14 +431,19 @@ async function verifyLightBluePalette() {
     const face = colorChannels(getComputedStyle(button).backgroundColor);
     const text = colorChannels(getComputedStyle(button).color);
     const contrast = (luminance(text) + .05) / (luminance(face) + .05);
-    const sky = [...document.querySelector('[data-phone="home"] .habitat-landscape')
-      .getContext('2d').getImageData(0, 0, 1, 1).data].slice(0, 3);
+    const pixel = (selector, x, y) => document.querySelector(selector).getContext('2d').getImageData(x, y, 1, 1).data;
+    const isGreen = ([red, green, blue]) => green > red && green > blue;
+    const habitat = '[data-phone="home"] .habitat-landscape';
+    const card = '[data-phone="home"] .habitat-art canvas';
+    const sky = pixel(habitat, 0, 0);
     return background('[data-phone="log"] .heatmap') === 'rgb(255, 255, 255)' &&
       isPaleBlue(colorChannels(background('.ios-screen'))) &&
       isPaleBlue(colorChannels(background('body'))) &&
       face[0] < face[1] && face[1] < face[2] && contrast >= 4.5 &&
-      sky[0] < sky[1] && sky[1] < sky[2];
-  })()`), 'The prototype uses white cards, pale-blue surfaces and sky, and a readable blue primary action');
+      sky[0] < sky[1] && sky[1] < sky[2] &&
+      isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
+      isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
+  })()`), 'The interface uses white and blue while the habitat has green grass and trees');
 }
 let failed = false;
 try {
