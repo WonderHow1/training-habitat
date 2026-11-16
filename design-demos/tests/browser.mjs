@@ -301,12 +301,13 @@ async function demoDirection(index, glass = false) {
   }
   await (glass ? click(lead('.sheet ' + act('edit-plan', 'today'))) : clickLead('reschedule', 'today'));
   await change(lead('input[name="date"]'), '2026-11-17');
+  await change(lead('.sheet input[name="start"]'), '19:45');
   await submit();
   await includes(lead('.today-task'), '今天无计划训练');
   if (glass) {
     await clickLead('tab', 'week');
-    await includes(lead(act('detail', 'today')), '11月17日');
-  } else await includes(lead('.following'), '11月17日');
+    await includes(lead(act('detail', 'today')), '11月17日 19:45');
+  } else await includes(lead('.following'), '11月17日 19:45');
 
   if (index === 1) {
     const petSummary = lead(glass ? '.habitat-entry-header' : '.habitat');
@@ -937,8 +938,10 @@ async function verifyCustomProjects() {
   await click(suggestion('自由泳'));
   assert.equal(await evaluate(`document.querySelector(${project}).value`), '自由泳');
   await change(input, '瑜伽拉伸');
+  await change(lead('.sheet input[name="start"]'), '07:05');
   await submit();
-  await includes(lead('.plan-list'), '瑜伽拉伸');
+  await includes(lead('.plan-list .list-row'), '瑜伽拉伸');
+  await includes(lead('.plan-list'), '11月16日 07:05');
   await navigate('ios-prototype.html', 1440, 1100);
   await enterToday();
   await clickLead('tab', 'log');
@@ -980,10 +983,18 @@ async function verifyTrainingManagement() {
   assert.equal(await evaluate(`getComputedStyle(document.querySelector(${JSON.stringify(lead('.sheet input[name="title"]'))})).backgroundImage`), 'none');
   await change(lead('.sheet input[name="title"]'), '负重深蹲');
   await change(lead('.sheet input[name="date"]'), '2026-11-20');
+  const plannedTime = lead('.sheet input[name="start"]');
+  await change(plannedTime, '18:45');
   await change(lead('.sheet input[name="minutes"]'), '35');
   await submit();
   const changedPlan = lead(act('detail', 'next'));
-  for (const content of ['负重深蹲', '11月20日', '35 分钟']) await includes(changedPlan, content);
+  for (const content of ['负重深蹲', '11月20日 18:45', '35 分钟']) await includes(changedPlan, content);
+  await click(changedPlan);
+  await includes(lead('.sheet dl'), '计划时间18:45');
+  await includes(lead('.sheet dl'), '训练截止11月21日 00:00');
+  await click(detailEdit);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(plannedTime)}).value`), '18:45');
+  await clickLead('close');
   await swipeWorkout('next');
   await clickLead('delete-plan', 'next');
   await includes(lead('.sheet h3'), '删除训练计划？');

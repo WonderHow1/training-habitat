@@ -151,12 +151,18 @@ function status(state, plan) {
   return state.now < deadline(plan) ? 'upcoming' : 'grace';
 }
 
-function changeDate(state, plan, date) {
-  if (status(state, plan) !== 'upcoming' || monday(date) !== monday(plan.date) || date < dateAt(state.now)) return false;
+function validPlanTime(start) {
+  return typeof start === 'string' && (start === '' || /^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(start));
+}
+
+function changeDate(state, plan, date, start = plan?.start ?? '') {
+  if (!plan || !validPlanTime(start) || !Number.isFinite(bj(date)) || status(state, plan) !== 'upcoming' ||
+    monday(date) !== monday(plan.date) || date < dateAt(state.now)) return false;
   if (plan.date !== date) {
     plan.date = date;
     plan.effective = state.now;
   }
+  if (start !== (plan.start ?? '')) plan.start = start;
   return true;
 }
 
@@ -210,9 +216,9 @@ function unlinkTraining(state, record) {
   settlePetDeath(state, state.now);
 }
 
-function editPlan(state, plan, { title, date = plan?.date, minutes }) {
+function editPlan(state, plan, { title, date = plan?.date, start = plan?.start ?? '', minutes }) {
   if (!plan || !title || !Number.isInteger(minutes) || minutes < 1 || minutes > 1439) return false;
-  if (date !== plan.date && (!Number.isFinite(bj(date)) || !changeDate(state, plan, date))) return false;
+  if ((date !== plan.date || start !== (plan.start ?? '')) && !changeDate(state, plan, date, start)) return false;
   Object.assign(plan, { title, minutes });
   const record = state.records.find(entry => entry.plan === plan.id);
   if (record && !fitsPlan(plan, record, state.now)) unlinkTraining(state, record);

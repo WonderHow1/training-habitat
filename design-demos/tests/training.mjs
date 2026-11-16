@@ -136,6 +136,30 @@ test('rescheduling stays in the plan week and updates the original plan (A04–A
   assert.equal(changeDate(state, find(state, 'first'), '2026-11-16'), false);
 });
 
+test('a plan can add, keep, move or clear its optional start time', () => {
+  const state = seed();
+  const plan = find(state, 'today');
+  const effective = plan.effective;
+  assert.equal(editPlan(state, plan, { title: plan.title, minutes: 20, start: '21:00' }), true);
+  assert.equal(plan.start, '21:00');
+  assert.equal(plan.effective, effective);
+  assert.equal(deadline(plan), bj('2026-11-17'));
+  assert.equal(eligible(state, plan, recordFor(plan, { start: '18:30' })), true);
+
+  assert.equal(changeDate(state, plan, '2026-11-17', '24:00'), false);
+  assert.equal(plan.date, '2026-11-16');
+  assert.equal(plan.start, '21:00');
+  assert.equal(changeDate(state, plan, '2026-11-17'), true);
+  assert.equal(plan.start, '21:00');
+  assert.equal(plan.effective, state.now);
+  assert.equal(changeDate(state, plan, '2026-11-18', '00:00'), true);
+  assert.equal(plan.start, '00:00');
+  assert.equal(editPlan(state, plan, { title: plan.title, minutes: 20, start: '' }), true);
+  assert.equal(plan.start, '');
+  const done = find(state, 'first');
+  assert.equal(editPlan(state, done, { title: done.title, minutes: done.minutes, start: '08:00' }), false);
+});
+
 test('training before the plan took effect, after it expired, or ending at midnight cannot count', () => {
   const state = seed();
   const plan = find(state, 'grace');

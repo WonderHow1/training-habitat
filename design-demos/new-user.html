@@ -1556,12 +1556,18 @@ function status(state, plan) {
   return state.now < deadline(plan) ? 'upcoming' : 'grace';
 }
 
-function changeDate(state, plan, date) {
-  if (status(state, plan) !== 'upcoming' || monday(date) !== monday(plan.date) || date < dateAt(state.now)) return false;
+function validPlanTime(start) {
+  return typeof start === 'string' && (start === '' || /^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(start));
+}
+
+function changeDate(state, plan, date, start = plan?.start ?? '') {
+  if (!plan || !validPlanTime(start) || !Number.isFinite(bj(date)) || status(state, plan) !== 'upcoming' ||
+    monday(date) !== monday(plan.date) || date < dateAt(state.now)) return false;
   if (plan.date !== date) {
     plan.date = date;
     plan.effective = state.now;
   }
+  if (start !== (plan.start ?? '')) plan.start = start;
   return true;
 }
 
@@ -1615,9 +1621,9 @@ function unlinkTraining(state, record) {
   settlePetDeath(state, state.now);
 }
 
-function editPlan(state, plan, { title, date = plan?.date, minutes }) {
+function editPlan(state, plan, { title, date = plan?.date, start = plan?.start ?? '', minutes }) {
   if (!plan || !title || !Number.isInteger(minutes) || minutes < 1 || minutes > 1439) return false;
-  if (date !== plan.date && (!Number.isFinite(bj(date)) || !changeDate(state, plan, date))) return false;
+  if ((date !== plan.date || start !== (plan.start ?? '')) && !changeDate(state, plan, date, start)) return false;
   Object.assign(plan, { title, minutes });
   const record = state.records.find(entry => entry.plan === plan.id);
   if (record && !fitsPlan(plan, record, state.now)) unlinkTraining(state, record);
@@ -2457,6 +2463,8 @@ const chip = status => `<span class="chip ${status}"><i></i>${statuses[status]}<
 const activity = name => name.includes('跑') ? 'run' : name.includes('拉伸') ? 'stretch' : 'dumbbell';
 const heart = filled => `<svg width="19" height="17" viewBox="0 0 11 10" aria-hidden="true" class="${filled ? 'filled' : 'empty'}"><path fill="currentColor" d="M1 0h3v1h3V0h3v1h1v4h-1v1H9v1H8v1H7v1H6v1H5V9H4V8H3V7H2V6H1V5H0V1h1z"/></svg>`;
 const orderByDate = (a, b) => a.date.localeCompare(b.date);
+const orderPlans = (a, b) => orderByDate(a, b) || (a.start || '24:00').localeCompare(b.start || '24:00');
+const planDateLabel = plan => dateLabel(plan.date) + (plan.start ? ' ' + plan.start : '');
 const clocks = date => date.split('T');
 const trainingHours = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 const projectHistoryKey = 'pixel-fitness.training-projects';
@@ -2673,9 +2681,10 @@ function createPhone(container) {
 
   function planRow(plan, showDate = true, actions = '') {
     const stage = status(state, plan);
-    const hint = stage === 'grace' ? '补记至 ' + stamp(deadline(plan) + DAY) :
-      showDate ? weekday(plan.date) + ' · ' + dateLabel(plan.date) :
-      '目标 ' + plan.minutes + ' 分钟' + (actions && stage === 'upcoming' ? ' · 今日结束前' : '');
+    const schedule = weekday(plan.date) + ' · ' + planDateLabel(plan);
+    const hint = stage === 'grace' ? (showDate && plan.start ? schedule + ' · ' : '') + '补记至 ' + stamp(deadline(plan) + DAY) :
+      showDate ? schedule : '目标 ' + plan.minutes + ' 分钟' +
+      (plan.start ? ' · ' + plan.start : actions && stage === 'upcoming' ? ' · 今日结束前' : '');
     return workoutRow(`
       <span class="activity">${icon(activity(plan.title))}</span><span class="list-copy"><strong>${escape(plan.title)}</strong><small>${hint}</small></span>
       <span class="list-end">${chip(stage)}${showDate ? `<small>${plan.minutes} 分钟</small>` : ''}</span>${icon('arrow', 14)}
@@ -2683,7 +2692,7 @@ function createPhone(container) {
   }
 
   function home() {
-    const now = state.plans.filter(plan => plan.date === today()).sort(orderByDate);
+    const now = state.plans.filter(plan => plan.date === today()).sort(orderPlans);
     const due = state.plans.filter(plan => status(state, plan) === 'grace').sort(orderByDate)[0];
     const missed = state.plans.filter(plan => status(state, plan) === 'missed').sort(orderByDate).at(-1);
     const pet = current();
@@ -2701,9 +2710,9 @@ function createPhone(container) {
     if (usesGlass) return intro + profile(pet) + `<section class="today-task">
       <div class="task-heading"><h3>今日训练</h3></div>
       ${now.length ? now.map(plan => planRow(plan, false, managementActions('plan', plan.id))).join('') : empty}</section>` + pulse;
-    const next = state.plans.filter(plan => plan.date > today()).sort(orderByDate)[0];
+    const next = state.plans.filter(plan => plan.date > today()).sort(orderPlans)[0];
     const task = `<section class="today-task"><div class="task-heading"><h3>今日训练</h3>${todayPlan ? chip(stage) : ''}</div>
-      ${todayPlan ? `<div class="task-main"><span class="activity">${icon(activity(todayPlan.title), 24)}</span><div><h4>${escape(todayPlan.title)}</h4><p>目标 ${todayPlan.minutes} 分钟 <span>·</span> 今日结束前</p></div></div>
+      ${todayPlan ? `<div class="task-main"><span class="activity">${icon(activity(todayPlan.title), 24)}</span><div><h4>${escape(todayPlan.title)}</h4><p>目标 ${todayPlan.minutes} 分钟 <span>·</span> ${todayPlan.start || '今日结束前'}</p></div></div>
       ${stage === 'upcoming' ? `<div class="task-actions">${button('记录训练', 'manual', 'primary', todayPlan.id)}${button('改期', 'reschedule', 'secondary', todayPlan.id)}</div>` : button('查看训练', 'detail', 'secondary full', todayPlan.id)}
       ${now.slice(1).map(plan => planRow(plan, false)).join('')}` :
       empty}</section>`;
@@ -2718,7 +2727,7 @@ function createPhone(container) {
 
   function calendar() {
     const end = dayPlus(week, 6);
-    const plans = state.plans.filter(plan => monday(plan.date) === week).sort(orderByDate);
+    const plans = state.plans.filter(plan => monday(plan.date) === week).sort(orderPlans);
     const shown = selectedDay ? plans.filter(plan => plan.date === selectedDay) : plans;
     const done = plans.filter(plan => status(state, plan) === 'done').length;
     const range = dateLabel(week) + '–' + dateLabel(end);
@@ -2822,6 +2831,7 @@ function createPhone(container) {
     }
     return sheet(escape(plan.title), `<div class="sheet-status">${chip(stage)}<span>目标 ${plan.minutes} 分钟</span></div>
       <dl><div><dt>计划日期</dt><dd>${dateLabel(plan.date)} ${weekday(plan.date)}</dd></div>
+      ${plan.start ? `<div><dt>计划时间</dt><dd>${plan.start}</dd></div>` : ''}
       <div><dt>训练截止</dt><dd>${stamp(deadline(plan))}</dd></div>
       <div><dt>补记截止</dt><dd>${stamp(deadline(plan) + DAY)}</dd></div>
       ${stage === 'missed' ? `<div><dt>设备更正截止</dt><dd>${stamp(deadline(plan) + 7 * DAY)}</dd></div>` : ''}
@@ -2853,7 +2863,8 @@ function createPhone(container) {
     const dateLimit = fixedDate ? 'readonly' : `min="${min}" ${plan ? `max="${max}"` : ''}`;
     return sheet(editing ? '编辑训练计划' : plan ? '改期' : '新增训练', `<form data-form="${editing ? 'edit-plan' : plan ? 'reschedule' : 'new'}">
       ${rescheduling ? `<p class="sheet-note">${escape(plan.title)} · ${plan.minutes} 分钟。请选择同一周内的日期。</p>` : projectField(plan?.title)}
-      ${field('计划日期', `<input type="date" name="date" ${dateLimit} value="${picked}" required>`)}
+      <div class="form-pair">${field('计划日期', `<input type="date" name="date" ${dateLimit} value="${picked}" required>`)}
+      ${field('计划时间（选填）', `<input type="time" name="start" value="${plan?.start ?? ''}" ${fixedDate ? 'readonly' : ''}>`)}</div>
       ${rescheduling ? '' : field('目标时长（分钟）', `<input type="number" name="minutes" min="1" max="1439" value="${plan?.minutes ?? 20}" required>`)}
       ${fixedDate && state.finished[plan.id] ? '<p class="sheet-note">若新目标超过关联记录的时长，系统会重新结算该计划。</p>' : ''}
       <p class="form-error" role="alert"></p><button type="submit" class="primary full">${rescheduling ? '保存改期' : '保存计划'}</button></form>`);
@@ -2927,7 +2938,7 @@ function createPhone(container) {
     const choices = state.plans.filter(plan => eligible(state, plan, record));
     return sheet('确认关联', `<p class="sheet-note">${escape(record.title)} · ${dateLabel(record.date)} ${record.start} · ${record.minutes} 分钟</p><form data-form="match">
       ${choices.length ? `<fieldset><legend>匹配到哪项训练？</legend>${choices.map((plan, index) => `<label class="choice"><input type="radio" name="plan" value="${plan.id}"
-      ${plan.id === targetId || (!choices.some(entry => entry.id === targetId) && index === 0) ? 'checked' : ''}><span><strong>${escape(plan.title)}</strong><small>${dateLabel(plan.date)} · 目标 ${plan.minutes} 分钟</small></span>${chip(status(state, plan))}</label>`).join('')}
+      ${plan.id === targetId || (!choices.some(entry => entry.id === targetId) && index === 0) ? 'checked' : ''}><span><strong>${escape(plan.title)}</strong><small>${planDateLabel(plan)} · 目标 ${plan.minutes} 分钟</small></span>${chip(status(state, plan))}</label>`).join('')}
       <label class="choice"><input type="radio" name="plan" value=""><span>仅保存到训练历史</span></label></fieldset>` :
       `<p class="sheet-note">${merge && record.plan ? '已匹配过计划，合并后保留原结算。' : '这条记录目前没有可关联的计划，可以保存到训练历史。'}</p>`}
       <button class="primary full" type="submit">${choices.length ? '确认并保存' : '保存记录'}</button></form>`);
@@ -3304,18 +3315,18 @@ function createPhone(container) {
         break;
       }
       case 'reschedule': {
-        if (!changeDate(state, getPlan(overlay.value), data.date)) {
-          form.querySelector('.form-error').textContent = '请选择原计划同一周内的有效日期。';
+        if (!changeDate(state, getPlan(overlay.value), data.date, data.start)) {
+          form.querySelector('.form-error').textContent = '请选择原计划同一周内的有效日期，并核对计划时间。';
           return;
         }
-        feedback('已改期，截止时间已更新');
+        feedback('已更新训练安排');
         break;
       }
       case 'edit-plan': {
         const plan = getPlan(overlay.value);
         const originalDate = plan.date;
         if (!editPlan(state, plan, { ...data, minutes: Number(data.minutes) })) {
-          form.querySelector('.form-error').textContent = '请选择原计划同一周内的有效日期，并核对目标时长。';
+          form.querySelector('.form-error').textContent = '请选择原计划同一周内的有效日期，并核对计划时间和目标时长。';
           return;
         }
         if (selectedDay === originalDate) selectedDay = plan.date;
@@ -3335,6 +3346,10 @@ function createPhone(container) {
         break;
       }
       case 'new': {
+        if (!validPlanTime(data.start)) {
+          form.querySelector('.form-error').textContent = '请核对计划时间。';
+          return;
+        }
         const plan = { ...data, minutes: Number(data.minutes), id: 'plan-' + ++state.serial, effective: state.now };
         state.plans.push(plan);
         rememberProject(plan.title);
