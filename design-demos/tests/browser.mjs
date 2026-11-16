@@ -173,6 +173,7 @@ async function demoDirection(index, glass = false) {
     })()`));
     await enterToday();
     await includes(lead('.today-task'), '今日训练');
+    await includes(lead('.app-head h2'), '今天已经锻炼0小时，加油💪🏻！');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
     assert.equal(await workoutOpen('today'), false);
@@ -200,13 +201,19 @@ async function demoDirection(index, glass = false) {
   await includes(lead('.today-task'), '已完成');
   await includes(lead('.habitat'), '成长 2 次');
   if (glass) {
+    await includes(lead('.app-head h2'), '今天已经锻炼0.33小时，加油💪🏻！');
     await clickLead('habitat');
     assert.equal(await inHabitat(), true);
     await includes(habitatGrowth, '成长 2 次');
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar i')}).style.width`), '40%');
     await enterToday();
-  }
-  assert.equal(await evaluate('document.querySelector(\'[data-phone="week"] .week-total strong\').textContent.trim()'), '0 / 3');
+    await includes('[data-phone="week"] .week-summary dd', '0 / 3');
+    await clickLead('tab', 'week');
+    await includes(lead('.week-summary dd'), '1 / 3');
+    await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
+    await clickLead('day', '2026-11-19');
+    await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
+  } else await includes('[data-phone="week"] .week-total strong', '0 / 3');
   await clickLead('tab', 'log');
   await includes(lead('.record-feed'), '校园夜跑');
   if (glass) await verifyHeatmapAfterSaving();
@@ -215,6 +222,7 @@ async function demoDirection(index, glass = false) {
   await submit();
   await clickLead('tab', 'week');
   await clickLead('previous');
+  if (glass) await includes(lead('.week-summary > div:nth-child(2) dd'), '79 分钟');
   await clickLead('detail', 'old');
   await includes(lead('.sheet .sheet-status'), '已完成');
   await includes(lead('.sheet-note'), '撤销本次扣血');
@@ -543,11 +551,14 @@ async function verifyWeekPicker() {
   const week = selector => '[data-phone="week"] ' + selector;
   await includes(week('.week-trigger'), '2026 年第 47 周');
   await includes(week('.week-trigger'), '11月16日–11月22日');
+  await includes(week('.week-summary > div:nth-child(2) dt'), '本周训练时长');
+  await includes(week('.week-summary > div:nth-child(2) dd'), '0 分钟');
   assert.ok(await evaluate(`(() => {
     const add = document.querySelector(${JSON.stringify(week('.section-add'))}).getBoundingClientRect();
     const tabs = document.querySelector(${JSON.stringify(week('.tabbar'))}).getBoundingClientRect();
     return tabs.top - add.bottom >= 10;
   })()`));
+  await screenshot('ios-prototype-plan');
   await click(week('.week-trigger'));
   await includes(week('.sheet h3'), '选择日期');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(week('.picker-day[aria-pressed="true"]'))}).dataset.value`), '2026-11-16');
@@ -562,6 +573,7 @@ async function verifyWeekPicker() {
   await click(week('.week-picker button[type="submit"]'));
   await includes(week('.week-trigger'), '2024 年第 9 周');
   await includes(week('.week-trigger'), '2月26日–3月3日');
+  await includes(week('.week-summary > div:nth-child(2) dd'), '0 分钟');
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(week('.week-days [aria-pressed="true"]'))}).dataset.value`), '2024-02-29');
   await click(week('.week-trigger'));
   await includes(week('.sheet h3'), '选择日期');
@@ -583,9 +595,14 @@ async function verifyCustomProjects() {
   assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(lead('.project-history button'))}).length`), 0);
   await change(input, '  自由泳  ');
   await submit();
+  await click(lead('label.choice:has(input[name="plan"][value=""])'));
   await submit();
   await includes(lead('.record-feed'), '自由泳');
+  await clickLead('tab', 'home');
+  await includes(lead('.app-head h2'), '今天已经锻炼0.42小时，加油💪🏻！');
   await clickLead('tab', 'week');
+  await includes(lead('.week-summary dd'), '0 / 3');
+  await includes(lead('.week-summary > div:nth-child(2) dd'), '25 分钟');
   await click(lead('.app-head [data-action="new"]'));
   await click(suggestion('自由泳'));
   assert.equal(await evaluate(`document.querySelector(${project}).value`), '自由泳');
@@ -640,12 +657,15 @@ async function verifyOpenSurfaces() {
     ];
     const canvas = getComputedStyle(document.querySelector('.habitat-link .pixel-scene'));
     const portrait = getComputedStyle(document.querySelector('.habitat-landscape'));
-    const blockDividers = ['.board-header', '.board-footer p', '.week-total', '.plan-list .list-row', '.record-feed .list-row', '.pet-scene-panel .list-row'];
+    const blockDividers = ['.board-header', '.board-footer p', '.week-summary', '.plan-list .list-row', '.record-feed .list-row', '.pet-scene-panel .list-row'];
     const hasOpenSpacing = blockDividers.every(selector => {
       const style = getComputedStyle(document.querySelector(selector));
       return style.borderTopWidth === '0px' && style.borderBottomWidth === '0px';
-    }) && parseFloat(getComputedStyle(document.querySelector('.week-days')).marginTop) > 9 &&
-      parseFloat(getComputedStyle(document.querySelector('.plan-list .list-row')).paddingTop) > 11;
+    }) && parseFloat(getComputedStyle(document.querySelector('.plan-list .list-row')).paddingTop) > 11;
+    const compactWeek = document.querySelector('.week-card').getBoundingClientRect().height <= 126 &&
+      [...document.querySelectorAll('.week-days .day')].every(day => day.getBoundingClientRect().height >= 44) &&
+      document.querySelector('.week-summary > div:first-child').getBoundingClientRect().top ===
+        document.querySelector('.week-summary > div:last-child').getBoundingClientRect().top;
     const gapBetween = (first, second) => {
       const above = document.querySelector(first).getBoundingClientRect();
       const below = document.querySelector(second).getBoundingClientRect();
@@ -654,8 +674,27 @@ async function verifyOpenSurfaces() {
     const matchesTodayGap = [['.week-card', '.plan-list'], ['.heatmap', '.record-actions']]
       .every(([first, second]) => Math.abs(gapBetween(first, second) - 29) < .5);
     return selectors.every(selector => getComputedStyle(document.querySelector(selector)).borderWidth === '0px') &&
-      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap;
+      canvas.maskImage.includes('linear-gradient') && portrait.maskImage === 'none' && hasOpenSpacing && matchesTodayGap && compactWeek;
   })()`), 'Cards and controls have no perimeter strokes, and lists use whitespace instead of dividers');
+}
+
+async function verifyNarrowTrainingSummary() {
+  await navigate('ios-prototype.html', 320, 700);
+  await enterToday();
+  await settleHabitatAnimation();
+  await includes(lead('.app-head h2'), '今天已经锻炼0小时，加油💪🏻！');
+  assert.ok(await evaluate(`(() => {
+    const headline = document.querySelector(${JSON.stringify(lead('.today-duration'))});
+    const reminder = document.querySelector(${JSON.stringify(lead(act('settings')))});
+    return headline.scrollWidth === headline.clientWidth &&
+      headline.getBoundingClientRect().right <= reminder.getBoundingClientRect().left;
+  })()`), 'The exercise headline fits alongside the reminder on a narrow screen');
+  await clickLead('tab', 'week');
+  assert.ok(await evaluate(`(() => {
+    const summary = document.querySelector(${JSON.stringify(lead('.week-summary'))});
+    const [completed, duration] = [...summary.children].map(metric => metric.getBoundingClientRect());
+    return summary.scrollWidth === summary.clientWidth && completed.top === duration.top && completed.right < duration.left;
+  })()`), 'Both weekly metrics fit side by side on a narrow screen');
 }
 let failed = false;
 try {
@@ -667,6 +706,7 @@ try {
   await demoDirection(1, true);
   await verifyGlass();
   await verifyCustomProjects();
+  await verifyNarrowTrainingSummary();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb] a").length'), 3);

@@ -5,9 +5,9 @@ import vm from 'node:vm';
 
 const model = readFileSync(new URL('../src/training.js', import.meta.url), 'utf8');
 const { DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat } = vm.runInNewContext(model + `
+  adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes } = vm.runInNewContext(model + `
   ({ DAY, seed, bj, deadline, eligible, match, refresh, status, health, points, changeDate,
-     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat })`);
+     adopt, restore, recoverable, saveRecord, similarRecord, isoWeek, daysInMonth, setPetHabitat, trainingMinutes })`);
 const find = (state, id) => state.plans.find(plan => plan.id === id);
 const recordFor = (plan, patch = {}) => ({
   id: 'test', date: plan.date, start: '18:30', minutes: plan.minutes, title: '户外跑步', source: 'manual', ...patch
@@ -29,6 +29,19 @@ test('the calendar has the correct length for each month', () => {
   assert.equal(daysInMonth('2100-02'), 28);
   assert.equal(daysInMonth('2026-11'), 30);
   assert.equal(daysInMonth('2026-12'), 31);
+});
+
+test('training duration counts saved records by their dates, across the week and year boundary', () => {
+  const records = [
+    { date: '2025-12-28', minutes: 10 },
+    { date: '2025-12-29', minutes: 20, plan: 'run', source: 'manual' },
+    { date: '2025-12-29', minutes: 5, source: 'device' },
+    { date: '2026-01-04', minutes: 30, source: 'manual' },
+    { date: '2026-01-05', minutes: 40 }
+  ];
+  assert.equal(trainingMinutes(records, '2025-12-30'), 0);
+  assert.equal(trainingMinutes(records, '2025-12-29'), 25);
+  assert.equal(trainingMinutes(records, '2025-12-29', '2026-01-05'), 55);
 });
 
 test('adoption records the pet species and chosen habitat independently of health', () => {

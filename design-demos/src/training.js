@@ -17,6 +17,11 @@ function dayPlus(date, count) {
   return dateAt(bj(date) + count * DAY);
 }
 
+function trainingMinutes(records, start, end = dayPlus(start, 1)) {
+  return records.reduce((total, { date, minutes }) =>
+    date >= start && date < end ? total + minutes : total, 0);
+}
+
 function monday(date) {
   const weekday = new Date(date + 'T00:00:00Z').getUTCDay();
   return dayPlus(date, -((weekday + 6) % 7));

@@ -423,16 +423,35 @@ a { color: inherit; }
 }
 [data-glass] .board-controls button:hover { background: var(--activity); }
 [data-glass] :is(.habitat, .today-task, .week-card, .primary, .secondary, .day, .toast) { border: 0; }
-[data-glass] :is(.board-header, .board-footer p, .week-total, .list-row, .sheet dl div, .choice) { border-block: 0; }
+[data-glass] :is(.board-header, .board-footer p, .list-row, .sheet dl div, .choice) { border-block: 0; }
 [data-glass] :is(.today-task, .week-card) { padding-inline: 0; }
-[data-glass] .week-card { margin-block-end: var(--section-gap); }
-[data-glass] .week-days { gap: 3px; margin-block: 12px 8px; }
-[data-glass] .week-total { padding-top: 11px; }
+[data-glass] .week-card { padding-block: 0; margin-block-end: var(--section-gap); }
+[data-glass] .week-days { gap: 3px; margin-block: 5px 8px; }
+[data-glass] .week-days .day {
+  min-height: 44px;
+  gap: 1px;
+  padding: 3px 0 2px;
+  align-content: center;
+  line-height: 1.15;
+}
+[data-glass] .week-days .day small { font-size: 11px; }
+[data-glass] .week-days .day strong { font-size: 15px; }
+.week-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px 12px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding-inline: 2px;
+}
+.week-summary > div { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.week-summary :is(dt, dd span) { font-size: 12px; color: var(--muted); }
+.week-summary dd { margin: 0; font-size: 17px; font-weight: 720; font-variant-numeric: tabular-nums; }
 [data-glass] .plan-list { margin-bottom: 12px; }
 [data-glass] .week-trigger {
   display: grid;
   justify-items: center;
-  gap: 3px;
+  gap: 2px;
   min-height: 44px;
   padding: 3px 8px;
   border: 0;
@@ -440,9 +459,9 @@ a { color: inherit; }
   background: transparent;
 }
 [data-glass] .week-trigger:hover { background: var(--wash); }
-.week-trigger strong { display: flex; gap: 3px; align-items: center; font-size: 16px; }
+.week-trigger strong { display: flex; gap: 3px; align-items: center; font-size: 15px; }
 .week-trigger svg { transform: rotate(90deg); color: var(--accent-ink); }
-.week-trigger span { font-size: 12px; color: var(--muted); }
+.week-trigger span { font-size: 11px; color: var(--muted); }
 [data-glass] .day[aria-pressed="true"] { background: var(--accent); }
 [data-glass] .list-row { padding-block: 13px; gap: 10px; border-radius: 10px; }
 .swipe-workout {
@@ -491,6 +510,13 @@ a { color: inherit; }
   isolation: isolate;
 }
 [data-glass] .app-head:not(:has(.kicker)) { align-items: center; }
+.today-duration {
+  display: block;
+  font-size: clamp(20px, 5vw, 23px);
+  line-height: 1.3;
+  letter-spacing: -.035em;
+}
+.today-duration .duration-value { white-space: nowrap; }
 [data-glass] .app-head::before {
   content: "";
   position: absolute;
@@ -974,6 +1000,11 @@ function dateAt(time) {
 
 function dayPlus(date, count) {
   return dateAt(bj(date) + count * DAY);
+}
+
+function trainingMinutes(records, start, end = dayPlus(start, 1)) {
+  return records.reduce((total, { date, minutes }) =>
+    date >= start && date < end ? total + minutes : total, 0);
 }
 
 function monday(date) {
@@ -1914,6 +1945,7 @@ const activity = name => name.includes('跑') ? 'run' : name.includes('拉伸') 
 const heart = filled => `<svg width="19" height="17" viewBox="0 0 11 10" aria-hidden="true" class="${filled ? 'filled' : 'empty'}"><path fill="currentColor" d="M1 0h3v1h3V0h3v1h1v4h-1v1H9v1H8v1H7v1H6v1H5V9H4V8H3V7H2V6H1V5H0V1h1z"/></svg>`;
 const orderByDate = (a, b) => a.date.localeCompare(b.date);
 const clocks = date => date.split('T');
+const trainingHours = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 const projectHistoryKey = 'pixel-fitness.training-projects';
 let projectHistory = [];
 try {
@@ -2095,7 +2127,8 @@ function createPhone(initial) {
     const pet = current();
     const todayPlan = now[0];
     const stage = todayPlan && status(state, todayPlan);
-    const intro = head('今天', dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
+    const title = usesGlass ? `<span class="today-duration">今天已经锻炼<span class="duration-value">${trainingHours.format(trainingMinutes(state.records, today()) / 60)}小时</span>，<span class="duration-value">加油💪🏻！</span></span>` : '今天';
+    const intro = head(title, dateLabel(today()) + ' ' + weekday(today()), round('bell', '训练提醒', 'settings'));
     const pulse = `<section class="attention">${due ? `<button type="button" data-action="detail" data-value="${due.id}" class="notice-link"><span><strong>${escape(due.title)}待补记</strong><small>最晚 ${stamp(deadline(due) + DAY)}</small></span>${icon('arrow', 17)}</button>`
       : missed ? `<button type="button" data-action="detail" data-value="${missed.id}" class="notice-link"><span><strong>${escape(missed.title)}已漏练</strong><small>查看扣血和更正期限</small></span>${icon('arrow', 17)}</button>` : ''}</section>`;
     const empty = `<p class="empty-copy">今天无计划训练</p>${button('安排训练', 'new', 'secondary full')}`;
@@ -2133,10 +2166,15 @@ function createPhone(initial) {
       return `<button type="button" class="day ${date === today() ? 'actual' : ''}" aria-pressed="${selectedDay === date}" data-action="day" data-value="${date}">
         <small>${'一二三四五六日'[index]}</small><strong>${Number(date.slice(8))}</strong><span>${marks}</span></button>`;
     }).join('');
+    const completed = `${done}<span> / ${plans.length}</span>`;
+    const summary = usesGlass ? `<dl class="week-summary">
+      <div><dt>本周已完成</dt><dd>${completed}</dd></div>
+      <div><dt>本周训练时长</dt><dd>${trainingMinutes(state.records, week, dayPlus(week, 7))}<span> 分钟</span></dd></div>
+    </dl>` : `<div class="week-total"><span>本周已完成</span><strong>${completed}</strong></div>`;
     return head('训练计划', usesGlass ? '' : '周一至周日', round('plus', '新增训练', 'new')) +
       `<section class="week-card"><div class="week-heading">${round('back', '上一周', 'previous')}${weekTitle}${round('arrow', '下一周', 'next')}</div>
       <div class="week-days" aria-label="筛选训练日期">${strip}</div>
-      <div class="week-total"><span>本周已完成</span><strong>${done}<span> / ${plans.length}</span></strong></div></section>
+      ${summary}</section>
       <section class="plan-list"><div class="section-heading"><h3>${selectedDay ? weekday(selectedDay) + '的安排' : '本周安排'}</h3>${selectedDay ? button('显示全周', 'day', 'text-button') : ''}</div>
       ${shown.map(plan => planRow(plan)).join('') || '<p class="empty-copy">这段时间暂无计划训练</p>'}</section>` + button('新增训练', 'new', 'primary section-add');
   }
