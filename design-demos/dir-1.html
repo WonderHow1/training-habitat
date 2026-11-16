@@ -1639,7 +1639,7 @@ function createPhone(container) {
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
       data-portrait ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
-        <p>栖息地</p><h2>${name}</h2>
+        <h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
         ${pet ? petGrowth(details) + petAttributes(pet, species, true) : ''}
       </header>

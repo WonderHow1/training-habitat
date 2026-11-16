@@ -303,7 +303,6 @@
   left: clamp(22px, 2.4vw, 32px);
   color: var(--ink);
 }
-.habitat-entry-header p { font-size: 14px; font-weight: 690; }
 .habitat-entry-header h2 {
   font-size: 45px;
   line-height: 1.14;

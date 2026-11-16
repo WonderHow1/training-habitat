@@ -165,7 +165,7 @@ async function demoDirection(index, glass = false) {
     await includes('.board-nav a[href="new-user.html"]', '新用户引导原型');
     assert.equal(await evaluate('document.querySelectorAll(".onboarding, [data-action=open-onboarding], #demo-scene option[value=onboarding]").length'), 0);
     assert.equal(await inHabitat(), true);
-    await includes(lead('.habitat-entry-header'), '团团');
+    await includes(lead('.habitat-entry-header > h2:first-child'), '团团');
     await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
     await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
     await clickLead('toggle-pet-age');
