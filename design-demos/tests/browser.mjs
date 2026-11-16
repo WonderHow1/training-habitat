@@ -470,7 +470,7 @@ async function verifyPrototypePalette() {
   assert.ok(await evaluate(`(() => {
     const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
     const colorChannels = color => color.match(/[0-9]+/g).slice(0, 3).map(Number);
-    const isPaleTan = ([red, green, blue]) => red >= 240 && green >= 230 && blue >= 214 && red > green && green > blue;
+    const isLightGray = ([red, green, blue]) => red >= 232 && red < 255 && red === green && green === blue;
     const luminance = channels => channels.map(value => {
       const srgb = value / 255;
       return srgb <= .04045 ? srgb / 12.92 : ((srgb + .055) / 1.055) ** 2.4;
@@ -486,13 +486,13 @@ async function verifyPrototypePalette() {
     const sky = pixel(habitat, 0, 0);
     const white = 'rgb(255, 255, 255)';
     return ['html', 'body', '.ios-screen', '.app-scroll', '.week-card', '.heatmap'].every(selector => background(selector) === white) &&
-      isPaleTan(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
-      isPaleTan(colorChannels(background('[data-phone="week"] .day.actual'))) &&
-      isPaleTan(colorChannels(background('.tabbar'))) && isPaleTan(face) && contrast >= 4.5 &&
+      isLightGray(colorChannels(background('[data-phone="log"] .record-actions .secondary'))) &&
+      isLightGray(colorChannels(background('[data-phone="week"] .day.actual'))) &&
+      isLightGray(colorChannels(background('.tabbar'))) && isLightGray(face) && contrast >= 4.5 &&
       sky[0] < sky[1] && sky[1] < sky[2] &&
       isGreen(pixel(habitat, 0, 140)) && isGreen(pixel(habitat, 5, 64)) &&
       isGreen(pixel(card, 0, 60)) && isGreen(pixel(card, 5, 37));
-  })()`), 'Main surfaces are white, controls use pale tan, and the habitat has green grass and trees');
+  })()`), 'Main surfaces are white, controls use light gray, and the habitat has green grass and trees');
 }
 
 async function verifyOpenSurfaces() {
