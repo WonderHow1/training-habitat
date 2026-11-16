@@ -66,7 +66,7 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
     const [type, dx, dy] = pose.effect;
     const { color, pixels: effect } = petReactionEffects[type];
     const left = Math.min(restX + dx * scale, ctx.canvas.width - effect[0].length * scale);
-    const top = restY + dy * scale;
+    const top = Math.max(0, restY + dy * scale);
     ctx.fillStyle = color;
     effect.forEach((row, j) => [...row].forEach((pixel, i) => {
       if (pixel === '#') ctx.fillRect(left + i * scale, top + j * scale, scale, scale);

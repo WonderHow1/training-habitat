@@ -1,5 +1,6 @@
 const petRoute = [[0, 0], [-1, .25], [.84, .65], [.35, .12], [-.65, .85], [0, 0]];
-const restPosition = { x: 0, y: 0, flip: false, step: 0 };
+const restPosition = { x: 0, y: 0, step: 0 };
+const leftFacingSprites = new Set(['cat', 'dog', 'rabbit', 'chinchilla']);
 
 function reactionFrame(reaction, elapsed, reduced) {
   if (reduced) return elapsed < 650 ? reaction.still : null;
@@ -26,7 +27,7 @@ function wanderingPet(canvas, target, limit, elapsed) {
   const feetY = centeredPetPosition(canvas, canvas.dataset.species).y + y + 24;
   const rightEdge = canvas.dataset.habitat === 'garden' ? Math.max(-rangeX, gardenShoreAt(feetY) - canvas.width / 2 - 16) : rangeX;
   const walking = cycle > 0 && travel < 1;
-  return { x: Math.min(x, rightEdge), y, flip: cycle > 0 && toX < fromX, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0, scale };
+  return { x: Math.min(x, rightEdge), y, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0, scale };
 }
 
 function animatePet(canvas, target, { roam = false } = {}) {
@@ -37,6 +38,8 @@ function animatePet(canvas, target, { roam = false } = {}) {
   let lastPaint = idleSince;
   let touchedAt = -Infinity;
   let walked = 0;
+  let previousX = 0;
+  let walkFlip = false;
   let previousFrame;
   let previousPose = '';
 
@@ -45,6 +48,8 @@ function animatePet(canvas, target, { roam = false } = {}) {
       species = canvas.dataset.species;
       idleSince = now;
       touchedAt = -Infinity;
+      previousX = 0;
+      walkFlip = false;
       previousPose = '';
     }
     const reduced = motion.matches;
@@ -55,10 +60,16 @@ function animatePet(canvas, target, { roam = false } = {}) {
     const walks = moving && species !== 'goldfish';
     const walk = walks ? wanderingPet(canvas, target, limit, walked) : restPosition;
     const swimPhase = Math.floor(Math.max(0, walked - 3000) / 420) % 8;
-    const x = frame?.x ?? (moving && species === 'goldfish' && !frame ? [0, 1, 2, 1, 0, -1, -2, -1][swimPhase] : 0);
+    const swimX = moving && species === 'goldfish' ? [0, 1, 2, 1, 0, -1, -2, -1][swimPhase] : 0;
+    const x = frame ? (frame.x ?? 0) : swimX;
+    if (moving && !frame) {
+      const currentX = walk.x + swimX;
+      if (currentX !== previousX) walkFlip = (currentX < previousX) !== leftFacingSprites.has(species);
+      previousX = currentX;
+    }
     const footstep = frame ? 0 : walk.step;
     const y = frame?.y ?? (footstep === 2 ? -1 : 0);
-    const flip = frame ? Boolean(frame.flip) : walk.flip;
+    const flip = moving && (!frame || species === 'cat') ? walkFlip : Boolean(frame?.flip);
     const blink = frame?.blink ?? (!frame && !reduced && (now - idleSince) % 3000 >= 2750);
     const offsetX = walks ? walk.x * walk.scale : 0;
     const offsetY = walks ? walk.y * walk.scale : 0;

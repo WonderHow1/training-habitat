@@ -139,6 +139,44 @@ test('all ten species can be adopted with their own attributes', () => {
   }
 });
 
+test('pet sprites face their actual movement across turns and shoreline limits', () => {
+  const source = ['pet-art.js', 'pet-reactions.js', 'pixels.js', 'pet-motion.js']
+    .map(name => readFileSync(new URL('../src/' + name, import.meta.url), 'utf8')).join('\n');
+  let now, nextFrame, pose;
+  const context = vm.createContext({
+    performance: { now: () => now },
+    matchMedia: () => ({ matches: false }),
+    requestAnimationFrame: callback => { nextFrame = callback; }
+  });
+  vm.runInContext(source, context);
+  context.drawScene = (_, frame) => { pose = frame; };
+  const animate = vm.runInContext('animatePet', context);
+  const target = { offsetWidth: 130, offsetHeight: 130, style: { setProperty() {} }, closest: () => null, addEventListener() {} };
+  const naturallyLeft = ['cat', 'dog', 'rabbit', 'chinchilla'];
+  for (const habitat of ['garden', 'gym']) {
+    for (const species of Object.keys(petSpecies)) {
+      const canvas = {
+        width: 88, height: 192, clientWidth: 390, clientHeight: 760, dataset: { habitat, species },
+        isConnected: true, parentElement: { querySelector: () => ({ offsetTop: 640 }) }
+      };
+      let previousX = 0;
+      const directions = new Set();
+      now = 0;
+      animate(canvas, target, { roam: true });
+      for (now = 80; now < 26_000; now += 80) {
+        nextFrame(now);
+        const x = pose.walk.x + pose.x;
+        if (x === previousX) continue;
+        const movesLeft = x < previousX;
+        directions.add(movesLeft);
+        assert.equal(naturallyLeft.includes(species) !== pose.flip, movesLeft, `${species} in ${habitat} at ${now}ms`);
+        previousX = x;
+      }
+      assert.equal(directions.size, 2);
+    }
+  }
+});
+
 test('one eligible session completes one plan and increments growth once (A01–A03, A11)', () => {
   const state = seed();
   const plan = find(state, 'today');

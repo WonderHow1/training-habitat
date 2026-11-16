@@ -919,26 +919,6 @@ function patchPetSprite(species, row, column, patch) {
   return pixelSprite(pixels.join('\n'));
 }
 
-const catStretch = pixelSprite(`
-  ....................II...
-  ...................IGI...
-  .................IIGLI...
-  ..............IIIGLLI....
-  ....I...I..IIIGLLLGI.....
-  ...IGI.IGIIGLLLLLLLI.....
-  ..IGLIIIGLLLLCCCCCLGI....
-  .IGLLLLLLLLLCCCCCCCGI....
-  .IGLMLMLCLLLCCCCCCLGI....
-  .IGBLLLMCGLLLGIIIIII.....
-  ..IGLLLCCGIIGI....IGI....
-  ..IIIGGGGGGIII....IGI....
-  .ICCGIIIICCGII....ICI....
-  .IIII....IIII.....III....
-`);
-const catReach = pixelSprite([...catStretch.pixels.slice(0, 11),
-  '.IIIIGGGGGGIII....IGI....', 'ICCCGIIIIICCGI....ICI....', 'IIIII.....IIII.....III....'
-].join('\n'));
-
 const dogTailUp = patchPetSprite('dog', 9, 17, [
   '....II', '...IGI', '..IGLI', '..IGLI', '.IGGI.', '.IGGI.', 'IGGI..', 'GI....'
 ]);
@@ -1029,6 +1009,7 @@ const hedgehogBall = pixelSprite(`
 `);
 
 const petReactionEffects = {
+  heart: { color: '#e46d8e', pixels: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'] },
   note: { color: '#654a8a', pixels: ['..###', '..#..', '..#..', '.##..', '###..', '.#...'] },
   dust: { color: '#d4a576', pixels: ['.#.....#', '...##...', '......#.', '#...#...'] },
   bubbles: { color: '#3c91b4', pixels: ['.##...', '#..#..', '.##...', '.....#', '....#.', '......'] }
@@ -1036,11 +1017,10 @@ const petReactionEffects = {
 
 const petReactions = {
   cat: {
-    still: { sprite: catStretch },
-    frames: [
-      { sprite: catStretch, duration: 185 }, { sprite: catReach, duration: 490 },
-      { sprite: catStretch, duration: 180 }, { blink: true, duration: 140 }
-    ]
+    still: { effect: ['heart', 23, -4] },
+    frames: [-1, -4, -5, -3, 0, 1, 0].map((y, index) => ({
+      y, blink: index === 2, effect: ['heart', 23, y - 4], duration: 110
+    }))
   },
   dog: {
     still: { sprite: dogTailUp },
@@ -1170,7 +1150,7 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
     const [type, dx, dy] = pose.effect;
     const { color, pixels: effect } = petReactionEffects[type];
     const left = Math.min(restX + dx * scale, ctx.canvas.width - effect[0].length * scale);
-    const top = restY + dy * scale;
+    const top = Math.max(0, restY + dy * scale);
     ctx.fillStyle = color;
     effect.forEach((row, j) => [...row].forEach((pixel, i) => {
       if (pixel === '#') ctx.fillRect(left + i * scale, top + j * scale, scale, scale);
@@ -1452,7 +1432,8 @@ function petCanvas(theme, level = 1, faded = false, avatar = false, species = 'c
 }
 
 const petRoute = [[0, 0], [-1, .25], [.84, .65], [.35, .12], [-.65, .85], [0, 0]];
-const restPosition = { x: 0, y: 0, flip: false, step: 0 };
+const restPosition = { x: 0, y: 0, step: 0 };
+const leftFacingSprites = new Set(['cat', 'dog', 'rabbit', 'chinchilla']);
 
 function reactionFrame(reaction, elapsed, reduced) {
   if (reduced) return elapsed < 650 ? reaction.still : null;
@@ -1479,7 +1460,7 @@ function wanderingPet(canvas, target, limit, elapsed) {
   const feetY = centeredPetPosition(canvas, canvas.dataset.species).y + y + 24;
   const rightEdge = canvas.dataset.habitat === 'garden' ? Math.max(-rangeX, gardenShoreAt(feetY) - canvas.width / 2 - 16) : rangeX;
   const walking = cycle > 0 && travel < 1;
-  return { x: Math.min(x, rightEdge), y, flip: cycle > 0 && toX < fromX, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0, scale };
+  return { x: Math.min(x, rightEdge), y, step: walking ? 1 + Math.floor(cycle / 160) % 2 : 0, scale };
 }
 
 function animatePet(canvas, target, { roam = false } = {}) {
@@ -1490,6 +1471,8 @@ function animatePet(canvas, target, { roam = false } = {}) {
   let lastPaint = idleSince;
   let touchedAt = -Infinity;
   let walked = 0;
+  let previousX = 0;
+  let walkFlip = false;
   let previousFrame;
   let previousPose = '';
 
@@ -1498,6 +1481,8 @@ function animatePet(canvas, target, { roam = false } = {}) {
       species = canvas.dataset.species;
       idleSince = now;
       touchedAt = -Infinity;
+      previousX = 0;
+      walkFlip = false;
       previousPose = '';
     }
     const reduced = motion.matches;
@@ -1508,10 +1493,16 @@ function animatePet(canvas, target, { roam = false } = {}) {
     const walks = moving && species !== 'goldfish';
     const walk = walks ? wanderingPet(canvas, target, limit, walked) : restPosition;
     const swimPhase = Math.floor(Math.max(0, walked - 3000) / 420) % 8;
-    const x = frame?.x ?? (moving && species === 'goldfish' && !frame ? [0, 1, 2, 1, 0, -1, -2, -1][swimPhase] : 0);
+    const swimX = moving && species === 'goldfish' ? [0, 1, 2, 1, 0, -1, -2, -1][swimPhase] : 0;
+    const x = frame ? (frame.x ?? 0) : swimX;
+    if (moving && !frame) {
+      const currentX = walk.x + swimX;
+      if (currentX !== previousX) walkFlip = (currentX < previousX) !== leftFacingSprites.has(species);
+      previousX = currentX;
+    }
     const footstep = frame ? 0 : walk.step;
     const y = frame?.y ?? (footstep === 2 ? -1 : 0);
-    const flip = frame ? Boolean(frame.flip) : walk.flip;
+    const flip = moving && (!frame || species === 'cat') ? walkFlip : Boolean(frame?.flip);
     const blink = frame?.blink ?? (!frame && !reduced && (now - idleSince) % 3000 >= 2750);
     const offsetX = walks ? walk.x * walk.scale : 0;
     const offsetY = walks ? walk.y * walk.scale : 0;

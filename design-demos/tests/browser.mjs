@@ -234,11 +234,13 @@ async function demoDirection(index, glass = false) {
       const { width, height } = canvas;
       const pixels = canvas.getContext('2d').getImageData(0, 0, width, height).data;
       const rows = new Set();
+      let heart = false;
       for (let index = 0; index < pixels.length; index += 4) {
         if (pixels[index] === 99 && pixels[index + 1] === 62 && pixels[index + 2] === 73) rows.add(Math.floor(index / 4 / width));
+        if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) heart = true;
       }
-      return rows.size > 10 && rows.size < petSprites.cat.pixels.length;
-    })()`), 'Tapping the walking cat draws its low stretching silhouette');
+      return heart && rows.size === petSprites.cat.pixels.length;
+    })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
     await enterToday();
     await assertPetCentered(lead('.habitat-link .pixel-scene'));
     assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-link .scene-label'))}) === null`),

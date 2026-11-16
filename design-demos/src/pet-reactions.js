@@ -7,26 +7,6 @@ function patchPetSprite(species, row, column, patch) {
   return pixelSprite(pixels.join('\n'));
 }
 
-const catStretch = pixelSprite(`
-  ....................II...
-  ...................IGI...
-  .................IIGLI...
-  ..............IIIGLLI....
-  ....I...I..IIIGLLLGI.....
-  ...IGI.IGIIGLLLLLLLI.....
-  ..IGLIIIGLLLLCCCCCLGI....
-  .IGLLLLLLLLLCCCCCCCGI....
-  .IGLMLMLCLLLCCCCCCLGI....
-  .IGBLLLMCGLLLGIIIIII.....
-  ..IGLLLCCGIIGI....IGI....
-  ..IIIGGGGGGIII....IGI....
-  .ICCGIIIICCGII....ICI....
-  .IIII....IIII.....III....
-`);
-const catReach = pixelSprite([...catStretch.pixels.slice(0, 11),
-  '.IIIIGGGGGGIII....IGI....', 'ICCCGIIIIICCGI....ICI....', 'IIIII.....IIII.....III....'
-].join('\n'));
-
 const dogTailUp = patchPetSprite('dog', 9, 17, [
   '....II', '...IGI', '..IGLI', '..IGLI', '.IGGI.', '.IGGI.', 'IGGI..', 'GI....'
 ]);
@@ -117,6 +97,7 @@ const hedgehogBall = pixelSprite(`
 `);
 
 const petReactionEffects = {
+  heart: { color: '#e46d8e', pixels: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'] },
   note: { color: '#654a8a', pixels: ['..###', '..#..', '..#..', '.##..', '###..', '.#...'] },
   dust: { color: '#d4a576', pixels: ['.#.....#', '...##...', '......#.', '#...#...'] },
   bubbles: { color: '#3c91b4', pixels: ['.##...', '#..#..', '.##...', '.....#', '....#.', '......'] }
@@ -124,11 +105,10 @@ const petReactionEffects = {
 
 const petReactions = {
   cat: {
-    still: { sprite: catStretch },
-    frames: [
-      { sprite: catStretch, duration: 185 }, { sprite: catReach, duration: 490 },
-      { sprite: catStretch, duration: 180 }, { blink: true, duration: 140 }
-    ]
+    still: { effect: ['heart', 23, -4] },
+    frames: [-1, -4, -5, -3, 0, 1, 0].map((y, index) => ({
+      y, blink: index === 2, effect: ['heart', 23, y - 4], duration: 110
+    }))
   },
   dog: {
     still: { sprite: dogTailUp },
