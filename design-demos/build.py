@@ -1,4 +1,4 @@
-"""Build standalone, offline direction drafts from the shared source."""
+"""Build the offline iOS prototype and its direction drafts."""
 from html import escape
 from pathlib import Path
 
@@ -30,22 +30,31 @@ def chrome(title, css):
 <title>{escape(title)}</title><style>{css}</style></head>"""
 
 
-def build_direction(index, direction):
+def build_direction(index, direction, *, glass=False):
     theme, name, lead, view_name = direction
     links = "".join(
         f'<span aria-current="page">{label}</span>' if number == index else f'<a href="dir-{number}.html">{label}</a>'
         for number, (_, label, _, _) in enumerate(DIRECTIONS, 1)
     )
+    if glass:
+        links = '<span aria-current="page">Liquid Glass</span><a href="dir-1.html">A 版方向稿</a>'
+        lead = "滚动手机界面、切换标签，或点「记录训练」体验玻璃控件。"
+    elif index == 1:
+        links = '<a href="ios-prototype.html">试用 Liquid Glass</a>' + links
+    css = STYLE + ((SRC / "glass.css").read_text() if glass else "")
+    variant = " data-glass" if glass else ""
+    caption = "iOS 原型" if glass else "iOS 方向稿"
+    footer = "" if glass else f"{view_name}是这一版的视觉重点。"
     devices = (("home", "今天"), ("week", "一周计划"), ("log", "训练记录"), ("pet", "宠物与成长"))
     phones = "".join(
         f'<section class="device" id="view-{tab}" data-phone="{tab}"><h2>{label}</h2></section>'
         for tab, label in devices
     )
-    return chrome(f"{name}｜像素宠物健身", STYLE) + f"""
-<body data-theme="{theme}">
+    return chrome(f"{name}｜像素宠物健身", css) + f"""
+<body data-theme="{theme}"{variant}>
 <header class="board-header">
-  <div class="board-identity"><div class="board-mark">{MARK}</div><div><p>像素宠物健身 · iOS 方向稿</p><h1>{name}</h1></div></div>
-  <nav class="board-nav" aria-label="设计方向">{links}<a href="thumbs.html">六稿总览</a></nav>
+  <div class="board-identity"><div class="board-mark">{MARK}</div><div><p>像素宠物健身 · {caption}</p><h1>{name}</h1></div></div>
+  <nav class="board-nav" aria-label="设计方向">{links}{'' if glass else '<a href="thumbs.html">六稿总览</a>'}</nav>
 </header>
 <div class="board-tools">
   <div><p>{lead}</p><p id="demo-feedback" role="status"></p></div>
@@ -59,7 +68,7 @@ def build_direction(index, direction):
   </div>
 </div>
 <main id="board">{phones}</main>
-<footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。{view_name}是这一版的视觉重点。</p></footer>
+<footer class="board-footer"><p>每台手机可独立操作。设备训练与提醒使用演示状态。{footer}</p></footer>
 <script>{JS}</script></body></html>
 """
 
@@ -125,6 +134,7 @@ document.querySelectorAll('canvas').forEach(drawScene);</script></body></html>
 
 
 if __name__ == "__main__":
+    (ROOT / "ios-prototype.html").write_text(build_direction(1, DIRECTIONS[0], glass=True))
     for index, direction in enumerate(DIRECTIONS, 1):
         (ROOT / f"dir-{index}.html").write_text(build_direction(index, direction))
     (ROOT / "thumbs.html").write_text(build_thumbs())

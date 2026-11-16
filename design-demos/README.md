@@ -1,6 +1,8 @@
-# 像素宠物健身 iOS 方向稿
+# 像素宠物健身 iOS 原型
 
-用浏览器打开 [六稿总览](thumbs.html)，或直接试用 [训练栖地](dir-1.html)、[夜跑手账](dir-2.html)、[团团日记](dir-3.html)。每份 HTML 可以双击离线打开，包含今天、一周计划、训练记录、宠物与成长四台可独立操作的手机。
+双击 [训练栖地 · Liquid Glass](ios-prototype.html) 离线试用。今天、一周计划、训练记录、宠物与成长四台手机可以独立操作。初稿见 [六稿总览](thumbs.html)。
+
+在手机内滚动时，内容会穿过半透明底栏。点选标签时，绿色玻璃胶囊滑到当前标签。点击「记录训练」或右上角的提醒按钮，可体验从控件展开的弹层。浏览器原型用 CSS 和 Web Animations 模拟 iOS 材质与转场，支持减少动态效果、减少透明度和高对比度偏好。
 
 ## 试用路径
 
@@ -17,6 +19,6 @@
 
 ## 源码与验证
 
-`python3 design-demos/build.py` 生成四份独立 HTML。`node --test design-demos/tests/training.mjs` 验证训练规则。`node design-demos/tests/browser.mjs` 用本机 Chrome 验证四台手机和三版主要交互。可用 `PIXEL_CHROME` 指定 Chrome 路径，可用 `PIXEL_SCREENSHOTS` 指定截图目录。
+`python3 design-demos/build.py` 生成原型和方向稿。`node --test design-demos/tests/training.mjs` 验证训练规则。`node design-demos/tests/browser.mjs` 用本机 Chrome 验证业务流程、玻璃动画、滚动叠层和辅助功能模式。可用 `PIXEL_CHROME` 指定 Chrome 路径，可用 `PIXEL_SCREENSHOTS` 指定截图目录。
 
-[设计方向记录](directions.md) · [打磨前后对照](previews/polish.jpg) · [打磨与验证记录](polish-log.md)
+[方向确认](direction-approved.md) · [打磨前后对照](previews/polish.jpg) · [打磨与验证记录](polish-log.md)

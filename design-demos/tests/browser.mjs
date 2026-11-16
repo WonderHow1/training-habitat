@@ -82,10 +82,11 @@ async function screenshot(name) {
 }
 async function click(selector) {
   // CDP dispatches a real mouse click at the control. Center the control inside the viewport first.
-  const [{ x, y }, ...rest] = await evaluate(`(() => {
+  const [{ x, y }, ...rest] = await evaluate(`(async () => {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return [];
     if (!el.checkVisibility()) throw new Error('Control is not visible');
+    await Promise.allSettled((el.closest('.sheet')?.getAnimations() ?? []).map(animation => animation.finished));
     el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
@@ -115,15 +116,24 @@ async function change(selector, value) {
     return control.value;
   })()`);
 }
-async function demoDirection(index) {
-  await navigate(`dir-${index}.html`, 1440, 1100);
+async function demoDirection(index, glass = false) {
+  const name = glass ? 'ios-prototype' : `dir-${index}`;
+  await navigate(name + '.html', 1440, 1100);
   assert.equal(await evaluate('document.querySelectorAll(".phone-app").length'), 4);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-shell")].every(x => x.getBoundingClientRect().width >= 300)'));
   assert.ok(await evaluate('document.querySelector("canvas").getContext("2d").getImageData(70,55,1,1).data[3] === 255'));
-  await screenshot(`dir-${index}`);
+  await screenshot(name);
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
+  if (glass) {
+    assert.ok(await evaluate(`(() => {
+      const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
+      return sheet.contains(document.activeElement) && sheet.getAnimations().length > 0;
+    })()`));
+    await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().map(animation => animation.finished))`);
+    await screenshot(name + '-record');
+  }
   await submit();
   await includes(lead('.sheet h3'), '确认关联');
   await submit();
@@ -185,15 +195,54 @@ async function demoDirection(index) {
     await includes(lead('.sheet .sheet-status'), '已漏练');
   }
 
-  await navigate(`dir-${index}.html`, 390, 1120);
+  await navigate(name + '.html', 390, 1120);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-status")].every(el => { const island = el.nextElementSibling.getBoundingClientRect(); return el.children[0].getBoundingClientRect().right < island.left && el.children[1].getBoundingClientRect().left > island.right; })'));
-  await screenshot(`dir-${index}-mobile`);
+  await screenshot(name + '-mobile');
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
-  await screenshot(`dir-${index}-record`);
+  await screenshot(name + '-mobile-record');
   await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
   assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
+}
+
+async function verifyGlass() {
+  await navigate('ios-prototype.html', 1440, 1100);
+  const nav = lead('.tabbar');
+  const scroller = lead('.app-scroll');
+  await evaluate(`window.testNav = document.querySelector(${JSON.stringify(nav)}); true`);
+  assert.ok(await evaluate(`(() => {
+    const scroller = document.querySelector(${JSON.stringify(scroller)});
+    const before = testNav.getBoundingClientRect();
+    scroller.scrollTop = 60;
+    const after = testNav.getBoundingClientRect();
+    const frame = testNav.closest('.ios-screen').getBoundingClientRect();
+    return scroller.scrollTop > 0 && before.top === after.top && after.top < scroller.getBoundingClientRect().bottom &&
+      frame.bottom - after.bottom >= 34 && getComputedStyle(testNav).backdropFilter.includes('blur');
+  })()`));
+  await clickLead('tab', 'pet');
+  assert.ok(await evaluate(`(() => {
+    const updated = document.querySelector(${JSON.stringify(nav)});
+    return testNav === updated && updated.querySelector('[aria-current]').dataset.value === 'pet' &&
+      updated.style.getPropertyValue('--tab-index') === '3';
+  })()`));
+  assert.ok(await evaluate(`testNav.getAnimations({ subtree: true }).some(a => a.transitionProperty === 'transform')`));
+  await clickLead('tab', 'home');
+  await clickLead('settings');
+  const toggle = lead('[role="switch"]');
+  await click(toggle);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(toggle)}).getAttribute('aria-checked')`), 'false');
+  await clickLead('close');
+  assert.equal(await evaluate('document.activeElement.dataset.action'), 'settings');
+
+  await cmd('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }, { name: 'prefers-contrast', value: 'more' }]
+  });
+  assert.ok(await evaluate(`getComputedStyle(testNav).backdropFilter === 'none' && getComputedStyle(testNav, '::before').transitionDuration === '0s'`));
+  await clickLead('manual', 'today');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().length`), 0);
+  await clickLead('close');
+  await cmd('Emulation.setEmulatedMedia', { features: [] });
 }
 let failed = false;
 try {
@@ -202,12 +251,14 @@ try {
   await cmd('Runtime.enable');
   await cmd('Page.enable');
   for (const direction of [1, 2, 3]) await demoDirection(direction);
+  await demoDirection(1, true);
+  await verifyGlass();
   await navigate('thumbs.html', 1440, 940);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
   assert.equal(await evaluate('document.querySelectorAll("[data-thumb] a").length'), 3);
   await screenshot('thumbs');
   assert.deepEqual(errors, [], 'Browser console exceptions');
-  console.log('Browser verification passed for three directions and six candidates.');
+  console.log('Browser verification passed for the Liquid Glass prototype, three directions, and six candidates.');
 } catch (error) {
   failed = true;
   console.error(error);

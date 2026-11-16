@@ -11,3 +11,9 @@
 四屏独立状态、详情、标签切换、手动完成、改期、补记、设备更正、死亡恢复、首次领养和手机宽度均用 Chrome 点按验证。Python Playwright 未安装，技能的自动外观体检跳过，使用浏览器截图人工复核和浏览器断言验证。
 
 [训练栖地复核图](previews/dir-1.jpg) · [夜跑手账复核图](previews/dir-2.jpg) · [团团日记复核图](previews/dir-3.jpg)
+
+## A 版 Liquid Glass 原型
+
+首轮截图中，浮动栏的投影被底部容器裁切，紧邻 Home Indicator。复核时让滚动内容延伸至安全区下方，并把底栏和弹层定位在 Home Indicator 上方。抽查了桌面四台设备及 390 像素宽视窗，验证切换标签时胶囊过渡、滚动时内容穿过底栏、按钮展开弹层、提醒开关和关闭后的焦点。Chrome 的减少动态效果和高对比度模拟通过，完整业务用例与三份方向稿也通过回归。
+
+[Liquid Glass 原型截图](previews/liquid-glass.jpg)

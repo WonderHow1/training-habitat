@@ -907,6 +907,7 @@ function iosFrame() {
 
 const root = document.querySelector('#board');
 const theme = document.body.dataset.theme;
+const usesGlass = document.body.hasAttribute('data-glass');
 const icons = {
   home: 'M3 10.5 12 3l9 7.5V20H3z M9 20v-6h6v6', week: 'M4 6h16v14H4z M4 10h16 M8 4v4 M16 4v4',
   log: 'M5 4h14v16H5z M8 9h8 M8 13h8 M8 17h5', pet: 'M5 11V5l5 4h4l5-4v6l2 3v3l-4 3H7l-4-3v-3z M8 14h.1 M16 14h.1 M11 17h2',
@@ -933,6 +934,14 @@ const clocks = date => date.split('T');
 function createPhone(initial) {
   const phone = iosFrame();
   const outlet = phone.querySelector('.ios-content');
+  outlet.innerHTML = `<div class="phone-app"><div class="app-scroll"></div>
+    <nav class="tabbar" aria-label="App 导航">${Object.entries(tabNames).map(([key, title]) =>
+      `<button type="button" data-action="tab" data-value="${key}">${icon(key)}<span>${title}</span></button>`).join('')}</nav>
+    <div class="app-overlays"></div></div>`;
+  const scrollArea = outlet.querySelector('.app-scroll');
+  const tabbar = outlet.querySelector('.tabbar');
+  const tabButtons = [...tabbar.querySelectorAll('button')];
+  const layers = outlet.querySelector('.app-overlays');
   let state = seed();
   let tab = initial;
   let overlay = null;
@@ -942,6 +951,7 @@ function createPhone(initial) {
   let logFilter = 'all';
   let notice = '';
   let restoreFocus = null;
+  let clickTrigger = null;
 
   const current = () => state.pets.find(pet => pet.id === state.active) ??
     state.pets.reduce((last, pet) => !last || pet.spans.at(-1)[1] >= last.spans.at(-1)[1] ? pet : last, null);
@@ -1173,23 +1183,47 @@ function createPhone(initial) {
   const screens = { home, week: calendar, log: logged, pet: petScreen };
 
   function render({ preserve = false, focusSheet = false } = {}) {
-    const offset = preserve ? outlet.querySelector('.app-scroll')?.scrollTop ?? 0 : 0;
-    outlet.innerHTML = `<div class="phone-app"><div class="app-scroll" ${overlay ? 'inert' : ''}>${screens[tab]()}</div>
-      <nav class="tabbar" aria-label="App 导航" ${overlay ? 'inert' : ''}>${Object.entries(tabNames).map(([key, title]) =>
-        `<button type="button" data-action="tab" data-value="${key}" ${tab === key ? 'aria-current="page"' : ''}>${icon(key)}<span>${title}</span></button>`).join('')}</nav>
-      ${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}</div>`;
+    const offset = preserve ? scrollArea.scrollTop : 0;
+    scrollArea.innerHTML = screens[tab]();
+    scrollArea.inert = Boolean(overlay);
+    tabbar.inert = Boolean(overlay);
+    const index = tabButtons.findIndex(button => button.dataset.value === tab);
+    tabButtons.forEach((button, i) => {
+      if (i === index) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    tabbar.style.setProperty('--tab-index', index);
+    layers.innerHTML = `${notice ? `<div class="toast" role="status">${notice}</div>` : ''}${overlay ? overlayHtml() : ''}`;
     outlet.querySelectorAll('canvas').forEach(drawScene);
-    outlet.querySelector('.app-scroll').scrollTop = offset;
+    scrollArea.scrollTop = offset;
     if (focusSheet) outlet.querySelector('.sheet button')?.focus({ preventScroll: true });
   }
 
+  function animateSheet(origin) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const sheetPanel = layers.querySelector('.sheet');
+    const sheetBounds = sheetPanel.getBoundingClientRect();
+    const startsInButton = origin && origin.width > 0 && sheetBounds.width > 0;
+    const dx = startsInButton ? origin.left + origin.width / 2 - sheetBounds.left - sheetBounds.width / 2 : 0;
+    const dy = startsInButton ? origin.top + origin.height / 2 - sheetBounds.top - sheetBounds.height / 2 : 32;
+    const startScale = startsInButton ? Math.min(0.88, Math.max(0.28, origin.width / sheetBounds.width)) : 0.98;
+    sheetPanel.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(${startScale})`, borderRadius: '36px', opacity: 0.3 },
+      { transform: 'translate(0, 0) scale(1)', borderRadius: '30px', opacity: 1 }
+    ], { duration: 330, easing: 'cubic-bezier(.2,.78,.24,1)' });
+  }
+
   function open(type, value = '', extra = {}) {
-    if (!overlay && document.activeElement?.dataset.action) {
-      const { action, value: key } = document.activeElement.dataset;
+    const trigger = clickTrigger ?? document.activeElement;
+    const opening = !overlay;
+    if (opening && trigger?.dataset.action) {
+      const { action, value: key } = trigger.dataset;
       restoreFocus = { action, value: key };
     }
+    const origin = usesGlass && opening && trigger?.dataset.action ? trigger.getBoundingClientRect() : null;
     overlay = { type, value, ...extra };
     render({ preserve: true, focusSheet: true });
+    if (usesGlass && opening) animateSheet(origin);
   }
 
   function close() {
@@ -1225,6 +1259,7 @@ function createPhone(initial) {
     logFilter = 'all';
     tab = nextScenario === 'onboarding' || nextScenario === 'death' ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
     overlay = null;
+    restoreFocus = null;
     notice = '';
     render();
     if (nextScenario === 'onboarding' && initial === 'home') open('adopt');
@@ -1260,8 +1295,9 @@ function createPhone(initial) {
     filter(value) { logFilter = value; render({ preserve: true }); outlet.querySelector('[aria-pressed="true"]').focus(); },
     reminders() {
       state.reminders = !state.reminders;
-      render({ preserve: true });
-      outlet.querySelector('[role="switch"]').focus();
+      const control = layers.querySelector('[role="switch"]');
+      control.setAttribute('aria-checked', String(state.reminders));
+      control.focus({ preventScroll: true });
     },
     device(value) { selectDevice(JSON.parse(value), overlay.value); },
     merge() { open('match', overlay.value, { record: { ...similarRecord(state, overlay.record), deviceId: overlay.record.deviceId }, incoming: overlay.record, merge: true }); },
@@ -1274,8 +1310,11 @@ function createPhone(initial) {
 
   outlet.addEventListener('click', event => {
     const control = event.target.closest('[data-action]');
-    if (control) handle[control.dataset.action]?.(control.dataset.value);
-    else if (event.target.classList.contains('shade')) close();
+    if (control) {
+      clickTrigger = control;
+      handle[control.dataset.action]?.(control.dataset.value);
+      clickTrigger = null;
+    } else if (event.target.classList.contains('shade')) close();
   });
   outlet.addEventListener('keydown', event => {
     if (!overlay) return;
@@ -1357,6 +1396,7 @@ function createPhone(initial) {
     state.now = time;
     refresh(state);
     overlay = null;
+    restoreFocus = null;
     render();
     return true;
   } };
