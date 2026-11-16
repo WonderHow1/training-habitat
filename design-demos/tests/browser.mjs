@@ -442,8 +442,12 @@ async function verifyOnboarding() {
   const screen = JSON.stringify(lead('.onboarding'));
   const heading = lead('.onboarding h2');
   const submitStep = () => click(lead('.onboarding button[type="submit"]'));
+  const checkHeading = async title => {
+    await includes(heading, title);
+    assert.equal(await evaluate(`document.querySelector(${screen}).querySelector('progress, [role="progressbar"]')`), null);
+  };
   const goal = lead('.onboarding input[name="minutes"]');
-  await includes(heading, '设定每日训练目标');
+  await checkHeading('设定每日训练目标');
   assert.ok(await evaluate(`(() => {
     const view = document.querySelector(${screen});
     const phone = view.closest('.ios-screen');
@@ -488,7 +492,7 @@ async function verifyOnboarding() {
   await change(goal, '121');
   await includes(warning, '超过 2 小时');
   await submitStep();
-  await includes(heading, '领养宠物');
+  await checkHeading('领养宠物');
   const petPreview = JSON.stringify(lead('.onboarding-pet-preview'));
   const cat = await evaluate(`document.querySelector(${petPreview}).toDataURL()`);
   await click(lead('.onboarding-choice:has(input[value="rabbit"])'));
@@ -512,7 +516,7 @@ async function verifyOnboarding() {
   await screenshot('new-user-pet');
   assert.equal(await evaluate(`document.querySelector(${screen}).querySelector('input[name="species"]:checked').value`), 'rabbit');
   await submitStep();
-  await includes(heading, '选择栖息地');
+  await checkHeading('选择栖息地');
   const preview = JSON.stringify(lead('.onboarding-habitat-art'));
   assert.ok(await evaluate(`(() => {
     const canvas = document.querySelector(${preview});

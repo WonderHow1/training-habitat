@@ -463,13 +463,7 @@
   margin-inline: auto;
   position: relative;
 }
-.onboarding-head progress {
-  display: block;
-  width: 76px;
-  height: 4px;
-  accent-color: var(--muted);
-  margin-bottom: 16px;
-}
+.onboarding-head { padding-top: 20px; }
 .onboarding-head h2 {
   max-width: 11em;
   color: var(--ink);

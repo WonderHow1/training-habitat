@@ -71,7 +71,6 @@ function createOnboarding(screen, { palette, habitatPicker, finish }) {
       data-palette="${palette}" data-species="${draft.species}" data-habitat="${draft.habitat}" role="img" aria-label="栖息地预览"></canvas>` : '';
     view.innerHTML = `${fullScene}<form class="onboarding-form">
       <header class="onboarding-head">
-        <progress max="3" value="${index + 1}" aria-label="引导进度"></progress>
         <h2 tabindex="-1">${titles[index]}</h2>
       </header>
       <div class="onboarding-content">${contents[index]()}</div>
