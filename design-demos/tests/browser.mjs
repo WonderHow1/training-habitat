@@ -141,6 +141,11 @@ async function demoDirection(index, glass = false) {
     await enterToday();
     await includes(lead('.today-task'), '今日训练');
     await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+    assert.ok(await evaluate(`(() => {
+      const reminder = document.querySelector(${JSON.stringify(lead('.attention .notice-link'))}).getBoundingClientRect();
+      const upcoming = document.querySelector(${JSON.stringify(lead('.following h3'))}).getBoundingClientRect();
+      return upcoming.top - reminder.bottom >= 24;
+    })()`), 'The next workout has breathing room below the reminder');
     await evaluate('window.scrollTo(0, 0)');
     await screenshot(name + '-today');
   }
