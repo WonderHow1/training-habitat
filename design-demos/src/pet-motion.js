@@ -12,7 +12,8 @@ function sceneTerrain(canvas, target) {
   const scale = coverScale(canvas);
   const species = canvas.dataset.species;
   const level = Number(canvas.dataset.level ?? 1);
-  const body = petStageDimensions(species === 'goldfish' ? fishBowl : (petSprites[species] ?? petSprites.cat), level);
+  const sprite = petGrowthSprite(species, level);
+  const body = species === 'goldfish' ? fishBowlDimensions(level) : { width: sprite.width, height: sprite.pixels.length };
   const visibleX = Math.max(0, Math.floor((canvas.clientWidth - Math.max(target.offsetWidth, body.width * scale)) / 2 / scale));
   const visibleY = Math.max(0, Math.floor((canvas.clientHeight - Math.max(target.offsetHeight, body.height * scale)) / 2 / scale));
   const habitat = canvas.dataset.habitat;

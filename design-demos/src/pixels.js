@@ -18,15 +18,15 @@ const palettes = {
 };
 
 const petAvatarSize = 39;
-const petStageSizes = [[.85, .8], [1, 1], [1.18, 1.22]];
+const fishBowlSizes = [[.85, .8], [1.06, 1.06], [1.23, 1.28]];
 const bowlTop = ['....IIIIIIIIIIIIIIIIIIII....', '...ICCCCCCCCCCCCCCCCCCCCI...', '..ICLLLLLLLLLLLLLLLLLLLLCI..',
   '.ICLLLLLLLLLLLLLLLLLLLLLLCI.', 'ICLLLLLLLLLLLLLLLLLLLLLLLLCI'];
 const fishBowl = pixelSprite([...bowlTop, ...Array(12).fill(bowlTop.at(-1)), ...bowlTop.slice(0, -1).reverse()].join('\n'));
 const bowlColors = { I: '#779bb9', C: '#f5faff', L: '#ceedff' };
 
-function petStageDimensions(sprite, level) {
-  const [width, height] = petStageSizes[Math.min(petStageSizes.length, level) - 1] ?? petStageSizes[0];
-  return { width: Math.round(sprite.width * width), height: Math.round(sprite.pixels.length * height) };
+function fishBowlDimensions(level) {
+  const [width, height] = fishBowlSizes[Math.min(fishBowlSizes.length, level) - 1] ?? fishBowlSizes[0];
+  return { width: Math.round(fishBowl.width * width), height: Math.round(fishBowl.pixels.length * height) };
 }
 
 function paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose) {
@@ -52,8 +52,12 @@ function paintPetPixels(ctx, sprite, colors, left, top, size, scale, pose) {
 
 function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   const pet = petSprites[species] ?? petSprites.cat;
-  const sprite = pose?.sprite ?? pet;
-  const size = petStageDimensions(sprite, level);
+  const growth = petGrowthSprite(species, level);
+  const sprite = pose?.sprite ?? growth;
+  const size = pose?.sprite ? {
+    width: Math.round(sprite.width * growth.width / pet.width),
+    height: Math.round(sprite.pixels.length * growth.pixels.length / pet.pixels.length)
+  } : { width: growth.width, height: growth.pixels.length };
   x += (pose?.walk?.x ?? 0) * scale;
   y += (pose?.walk?.y ?? 0) * scale;
   const restX = x;
@@ -65,7 +69,7 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
   ctx.save();
   if (faded) ctx.globalAlpha = 0.32;
   if (species === 'goldfish') {
-    const bowl = petStageDimensions(fishBowl, level);
+    const bowl = fishBowlDimensions(level);
     paintPetPixels(ctx, fishBowl, bowlColors, restX + Math.floor((25 - bowl.width) / 2) * scale,
       restY + (25 - bowl.height) * scale, bowl, scale);
   }
@@ -84,11 +88,10 @@ function paintPet(ctx, x, y, scale, level, faded, species, pose) {
 }
 
 function centeredPetPosition(canvas, species) {
-  const sprite = petSprites[species] ?? petSprites.cat;
-  const { height } = petStageDimensions(sprite, Number(canvas.dataset.level ?? 1));
+  const sprite = petGrowthSprite(species, Number(canvas.dataset.level ?? 1));
   return {
     x: Math.round((canvas.width - 25) / 2),
-    y: Math.round(canvas.height / 2 - 24 + height / 2)
+    y: Math.round(canvas.height / 2 - 24 + sprite.pixels.length / 2)
   };
 }
 

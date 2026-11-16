@@ -145,8 +145,25 @@ test('all ten species can be adopted with their own attributes', () => {
   }
 });
 
-const petMotionSource = ['pet-art.js', 'pet-reactions.js', 'pixels.js', 'pet-motion.js']
+const petMotionSource = ['pet-art.js', 'pet-growth.js', 'pet-reactions.js', 'pixels.js', 'pet-motion.js']
   .map(name => readFileSync(new URL('../src/' + name, import.meta.url), 'utf8')).join('\n');
+
+test('growth changes body proportions and keeps the young chinchilla eyes even', () => {
+  const sprites = vm.runInNewContext(petMotionSource + '\npetGrowthSprites');
+  const [young, youth, adult] = sprites.cat;
+  const eyeRow = sprite => sprite.pixels.findIndex(row => row.includes('E'));
+  const span = row => row.trim().replace(/^\.+|\.+$/g, '').length;
+  const torsoToFace = sprite => span(sprite.pixels[Math.floor(sprite.pixels.length * .8)]) / span(sprite.pixels[eyeRow(sprite)]);
+  assert.ok(eyeRow(young) / young.pixels.length > eyeRow(youth) / youth.pixels.length, 'The juvenile has proportionally more head');
+  assert.ok(torsoToFace(adult) > torsoToFace(youth), 'The adult torso fills out relative to its face');
+
+  const eyeRows = sprites.chinchilla[0].pixels.filter(row => row.includes('E'));
+  assert.equal(eyeRows.length, 2);
+  assert.equal(eyeRows[0], eyeRows[1]);
+  const eyes = [...eyeRows[0].matchAll(/E+/g)];
+  assert.deepEqual(eyes.map(eye => eye[0].length), [2, 2]);
+  assert.equal(eyes[0].index + eyes[1].index + 1, eyeRows[0].indexOf('I') + eyeRows[0].lastIndexOf('I'));
+});
 
 test('pet sprites face their actual movement across turns and shoreline limits', () => {
   let now, nextFrame, pose;
@@ -211,7 +228,7 @@ test('a scene tap lets a walking pet change destination and start its next strol
 
   assert.deepEqual({ ...habitatDestination(canvas, target, 16, 664) }, { x: -29, y: 65 });
   canvas.dataset.habitat = 'bedroom';
-  assert.deepEqual({ ...habitatDestination(canvas, target, 112, 120) }, { x: -20, y: -8 });
+  assert.deepEqual({ ...habitatDestination(canvas, target, 112, 120) }, { x: -20, y: -7 });
   canvas.dataset.habitat = 'garden';
   const pond = habitatDestination(canvas, target, 332, 544);
   const terrain = vm.runInContext('sceneTerrain', context)(canvas, target);

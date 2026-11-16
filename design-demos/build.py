@@ -17,7 +17,7 @@ CANDIDATES = [
     ("signal", "校园排班", "一周横排，显示训练与空档", "#e0eee9", "#255f64", "05", ""),
     (DIRECTIONS[2][0], DIRECTIONS[2][1], "像素明信片与补记提示", "#eee9f7", "#574689", "06", "dir-3.html"),
 ]
-PIXELS = "\n".join((SRC / name).read_text() for name in ("pet-art.js", "pet-reactions.js", "pixels.js"))
+PIXELS = "\n".join((SRC / name).read_text() for name in ("pet-art.js", "pet-growth.js", "pet-reactions.js", "pixels.js"))
 STYLE = (SRC / "style.css").read_text()
 JS = "\n".join([(SRC / "training.js").read_text(), PIXELS] + [
     (SRC / name).read_text() for name in ("pet-motion.js", "pet-guide.js", "frame.js", "habitat.js", "workout-swipe.js", "app.js")
