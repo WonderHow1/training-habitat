@@ -87,9 +87,9 @@ function createPhone(container) {
     habitatEntry.setAttribute('aria-label', '栖息地');
     phoneScreen.append(habitatEntry);
   }
-  let showHabitat = Boolean(habitatEntry) && (initial === 'home' || initial === 'pet');
+  let showHabitat = Boolean(habitatEntry) && initial === 'home';
   let state = demoState('standard');
-  let tab = showHabitat ? 'home' : initial;
+  let tab = initial;
   let overlay = null;
   let scenario = 'standard';
   let week = monday(dateAt(state.now));
@@ -125,6 +125,7 @@ function createPhone(container) {
   const getRecord = id => state.records.find(record => record.id === id);
   const today = () => dateAt(state.now);
   const weekday = date => '周' + '日一二三四五六'[new Date(date + 'T00:00:00Z').getUTCDay()];
+  const isPetHabitat = () => Boolean(habitatEntry) && tab === 'pet';
 
   function head(title, sub, action = '', afterTitle = '') {
     return `<header class="app-head"><div>${sub ? `<p class="kicker">${sub}</p>` : ''}<h2>${title}</h2>${afterTitle}</div>${action}</header>`;
@@ -157,9 +158,9 @@ function createPhone(container) {
     const { level, hp, name, stage, lives, species, habitat } = details;
     const label = hp ? '栖息地' : pet ? '纪念画像' : '待领养';
     const openScene = habitatEntry && tab === 'home';
-    const art = petCanvas(habitatPalette, level, !hp, false, species, habitat, openScene ? { height: 102, centered: true } : undefined);
+    const sceneLabel = openScene && hp ? '' : `<span class="scene-label">${label}</span>`;
     return `<section class="habitat ${full ? 'expanded' : ''}${openScene ? ' habitat-link' : ''}">
-      <div class="habitat-art">${art}<span class="scene-label">${label}</span></div>
+      <div class="habitat-art">${petCanvas(habitatPalette, level, !hp, false, species, habitat)}${sceneLabel}</div>
       <div class="pet-meta"><div><strong>${name}</strong><span>${stage}</span></div>${lives}</div>
       ${openScene && pet ? petAttributes(pet, species) : ''}
       ${petGrowth(details)}
@@ -178,42 +179,44 @@ function createPhone(container) {
 
   function renderHabitat(preserve) {
     if (!habitatEntry) return;
-    phoneScreen.toggleAttribute('data-habitat', showHabitat);
-    habitatEntry.toggleAttribute('data-active', showHabitat);
-    habitatEntry.inert = !showHabitat || Boolean(overlay) || Boolean(onboarding?.active);
-    if (tab !== 'home') return;
+    const petTab = isPetHabitat();
+    const active = showHabitat || petTab;
+    phoneScreen.toggleAttribute('data-habitat', active);
+    phoneScreen.toggleAttribute('data-habitat-tabs', petTab);
+    habitatEntry.toggleAttribute('data-active', active);
+    habitatEntry.inert = !active || Boolean(overlay) || Boolean(onboarding?.active);
+    if (tab !== 'home' && !petTab) return;
     const pet = current();
     const details = petDetails(pet);
     const { name, stage, lives, hp, level, species, habitat, awards } = details;
-    const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-details')?.scrollTop ?? 0 : 0;
+    const panelOffset = preserve ? habitatEntry.querySelector('.pet-scene-panel')?.scrollTop ?? 0 : 0;
+    habitatEntry.setAttribute('aria-label', petTab ? '我的宠物' : '栖息地');
     habitatEntry.innerHTML = `<canvas class="habitat-landscape" width="88" height="192"
-      data-portrait="pet" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
+      data-portrait="${petTab ? 'pet' : 'home'}" ${pet ? '' : 'data-empty'} data-palette="${habitatPalette}" data-species="${species}" data-habitat="${habitat}" data-level="${level}" data-faded="${!hp}" aria-hidden="true"></canvas>
       <header class="habitat-entry-header">
-        <p>我的宠物</p><h2>${name}</h2>
+        <p>${petTab ? '我的宠物' : '栖息地'}</p><h2>${name}</h2>
         <div class="habitat-entry-status">${pet ? lives : ''}<span>${stage}</span></div>
-        ${pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
+        ${petTab && pet ? `<p class="pet-born">领养于 ${dateLabel(pet.born)}</p>` : ''}
+        ${!petTab && pet ? petGrowth(details) : ''}
         ${pet ? petAttributes(pet, species) : ''}
       </header>
-      <section class="pet-scene-panel" aria-label="经验与血量">
-        <div class="pet-scene-details">
-          <header class="pet-panel-header"><h3>经验与血量</h3>
-            ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
-          ${petGrowth(details)}
-          ${petOptions(pet)}
-          ${petTimeline(pet, awards)}
-        </div>
-        <button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>
-      </section>`;
+      ${petTab ? `<section class="pet-scene-panel" aria-label="经验与血量">
+        <header class="pet-panel-header"><h3>经验与血量</h3>
+          ${state.active ? button('更换背景', 'habitat-settings', 'secondary scene-control') : ''}</header>
+        ${petGrowth(details)}
+        ${petOptions(pet)}
+        ${petTimeline(pet, awards)}
+      </section>` : `<button type="button" class="habitat-continue">${icon('arrow', 16)}<span>上滑查看今天</span></button>`}`;
     drawScene(habitatEntry.querySelector('canvas'));
-    habitatEntry.querySelector('.pet-scene-details').scrollTop = panelOffset;
+    const panel = habitatEntry.querySelector('.pet-scene-panel');
+    if (panel) panel.scrollTop = panelOffset;
   }
 
   function setHabitat(visible) {
-    if (tab === 'home' && showHabitat === visible) return;
-    tab = 'home';
+    if (showHabitat === visible) return;
     showHabitat = visible;
     render();
-    const target = visible ? habitatEntry.querySelector('.habitat-continue') : scrollArea.querySelector('.app-head h2');
+    const target = visible ? habitatEntry.querySelector('button') : scrollArea.querySelector('.app-head h2');
     if (!visible) target.tabIndex = -1;
     target.focus({ preventScroll: true });
   }
@@ -569,11 +572,11 @@ function createPhone(container) {
     const offset = preserve ? scrollArea.scrollTop : 0;
     const heatmapOffset = preserve ? scrollArea.querySelector('.heat-weeks')?.scrollLeft : undefined;
     app.dataset.screen = tab;
-    scrollArea.innerHTML = screens[tab]();
+    scrollArea.innerHTML = isPetHabitat() ? '' : screens[tab]();
     positionHeatmap(heatmapOffset);
-    scrollArea.inert = showHabitat || Boolean(overlay) || Boolean(onboarding?.active);
-    tabbar.inert = Boolean(overlay) || Boolean(onboarding?.active);
-    const index = tabButtons.findIndex(button => button.dataset.value === (showHabitat ? 'pet' : tab));
+    scrollArea.inert = showHabitat || isPetHabitat() || Boolean(overlay) || Boolean(onboarding?.active);
+    tabbar.inert = Boolean(overlay) || showHabitat || Boolean(onboarding?.active);
+    const index = tabButtons.findIndex(button => button.dataset.value === tab);
     tabButtons.forEach((button, i) => {
       if (i === index) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
@@ -620,8 +623,7 @@ function createPhone(container) {
     restoreFocus = null;
     render({ preserve: true });
     if (focus) {
-      const focusArea = showHabitat ? habitatEntry : outlet;
-      const target = [...focusArea.querySelectorAll('[data-action]')].find(button =>
+      const target = [...phoneScreen.querySelectorAll('[data-action]')].find(button =>
         button.dataset.action === focus.action && button.dataset.value === focus.value
       );
       const accessibleTarget = target?.closest('.swipe-workout')?.querySelector('.list-row') ?? target ?? scrollArea.querySelector('.app-head h2');
@@ -653,9 +655,8 @@ function createPhone(container) {
     selectedDay = null;
     logFilter = 'all';
     logDay = null;
-    const destination = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
-    showHabitat = Boolean(habitatEntry) && (destination === 'pet' || (nextScenario === 'standard' && destination === 'home'));
-    tab = showHabitat ? 'home' : destination;
+    tab = nextScenario === 'death' || (nextScenario === 'onboarding' && !onboarding) ? 'pet' : nextScenario === 'no-plan' ? 'home' : initial;
+    showHabitat = Boolean(habitatEntry) && nextScenario === 'standard' && tab === 'home';
     overlay = null;
     restoreFocus = null;
     notice = '';
@@ -681,13 +682,10 @@ function createPhone(container) {
 
   const handle = {
     tab(value) {
+      if (tab !== value) showHabitat = false;
+      tab = value;
       notice = '';
-      if (habitatEntry && value === 'pet') setHabitat(true);
-      else {
-        tab = value;
-        showHabitat = false;
-        render();
-      }
+      render();
       tabbar.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
     },
     habitat() { setHabitat(true); },
