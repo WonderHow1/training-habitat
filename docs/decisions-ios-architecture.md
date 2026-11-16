@@ -2,6 +2,8 @@
 
 2026-11-17 · 首测架构已选定 · 原型基线 `prototype-v1.2`（`a4fa1c1`）
 
+当前交付采用方案 A 的免费个人版，使用 Xcode Personal Team 安装到自己的 iPhone，Apple 健康先单独做真机自检。安装和验证见 [iPhone 个人版](../ios/README.md)。
+
 首测面向中国大陆使用 iPhone 的大学生，通过 TestFlight 定向邀请。最低系统为 iOS 26。App 免登录，训练与宠物数据保存在手机上，参与者主动提交首测汇总。体验以 [日常原型](../design-demos/ios-prototype.html) 和 [新用户引导原型](../design-demos/new-user.html) 为准，计划截止、补记、更正及首测口径参照 [MVP 产品方案](mvp-product-plan.md)。
 
 ## 技术选型

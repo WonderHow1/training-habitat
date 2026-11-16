@@ -1,0 +1,486 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = "1";
+	"classes" = {
+	};
+	"objectVersion" = "56";
+	"objects" = {
+		"0316698D7E5B10F9F174CB01" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "LocalStore.swift";
+			"sourceTree" = "<group>";
+		};
+		"FE7F01B12A9C4744BB59F649" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Models.swift";
+			"sourceTree" = "<group>";
+		};
+		"38D2FB5E06018A932A68ECE1" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "TrainingState.swift";
+			"sourceTree" = "<group>";
+		};
+		"62E9AD9CC9B52086B0DB9EB7" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "WalkTerrain.swift";
+			"sourceTree" = "<group>";
+		};
+		"EDC38883AFA4D0E044243263" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"0316698D7E5B10F9F174CB01",
+				"FE7F01B12A9C4744BB59F649",
+				"38D2FB5E06018A932A68ECE1",
+				"62E9AD9CC9B52086B0DB9EB7",
+			);
+			"path" = "TrainingCore";
+			"sourceTree" = "<group>";
+		};
+		"A833E5C1616A46353A5657A3" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder.assetcatalog";
+			"path" = "Assets.xcassets";
+			"sourceTree" = "<group>";
+		};
+		"73347DC73D5A05B6411FEC07" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Editors.swift";
+			"sourceTree" = "<group>";
+		};
+		"CD6DA027991DFB8972F2B4A1" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HabitatScene.swift";
+			"sourceTree" = "<group>";
+		};
+		"21F03B825C657BC108210BD8" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Onboarding.swift";
+			"sourceTree" = "<group>";
+		};
+		"D604F72762F0F6A41DED175B" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "PetViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"83A5E0350E45E971C65207A7" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.json";
+			"path" = "PixelArtwork.json";
+			"sourceTree" = "<group>";
+		};
+		"88D2CF8A1014E24B20BC41E5" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "PixelArtwork.swift";
+			"sourceTree" = "<group>";
+		};
+		"992C8EF64F9FF8BF1FB3E823" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "RoutineViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"245AE9A68650605F35413D4F" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "TrainingHabitatApp.swift";
+			"sourceTree" = "<group>";
+		};
+		"92B8404C7609CC353489654B" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"A833E5C1616A46353A5657A3",
+				"73347DC73D5A05B6411FEC07",
+				"CD6DA027991DFB8972F2B4A1",
+				"21F03B825C657BC108210BD8",
+				"D604F72762F0F6A41DED175B",
+				"83A5E0350E45E971C65207A7",
+				"88D2CF8A1014E24B20BC41E5",
+				"992C8EF64F9FF8BF1FB3E823",
+				"245AE9A68650605F35413D4F",
+			);
+			"path" = "TrainingHabitat";
+			"sourceTree" = "<group>";
+		};
+		"84BBC94C65B0281B2AD0659F" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.entitlements";
+			"path" = "HealthCheck.entitlements";
+			"sourceTree" = "<group>";
+		};
+		"B0CF6D9F6E29E3D52D95CB4A" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HealthCheckApp.swift";
+			"sourceTree" = "<group>";
+		};
+		"C4103770D272234C9A005845" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"84BBC94C65B0281B2AD0659F",
+				"B0CF6D9F6E29E3D52D95CB4A",
+			);
+			"path" = "HealthCheck";
+			"sourceTree" = "<group>";
+		};
+		"C8F824CAF120F2307269A84D" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"includeInIndex" = "0";
+			"path" = "TrainingHabitat.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"846B310011E534867B3CD752" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"includeInIndex" = "0";
+			"path" = "HealthCheck.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"FBDC4F23F93125BBEEAE800C" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"C8F824CAF120F2307269A84D",
+				"846B310011E534867B3CD752",
+			);
+			"name" = "Products";
+			"sourceTree" = "<group>";
+		};
+		"B28B7AF69320201D1CF206EB" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"EDC38883AFA4D0E044243263",
+				"92B8404C7609CC353489654B",
+				"C4103770D272234C9A005845",
+				"FBDC4F23F93125BBEEAE800C",
+			);
+			"sourceTree" = "<group>";
+		};
+		"FEF321358A4C607AF765940C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "0316698D7E5B10F9F174CB01";
+		};
+		"0507AACC919A73B1B4B2B53A" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "FE7F01B12A9C4744BB59F649";
+		};
+		"331A4485DB80539A9F1C8112" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "38D2FB5E06018A932A68ECE1";
+		};
+		"2748F91FEB9152BEEDC8336B" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "62E9AD9CC9B52086B0DB9EB7";
+		};
+		"AF04DF6BE2402BADDD3EDFD9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "73347DC73D5A05B6411FEC07";
+		};
+		"79BD3B0BF53CC4F45C1EE41E" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CD6DA027991DFB8972F2B4A1";
+		};
+		"C078FAA279E594AA599B81D2" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "21F03B825C657BC108210BD8";
+		};
+		"8F64897BEE94A3F87848880E" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "D604F72762F0F6A41DED175B";
+		};
+		"E365DE5E8E0EBDE0CFA3D1B3" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "88D2CF8A1014E24B20BC41E5";
+		};
+		"82CC78E8FF16662749089392" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "992C8EF64F9FF8BF1FB3E823";
+		};
+		"4FD348C8EF2BFAF086AA3B58" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "245AE9A68650605F35413D4F";
+		};
+		"4964704A28137F6F0C42C99E" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"FEF321358A4C607AF765940C",
+				"0507AACC919A73B1B4B2B53A",
+				"331A4485DB80539A9F1C8112",
+				"2748F91FEB9152BEEDC8336B",
+				"AF04DF6BE2402BADDD3EDFD9",
+				"79BD3B0BF53CC4F45C1EE41E",
+				"C078FAA279E594AA599B81D2",
+				"8F64897BEE94A3F87848880E",
+				"E365DE5E8E0EBDE0CFA3D1B3",
+				"82CC78E8FF16662749089392",
+				"4FD348C8EF2BFAF086AA3B58",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"0C4184968A29F923CF3BFB0A" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"31CAC36E4135133FB4022162" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "A833E5C1616A46353A5657A3";
+		};
+		"633F8FBF091D28E063C95997" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "83A5E0350E45E971C65207A7";
+		};
+		"BAB0649E00871132DA7BBE8B" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"31CAC36E4135133FB4022162",
+				"633F8FBF091D28E063C95997",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"437B8FCB0C3B64697E0FB6DB" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "训练栖地";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"MARKETING_VERSION" = "0.1.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "dev.fahran.traininghabitat.personal";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+			};
+			"name" = "Debug";
+		};
+		"A337DDE4B81F40BAD4FF4CBD" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "训练栖地";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"MARKETING_VERSION" = "0.1.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "dev.fahran.traininghabitat.personal";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+			};
+			"name" = "Release";
+		};
+		"FCF8D46EBFD78BB77B6C2DBD" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"437B8FCB0C3B64697E0FB6DB",
+				"A337DDE4B81F40BAD4FF4CBD",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Debug";
+		};
+		"3B37698485DFAC16F7BFCC6C" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "FCF8D46EBFD78BB77B6C2DBD";
+			"buildPhases" = (
+				"4964704A28137F6F0C42C99E",
+				"0C4184968A29F923CF3BFB0A",
+				"BAB0649E00871132DA7BBE8B",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"name" = "TrainingHabitat";
+			"productName" = "TrainingHabitat";
+			"productReference" = "C8F824CAF120F2307269A84D";
+			"productType" = "com.apple.product-type.application";
+		};
+		"08A007F503C82FBA1CAB322B" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "B0CF6D9F6E29E3D52D95CB4A";
+		};
+		"6B90B28082840DA96073907B" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"08A007F503C82FBA1CAB322B",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"08E069F86F6FB8B91C729B13" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"487CE077955E958DC600E1FD" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"BBE49946DDBF11CAFD53F070" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "训练栖地健康自检";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"MARKETING_VERSION" = "0.1.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "dev.fahran.traininghabitat.healthcheck";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
+				"CODE_SIGN_ENTITLEMENTS" = "HealthCheck/HealthCheck.entitlements";
+				"INFOPLIST_KEY_NSHealthShareUsageDescription" = "读取最近的体能训练，验证训练栖地能否在这台 iPhone 上接入 Apple 健康。";
+			};
+			"name" = "Debug";
+		};
+		"EA3F624CFAC095B5D2E371A3" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "训练栖地健康自检";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"MARKETING_VERSION" = "0.1.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "dev.fahran.traininghabitat.healthcheck";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
+				"CODE_SIGN_ENTITLEMENTS" = "HealthCheck/HealthCheck.entitlements";
+				"INFOPLIST_KEY_NSHealthShareUsageDescription" = "读取最近的体能训练，验证训练栖地能否在这台 iPhone 上接入 Apple 健康。";
+			};
+			"name" = "Release";
+		};
+		"8D252A373C6C925DEDE5C317" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"BBE49946DDBF11CAFD53F070",
+				"EA3F624CFAC095B5D2E371A3",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Debug";
+		};
+		"4CF6B11BEDC9BD7031F33394" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "8D252A373C6C925DEDE5C317";
+			"buildPhases" = (
+				"6B90B28082840DA96073907B",
+				"08E069F86F6FB8B91C729B13",
+				"487CE077955E958DC600E1FD",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"name" = "HealthCheck";
+			"productName" = "HealthCheck";
+			"productReference" = "846B310011E534867B3CD752";
+			"productType" = "com.apple.product-type.application";
+		};
+		"89E1FD6268CC0F221A2BE178" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CLANG_ENABLE_MODULES" = "YES";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
+				"SDKROOT" = "iphoneos";
+				"SWIFT_VERSION" = "6.0";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+			};
+			"name" = "Debug";
+		};
+		"E6DE6C99132752C914FEF632" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CLANG_ENABLE_MODULES" = "YES";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
+				"SDKROOT" = "iphoneos";
+				"SWIFT_VERSION" = "6.0";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+			};
+			"name" = "Release";
+		};
+		"862894B703A6DEDF96A9DD6C" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"89E1FD6268CC0F221A2BE178",
+				"E6DE6C99132752C914FEF632",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Debug";
+		};
+		"98F54143AB4E86B28C3AFEE0" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"LastUpgradeCheck" = "2600";
+				"TargetAttributes" = {
+					"3B37698485DFAC16F7BFCC6C" = {
+						"CreatedOnToolsVersion" = "26.0";
+					};
+					"4CF6B11BEDC9BD7031F33394" = {
+						"CreatedOnToolsVersion" = "26.0";
+						"SystemCapabilities" = {
+							"com.apple.HealthKit" = {
+								"enabled" = "1";
+							};
+						};
+					};
+				};
+			};
+			"buildConfigurationList" = "862894B703A6DEDF96A9DD6C";
+			"compatibilityVersion" = "Xcode 14.0";
+			"developmentRegion" = "zh-Hans";
+			"hasScannedForEncodings" = "0";
+			"knownRegions" = (
+				"zh-Hans",
+				"en",
+				"Base",
+			);
+			"mainGroup" = "B28B7AF69320201D1CF206EB";
+			"productRefGroup" = "FBDC4F23F93125BBEEAE800C";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = (
+				"3B37698485DFAC16F7BFCC6C",
+				"4CF6B11BEDC9BD7031F33394",
+			);
+		};
+	};
+	"rootObject" = "98F54143AB4E86B28C3AFEE0";
+}
