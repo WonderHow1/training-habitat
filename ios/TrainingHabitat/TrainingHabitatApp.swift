@@ -182,6 +182,113 @@ extension View {
         self
         #endif
     }
+
+    func compactSheet(estimatedHeight: CGFloat) -> some View {
+        modifier(CompactSheetLayout(estimatedHeight: estimatedHeight))
+    }
+
+    func measuringSheetScrollContent() -> some View {
+        modifier(SheetScrollMeasurement())
+    }
+
+    func scrollableSheetContent(navigationBar: Bool = true) -> some View {
+        ScrollView {
+            self.frame(maxWidth: .infinity)
+                .modifier(SheetContentMeasurement(navigationBar: navigationBar))
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+}
+
+private enum CompactSheetMeasurement {
+    case appeared(UUID, CGFloat?)
+    case changed(UUID, CGFloat?)
+    case disappeared(UUID)
+}
+
+private extension EnvironmentValues {
+    @Entry var compactSheetSize: CompactSheetSize? = nil
+}
+
+@MainActor
+@Observable
+private final class CompactSheetSize {
+    private(set) var height: CGFloat?
+    @ObservationIgnored private var visibleContent: UUID?
+
+    func receive(_ measurement: CompactSheetMeasurement) {
+        switch measurement {
+        case let .appeared(id, height):
+            visibleContent = id
+            self.height = height
+        case let .changed(id, height) where id == visibleContent:
+            self.height = height
+        case let .disappeared(id) where id == visibleContent:
+            visibleContent = nil
+        default:
+            break
+        }
+    }
+}
+
+private struct CompactSheetLayout: ViewModifier {
+    let estimatedHeight: CGFloat
+    @State private var contentSize = CompactSheetSize()
+    @State private var expanded = false
+
+    func body(content: Content) -> some View {
+        let height = min(680, max(176, contentSize.height ?? estimatedHeight))
+        let fitted = PresentationDetent.height(height)
+        content
+            .environment(\.compactSheetSize, contentSize)
+            .presentationDetents([fitted, .large], selection: Binding(
+                get: { expanded ? .large : fitted },
+                set: { expanded = $0 == .large }
+            ))
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
+    }
+}
+
+private struct SheetHeightReport: ViewModifier {
+    let height: CGFloat?
+    @Environment(\.compactSheetSize) private var sheetSize
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { sheetSize?.receive(.appeared(id, height)) }
+            .onChange(of: height) { _, height in sheetSize?.receive(.changed(id, height)) }
+            .onDisappear { sheetSize?.receive(.disappeared(id)) }
+    }
+}
+
+private struct SheetScrollMeasurement: ViewModifier {
+    @State private var height: CGFloat?
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: CGFloat.self) { scroll in
+                guard scroll.contentSize.height > 0 else { return 0 }
+                return (scroll.contentSize.height + max(52, scroll.contentInsets.top) + 12).rounded(.up)
+            } action: { _, measured in
+                if measured > 0 { height = measured }
+            }
+            .modifier(SheetHeightReport(height: height))
+    }
+}
+
+private struct SheetContentMeasurement: ViewModifier {
+    let navigationBar: Bool
+    @State private var height: CGFloat?
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded(.up) } action: { measured in
+                if measured > 0 { height = measured + (navigationBar ? 60 : 8) }
+            }
+            .modifier(SheetHeightReport(height: height))
+    }
 }
 
 enum SheetRoute: Identifiable {
@@ -195,6 +302,16 @@ enum SheetRoute: Identifiable {
         case let .manual(plan, workout): "manual-\(plan?.id.uuidString ?? "")-\(workout?.id.uuidString ?? "")"
         case let .workout(workout): "workout-\(workout.id)"
         case .settings: "settings"
+        }
+    }
+
+    var estimatedHeight: CGFloat {
+        switch self {
+        case .addPlan, .editPlan: 350
+        case .plan: 460
+        case .manual: 390
+        case .workout: 390
+        case .settings: 310
         }
     }
 }
@@ -250,9 +367,11 @@ struct AppRoot: View {
                     SettingsView(model: model)
                 }
             }
+            .compactSheet(estimatedHeight: item.estimatedHeight)
         }
         .sheet(item: $timerPlan) { plan in
             NavigationStack { TimerView(model: model, plan: plan) }
+                .compactSheet(estimatedHeight: 424)
         }
         .onChange(of: model.state.timer?.sessionID) { _, sessionID in
             if sessionID == nil { timerPlan = nil }
@@ -381,6 +500,7 @@ private struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .measuringSheetScrollContent()
         .navigationTitle("设置")
         .compactNavigationTitle()
         .toolbar { Button("完成") { dismiss() } }
@@ -414,6 +534,7 @@ private struct DailyGoalEditor: View {
                 }
             }
         }
+        .measuringSheetScrollContent()
         .navigationTitle("每日训练目标")
         .compactNavigationTitle()
         .toolbar {

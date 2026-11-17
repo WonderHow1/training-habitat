@@ -60,7 +60,7 @@ struct Onboarding: View {
         .foregroundStyle(ink)
         .sheet(isPresented: $showsGoalPicker) {
             OnboardingGoalPicker(goal: goal) { goal = $0 }
-                .presentationDetents([.medium, .large])
+                .compactSheet(estimatedHeight: 282)
         }
         .task(id: reduceMotion || step == .habitat) {
             guard !reduceMotion, step != .habitat else { return }

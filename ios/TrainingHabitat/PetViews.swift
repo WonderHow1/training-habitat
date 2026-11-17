@@ -86,15 +86,22 @@ struct PetPage: View {
             }
             .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 55)
         }
-        .sheet(isPresented: $guide) { NavigationStack { PetGuide() } }
+        .sheet(isPresented: $guide) {
+            NavigationStack { PetGuide() }
+                .compactSheet(estimatedHeight: 550)
+        }
         .sheet(isPresented: $background) {
             if let pet = model.state.activePet {
                 HabitatSelection(pet: pet, stage: model.stage(of: pet)) { value in
                     if model.change({ state, _ in state.setHabitat(value) }) { background = false }
                 }
+                .compactSheet(estimatedHeight: 408)
             }
         }
-        .sheet(isPresented: $adoption) { NavigationStack { AdoptAgain(model: model) } }
+        .sheet(isPresented: $adoption) {
+            NavigationStack { AdoptAgain(model: model) }
+                .compactSheet(estimatedHeight: 418)
+        }
         .confirmationDialog("恢复宠物", isPresented: Binding(get: { recovery != nil }, set: { if !$0 { recovery = nil } }),
                             titleVisibility: .visible, presenting: recovery) { pet in
             Button("恢复\(pet.name)") { model.change { state, now in try state.restore(pet.id, at: now) } }
@@ -207,6 +214,7 @@ private struct AdoptAgain: View {
                 ForEach(Habitat.allCases) { Text($0.name).tag($0) }
             }
         }
+        .measuringSheetScrollContent()
         .navigationTitle("重新领养").compactNavigationTitle()
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -243,6 +251,7 @@ private struct PetGuide: View {
                 }
             }.padding()
         }
+        .measuringSheetScrollContent()
         .navigationTitle("宠物图鉴").compactNavigationTitle()
         .toolbar { Button("完成") { dismiss() } }
         .sheet(isPresented: Binding(get: { current != nil }, set: { if !$0 { current = nil } })) {
@@ -269,7 +278,9 @@ private struct PetGuide: View {
                 }
                 .pickerStyle(.segmented)
             }
-            .padding(18).presentationDetents([.medium, .large])
+            .padding(18)
+            .scrollableSheetContent(navigationBar: false)
+            .compactSheet(estimatedHeight: 366)
         }
     }
 }

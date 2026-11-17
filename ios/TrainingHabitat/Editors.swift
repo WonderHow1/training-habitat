@@ -42,11 +42,12 @@ struct PlanEditor: View {
                 Text("日期与训练截止时间按北京时间计算。")
             }
         }
+        .measuringSheetScrollContent()
         .navigationTitle(plan == nil ? "新增计划" : "编辑训练计划")
         .compactNavigationTitle()
         .sheet(isPresented: $showDuration) {
             PlanDurationPicker(minutes: minutes) { minutes = $0 }
-                .presentationDetents([.medium, .large])
+                .compactSheet(estimatedHeight: 248)
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -80,6 +81,7 @@ private struct PlanDurationPicker: View {
     var body: some View {
         NavigationStack {
             HourMinuteWheel(hours: $hours, minutes: $minutes)
+            .scrollableSheetContent()
             .navigationTitle("目标时长")
             .compactNavigationTitle()
             .toolbar {
@@ -134,6 +136,8 @@ struct OnboardingGoalPicker: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+            .scrollableSheetContent()
             .navigationTitle("每日训练目标")
             .compactNavigationTitle()
             .toolbar {
@@ -215,6 +219,7 @@ struct WorkoutEditor: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .measuringSheetScrollContent()
         .navigationTitle(editing ? "编辑训练记录" : "手动记录")
         .compactNavigationTitle()
         .sheet(item: $timeField) { field in
@@ -229,7 +234,7 @@ struct WorkoutEditor: View {
                     timing.end = date
                 }
             }
-            .presentationDetents([.medium, .large])
+            .compactSheet(estimatedHeight: field == .end ? 296 : 248)
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -328,6 +333,7 @@ private struct WorkoutTimePicker: View {
                 }
                 HourMinuteWheel(hours: $hours, minutes: $minutes)
             }
+            .scrollableSheetContent()
             .navigationTitle(title)
             .compactNavigationTitle()
             .toolbar {
@@ -352,6 +358,7 @@ private struct HourMinuteWheel: View {
     @Binding var minutes: Int
     var allowedHours = 0...23
     var allowedMinutes = 0...59
+    @ScaledMetric(relativeTo: .body) private var wheelHeight: CGFloat = 180
 
     var body: some View {
         HStack(spacing: 0) {
@@ -366,6 +373,8 @@ private struct HourMinuteWheel: View {
         #if os(iOS)
         .pickerStyle(.wheel)
         #endif
+        .frame(height: wheelHeight)
+        .clipped()
     }
 }
 
@@ -394,14 +403,17 @@ struct PlanDetails: View {
             }
             Button("编辑") { editing = true }
         }
+        .measuringSheetScrollContent()
         .navigationTitle(current.title)
         .compactNavigationTitle()
         .toolbar { Button("完成") { dismiss() } }
         .sheet(isPresented: $editing) {
             NavigationStack { PlanEditor(model: model, day: current.day, plan: current) }
+                .compactSheet(estimatedHeight: 350)
         }
         .sheet(isPresented: $recording) {
             NavigationStack { WorkoutEditor(model: model, plan: current, existing: nil) }
+                .compactSheet(estimatedHeight: 390)
         }
     }
 }
@@ -438,11 +450,13 @@ struct WorkoutDetails: View {
                 Button("删除记录", role: .destructive) { deleting = true }
             }
         }
+        .measuringSheetScrollContent()
         .navigationTitle(current.title)
         .compactNavigationTitle()
         .toolbar { Button("完成") { dismiss() } }
         .sheet(isPresented: $editing) {
             NavigationStack { WorkoutEditor(model: model, plan: nil, existing: current) }
+                .compactSheet(estimatedHeight: 390)
         }
         .confirmationDialog("删除这条训练记录？", isPresented: $deleting, titleVisibility: .visible) {
             Button("删除", role: .destructive) {
@@ -472,6 +486,7 @@ struct TimerView: View {
             }
         }
         .padding()
+        .scrollableSheetContent()
         .navigationTitle("训练计时")
         .compactNavigationTitle()
         .toolbar { Button("最小化") { dismiss() } }

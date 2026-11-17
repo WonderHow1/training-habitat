@@ -80,6 +80,21 @@ assert 'case .today where !habitatVisible, .plan:\n                sheet = .addP
 assert 'case .review:\n                sheet = .manual(nil, nil)' in tab_selection
 assert 'case .today, .pet:\n                break' in tab_selection
 print('PASS  Retapping Today, Plan and Review opens existing quick actions')
+assert '.compactSheet(estimatedHeight: item.estimatedHeight)' in app_source
+assert 'let fitted = PresentationDetent.height(height)' in app_source
+assert '.presentationDetents([fitted, .large], selection: Binding(' in app_source
+assert '.presentationContentInteraction(.scrolls)' in app_source
+assert '.onScrollGeometryChange(for: CGFloat.self)' in app_source
+assert r'.environment(\.compactSheetSize, contentSize)' in app_source
+assert 'case let .changed(id, height) where id == visibleContent:' in app_source
+assert '.onDisappear { sheetSize?.receive(.disappeared(id)) }' in app_source
+assert 'scroll.contentSize.height + max(52, scroll.contentInsets.top) + 12' in app_source
+sheet_sources = [path.read_text() for path in (root / 'TrainingHabitat').glob('*.swift')]
+assert sum(source.count('.sheet(') for source in sheet_sources) == sum(
+    source.count('.compactSheet(estimatedHeight:') for source in sheet_sources
+)
+assert all('.presentationDetents([.medium, .large])' not in source for source in sheet_sources)
+print('PASS  Sheets start compact, measure their content and can expand')
 plan_summary = routine_views.split('private var summary: some View {', 1)[1].split('struct ReviewView', 1)[0]
 assert 'Button { showPicker = true }' in plan_summary
 assert '.multilineTextAlignment(.center)' in plan_summary

@@ -574,10 +574,11 @@ struct PlansView: View {
             NavigationStack {
                 DatePicker("选择计划日期", selection: $selected, displayedComponents: .date)
                     .datePickerStyle(.graphical).labelsHidden().padding()
+                    .scrollableSheetContent()
                     .navigationTitle("选择日期").compactNavigationTitle()
                     .toolbar { Button("完成") { selected = TrainingCalendar.day(selected); showPicker = false } }
             }
-            .presentationDetents([.medium, .large])
+            .compactSheet(estimatedHeight: 402)
         }
     }
 
