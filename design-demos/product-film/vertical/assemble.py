@@ -8,12 +8,12 @@ import subprocess
 import wave
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import ImageDraw
 
 import title_cards as titles
 W, H, FPS = titles.WIDTH, titles.HEIGHT, titles.FPS
 SCREEN_WIDTH, SCREEN_HEIGHT = 672, 1462
-SCREEN_X, SCREEN_Y = (W - SCREEN_WIDTH) // 2, 288
+SCREEN_X, SCREEN_Y = (W - SCREEN_WIDTH) // 2, 295
 SR = 48000
 
 
@@ -48,23 +48,45 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         py = int(SCREEN_Y + SCREEN_HEIGHT * y)
         end = min(shot["duration"], time + hold)
         timing = f"0,{timestamp(time)},{timestamp(end)},Touch,,0,0,0,,"
-        tags = rf"{{\an5\pos({px},{py})\fad(25,120)\p1}}"
-        # One filled vector with an anticlockwise inner path gives a transparent center.
-        ring = "m 0 20 b 0 9 9 0 20 0 b 31 0 40 9 40 20 b 40 31 31 40 20 40 b 9 40 0 31 0 20 " \
-               "m 7 20 b 7 27 13 33 20 33 b 27 33 33 27 33 20 b 33 13 27 7 20 7 b 13 7 7 13 7 20"
+        tags = rf"{{\an5\pos({px},{py})\fad(16,140)\fscx82\fscy82\t(0,160,\fscx112\fscy112)\p1}}"
+        # The reversed inner path keeps the clicked control visible.
+        ring = ("m 0 11 l 7 11 7 4 34 4 34 11 41 11 41 34 34 34 34 41 7 41 7 34 0 34 "
+                "m 7 17 l 7 28 14 28 14 34 27 34 27 28 34 28 34 17 27 17 27 11 14 11 14 17 7 17")
         events.append(f"Dialogue: {timing}{tags}{ring}")
     file.write_text(header + "\n".join(events) + "\n")
 
 
-def board(file, shot):
-    image = Image.new("RGB", (W, H), shot["color"])
+def board(shot, t, chapter_start):
+    image = titles.gradient("#fafcf8", shot["color"]).copy()
     draw = ImageDraw.Draw(image)
-    titles.label(draw, shot["title"], 76, 97, 73, bold=True)
-    titles.label(draw, shot["caption"], 79, 209, 38, color=titles.SECONDARY)
+    chapter = titles.ramp((t + .08) / .45) if chapter_start else 1
+    caption = titles.ramp((t + .06) / .26)
+    titles.appear(image, shot["title"], 76, 97, 73, chapter, bold=True, travel=23)
+    titles.appear(image, shot["caption"], 79, 209, 38, caption, color=titles.SECONDARY, travel=15)
+    for index, (x, y, size) in enumerate(((939, 116, 31), (975, 153, 18),
+                                            (126, 1412, 29), (89, 1447, 18),
+                                            (929, 526, 24), (959, 497, 16),
+                                            (927, 1606, 32), (961, 1640, 17))):
+        pulse = titles.ramp((chapter * .7 - (index % 4) * .083) / .41)
+        if pulse > 0:
+            y += round((1 - pulse) * 45)
+            draw.rectangle((x, y, x + size, y + size), fill="#c4d5c8")
     x, y = SCREEN_X - 9, SCREEN_Y - 9
-    draw.rounded_rectangle((x, y, x + SCREEN_WIDTH + 17, y + SCREEN_HEIGHT + 17),
-                           radius=46, fill="#18231d")
-    image.save(file)
+    titles.pixel_panel(draw, x, y, SCREEN_WIDTH + 17, SCREEN_HEIGHT + 17, "#17231d", 10)
+    return image
+
+
+def render_board(ffmpeg, path, shot, chapter_start):
+    duration = .54 if chapter_start else .31
+    command = [ffmpeg, "-nostdin", "-v", "error", "-y", "-f", "rawvideo", "-pixel_format", "rgb24",
+               "-video_size", f"{W}x{H}", "-framerate", str(FPS), "-i", "-", "-an",
+               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "14", "-pix_fmt", "yuv420p", str(path)]
+    with subprocess.Popen(command, stdin=subprocess.PIPE) as encoder:
+        for frame in range(math.ceil(duration * FPS)):
+            encoder.stdin.write(board(shot, frame / FPS, chapter_start).tobytes())
+        encoder.stdin.close()
+        if encoder.wait():
+            raise subprocess.CalledProcessError(encoder.returncode, command)
 
 
 def score(file, duration, cues):
@@ -124,14 +146,16 @@ def main():
     output = args.output.resolve()
     manifest = json.loads(args.timeline.read_text())
     shots = manifest["shots"]
-    cut = [(folder / "opening.mp4", 4), (folder / "pain.mp4", 8)]
+    cut = [(folder / "opening.mp4", titles.OPENING), (folder / "pain.mp4", titles.PAIN)]
     audio_cues = [1.47, 4.37, 8.37]
-    elapsed = 12
+    elapsed = titles.OPENING + titles.PAIN
     encode = ["-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p"]
     for index, shot in enumerate(shots):
         assert math.isclose(round(shot["duration"] * FPS), shot["duration"] * FPS)
         stem = f"shot-{index:02}"
-        board(folder / (stem + ".png"), shot)
+        stage = folder / (stem + "-stage.mp4")
+        first = index == 0 or shot["flow"] != shots[index - 1]["flow"]
+        render_board(args.ffmpeg, stage, shot, first)
         touches(folder / (stem + ".ass"), shot)
         destination = folder / (stem + ".mp4")
         # Normalize before trimming so a pause in the simulator's variable-rate
@@ -144,15 +168,16 @@ def main():
         if crop:
             src += "crop=" + ":".join(map(str, crop)) + ","
         src += f"scale={SCREEN_WIDTH}:{SCREEN_HEIGHT}:flags=lanczos,setsar=1[screen];"
-        video_filter = src + f"[0:v][screen]overlay={SCREEN_X}:{SCREEN_Y}:shortest=1,ass={stem}.ass"
-        run(args.ffmpeg, "-loop", "1", "-framerate", FPS, "-i", stem + ".png",
+        video_filter = (src + f"[0:v]tpad=stop_mode=clone:stop_duration={shot['duration']}[stage];"
+                        f"[stage][screen]overlay={SCREEN_X}:{SCREEN_Y}:shortest=1,ass={stem}.ass")
+        run(args.ffmpeg, "-i", stage,
             "-ss", seek, "-i", shot["file"], "-filter_complex", video_filter,
             "-t", shot["duration"], *encode, destination, cwd=folder)
         cut.append((destination, shot["duration"]))
         audio_cues.extend(elapsed + touch[0] for touch in shot.get("touches", []))
         elapsed += shot["duration"]
-    cut.append((folder / "outro.mp4", 6))
-    duration = elapsed + 6
+    cut.append((folder / "outro.mp4", titles.OUTRO))
+    duration = elapsed + titles.OUTRO
     audio_cues.append(elapsed + .96)
     score(folder / "soundtrack.wav", duration, audio_cues)
     sources = [arg for path, _ in cut for arg in ("-i", path)]

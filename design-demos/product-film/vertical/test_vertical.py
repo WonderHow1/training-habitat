@@ -2,11 +2,13 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
 import assemble
-from title_cards import Titles, WIDTH, HEIGHT
+import title_cards
+from title_cards import FPS, HEIGHT, OUTRO, WIDTH, Titles
 
 
 class VerticalFilmTests(unittest.TestCase):
@@ -22,6 +24,25 @@ class VerticalFilmTests(unittest.TestCase):
         self.assertEqual(sorted(bounds, key=lambda box: box[2] - box[0]), bounds)
         self.assertGreater(bounds[-1][2] - bounds[-1][0], bounds[0][2] - bounds[0][0])
         self.assertGreater(len(titles.growth), 1)
+
+    def test_pixel_wipe_matches_prior_frame_and_ending_has_no_launch_plan(self):
+        titles = Titles()
+        self.assertEqual(titles.pain(4).tobytes(), titles.pain_frame(4 - 1 / FPS).tobytes())
+        self.assertNotEqual(titles.pain(4.18).tobytes(), titles.pain(4).tobytes())
+        with patch("title_cards.appear", wraps=title_cards.appear) as appear:
+            titles.outro(OUTRO - 1 / FPS)
+        text = [call.args[1] for call in appear.call_args_list]
+        self.assertIn("训练栖地", text)
+        self.assertFalse(any("首测" in line or "两周" in line for line in text))
+
+    def test_chapter_headers_animate_around_a_fixed_screen(self):
+        shot = {"title": "练完就记。", "caption": "点一下开始计时。", "color": "#e1eef7"}
+        first = assemble.board(shot, 0, True)
+        last = assemble.board(shot, .6, True)
+        screen = (assemble.SCREEN_X, assemble.SCREEN_Y,
+                  assemble.SCREEN_X + assemble.SCREEN_WIDTH, assemble.SCREEN_Y + assemble.SCREEN_HEIGHT)
+        self.assertNotEqual(first.tobytes(), last.tobytes())
+        self.assertEqual(first.crop(screen).tobytes(), last.crop(screen).tobytes())
 
     def test_touches_track_the_screen_and_end_at_cut(self):
         with tempfile.TemporaryDirectory() as directory:
