@@ -86,19 +86,24 @@ assert 'AddPlanButton { openFromToday(.addPlan(model.today)) }' in routine_views
 assert 'AddPlanButton { open(.addPlan(' in routine_views
 print('PASS  Empty new plan duration, wheel confirmation and shared add plan button')
 row_actions = routine_views.split('func trainingRowActions(', 1)[1].split('private struct AddPlanButton', 1)[0]
-assert '.swipeActions(' in row_actions and '.contextMenu {' in row_actions
+assert 'swipeActions(' in row_actions and '.contextMenu {' in row_actions
 assert row_actions.count('action: edit') == row_actions.count('action: delete') == 2
 assert routine_views.count('.planRowActions(') == 3
 assert '.trainingRowActions(edit: { open(.manual(nil, workout)) })' in routine_views
 print('PASS  Today, Plan and Review share long-press and swipe actions')
 today_row = routine_views.split('private func todayRow(', 1)[1].split('private func recordControl(', 1)[0]
 assert today_row.index('.contentShape(.contextMenuPreview,') < today_row.index('.planRowActions(')
+assert 'previewWidth: trainingRowWidth' in today_row
+preview_actions = routine_views.split('func planRowActions(', 1)[1].split('func trainingRowActions(', 1)[0]
+assert '} preview: {' in preview_actions and 'PlanRowSummary(plan: plan, status:' in preview_actions
+plan_rows = routine_views.split('struct PlansView:', 1)[1].split('struct ReviewView:', 1)[0]
+assert 'PlanRowSummary(plan: plan, status:' in plan_rows
 record_control = routine_views.split('private func recordControl(', 1)[1].split('private func setExpanded(', 1)[0]
 assert record_control.count('.transition(transition)') == 2
 assert 'setRecordOptions(plan.id)' in record_control and 'withAnimation(reduceMotion ? nil' in record_control
 assert 'self.recordOptions == recordOptions, !recordOptionsFrame.contains(tap.location)' in routine_views
 assert 'openFromToday(.manual(plan, nil))' in record_control
-print('PASS  Today row preview and animated record choices')
+print('PASS  Today and Plan share the same preview summary, and record choices animate')
 workout_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[1].split('struct PlanDetails', 1)[0]
 assert 'case start = "开始时间"' in workout_editor and 'case end = "结束时间"' in workout_editor
 assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in workout_editor and '.pickerStyle(.wheel)' in workout_editor

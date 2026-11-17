@@ -37,6 +37,7 @@ struct TodayView: View {
     @State private var transitionSource: CGRect?
     @State private var recordOptions: UUID?
     @State private var recordOptionsFrame: CGRect = .zero
+    @State private var trainingRowWidth: CGFloat?
     @State private var screenCorners: RectangleCornerRadii?
 
     private var todayPlans: [TrainingPlan] {
@@ -201,8 +202,9 @@ struct TodayView: View {
         }
         .padding(.vertical, 6)
         .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 14))
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { trainingRowWidth = $0 }
         .listRowSeparator(.hidden)
-        .planRowActions(model: model, plan: plan, open: openFromToday)
+        .planRowActions(model: model, plan: plan, open: openFromToday, previewWidth: trainingRowWidth)
     }
 
     private func recordControl(for plan: TrainingPlan) -> some View {
@@ -423,25 +425,65 @@ struct PlanLabel: View {
     }
 }
 
+private struct PlanRowSummary: View {
+    let plan: TrainingPlan
+    let status: PlanStatus
+
+    var body: some View {
+        HStack {
+            PlanLabel(plan: plan)
+            Spacer()
+            Text(status.rawValue)
+                .font(.caption.weight(.medium))
+                .padding(.vertical, 5).padding(.horizontal, 8)
+                .background(.quaternary, in: .capsule)
+        }
+    }
+}
+
 extension View {
-    func planRowActions(model: AppModel, plan: TrainingPlan, open: @escaping (SheetRoute) -> Void) -> some View {
-        trainingRowActions(edit: { open(.editPlan(plan)) }) {
-            model.change { state, _ in state.deletePlan(plan.id) }
+    @ViewBuilder
+    func planRowActions(model: AppModel, plan: TrainingPlan, open: @escaping (SheetRoute) -> Void,
+                        previewWidth: CGFloat? = nil) -> some View {
+        let edit = { open(.editPlan(plan)) }
+        let delete: () -> Void = {
+            _ = model.change { state, _ in state.deletePlan(plan.id) }
+        }
+        if let previewWidth, previewWidth > 0 {
+            trainingSwipeActions(edit: edit, delete: delete)
+                .contextMenu {
+                    TrainingRowMenu(edit: edit, delete: delete)
+                } preview: {
+                    PlanRowSummary(plan: plan, status: model.state.status(of: plan, at: model.now))
+                        .padding(.horizontal, 14).padding(.vertical, 16)
+                        .frame(width: previewWidth)
+                        .background(.background)
+                }
+        } else {
+            trainingRowActions(edit: edit, delete: delete)
         }
     }
 
     func trainingRowActions(edit: @escaping () -> Void, delete: @escaping () -> Void) -> some View {
-        self
-        #if os(iOS)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button("删除", systemImage: "trash", role: .destructive, action: delete)
-                Button("编辑", systemImage: "pencil", action: edit).tint(.gray)
-            }
-        #endif
-            .contextMenu {
-                Button("编辑", systemImage: "pencil", action: edit)
-                Button("删除", systemImage: "trash", role: .destructive, action: delete)
-            }
+        trainingSwipeActions(edit: edit, delete: delete)
+            .contextMenu { TrainingRowMenu(edit: edit, delete: delete) }
+    }
+
+    private func trainingSwipeActions(edit: @escaping () -> Void, delete: @escaping () -> Void) -> some View {
+        swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button("删除", systemImage: "trash", role: .destructive, action: delete)
+            Button("编辑", systemImage: "pencil", action: edit).tint(.gray)
+        }
+    }
+}
+
+private struct TrainingRowMenu: View {
+    let edit: () -> Void
+    let delete: () -> Void
+
+    var body: some View {
+        Button("编辑", systemImage: "pencil", action: edit)
+        Button("删除", systemImage: "trash", role: .destructive, action: delete)
     }
 }
 
@@ -478,14 +520,8 @@ struct PlansView: View {
                 }
                 ForEach(rows) { plan in
                     Button { open(.plan(plan)) } label: {
-                        HStack {
-                            PlanLabel(plan: plan)
-                            Spacer()
-                            Text(model.state.status(of: plan, at: model.now).rawValue)
-                                .font(.caption.weight(.medium))
-                                .padding(.vertical, 5).padding(.horizontal, 8)
-                                .background(.quaternary, in: .capsule)
-                        }.padding(.vertical, 4)
+                        PlanRowSummary(plan: plan, status: model.state.status(of: plan, at: model.now))
+                            .padding(.vertical, 4)
                     }
                     .buttonStyle(.plain).listRowSeparator(.hidden)
                     .planRowActions(model: model, plan: plan, open: open)
