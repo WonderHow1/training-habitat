@@ -107,6 +107,14 @@ struct TrainingPlan: Identifiable, Codable, Equatable {
 enum DailyTrainingGoal {
     static let allowedMinutes = 10...1440
     static let cautionThreshold = 120
+    static let cautionMessage = "每日目标超过 2 小时。请留出休息时间，避免过度训练。"
+
+    static var allowedHours: ClosedRange<Int> { (allowedMinutes.lowerBound / 60)...(allowedMinutes.upperBound / 60) }
+
+    static func minutes(in hour: Int) -> ClosedRange<Int> {
+        let base = hour * 60
+        return max(0, allowedMinutes.lowerBound - base)...min(59, allowedMinutes.upperBound - base)
+    }
 }
 
 struct TimerFinishResult: Identifiable, Equatable {

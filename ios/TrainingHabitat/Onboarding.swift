@@ -2,12 +2,13 @@ import SwiftUI
 
 struct Onboarding: View {
     private enum Step: Int {
-        case goal, pet, growth, hearts, habitat
+        case goal, pet, name, growth, hearts, habitat
 
         var title: String {
             switch self {
             case .goal: "设定每日训练目标"
             case .pet: "领养宠物"
+            case .name: "给宠物起个名字"
             case .growth: "宠物会长大"
             case .hearts: "照顾宠物的爱心"
             case .habitat: "选择栖息地"
@@ -19,16 +20,17 @@ struct Onboarding: View {
     @State private var step = Step.goal
     @State private var goingBack = false
     @State private var colorIndex = 0
-    @State private var goalInput = "30"
+    @State private var goal = 30
+    @State private var showsGoalPicker = false
     @State private var species = Species.cat
     @State private var habitat = Habitat.garden
     @State private var name = "团团"
+    @FocusState private var isEditingName: Bool
     @State private var showsPetHint = false
     @State private var didInteractWithPet = false
 
     private let rainbow: [UInt32] = [0xfa8198, 0xffa258, 0xffda49, 0x91d568, 0x57cfbf, 0x7cafff, 0xc492f5]
     private let ink = Color(red: 0.08, green: 0.19, blue: 0.29)
-    private var goal: Int { Int(goalInput) ?? 0 }
 
     var body: some View {
         GeometryReader { geometry in
@@ -43,8 +45,7 @@ struct Onboarding: View {
                     if step == .habitat {
                         habitatStep(top: top)
                     } else {
-                        page(top: top, previewSize: min(176, max(118, geometry.size.height * 0.28)),
-                             portraitLift: min(72, max(0, (geometry.size.height - 610) * 0.48)))
+                        page(top: top, previewSize: min(176, max(118, geometry.size.height * 0.28)))
                     }
                 }
                 .id(step)
@@ -53,6 +54,10 @@ struct Onboarding: View {
             }
         }
         .foregroundStyle(ink)
+        .sheet(isPresented: $showsGoalPicker) {
+            OnboardingGoalPicker(goal: goal) { goal = $0 }
+                .presentationDetents([.medium, .large])
+        }
         .task(id: reduceMotion || step == .habitat) {
             guard !reduceMotion, step != .habitat else { return }
             while !Task.isCancelled {
@@ -82,19 +87,19 @@ struct Onboarding: View {
         )
     }
 
-    private func page(top: CGFloat, previewSize: CGFloat, portraitLift: CGFloat) -> some View {
+    private func page(top: CGFloat, previewSize: CGFloat) -> some View {
         ViewThatFits(in: .vertical) {
             VStack(alignment: .leading, spacing: 12) {
                 title.padding(.top, top)
-                Spacer(minLength: 10)
-                pageContent(previewSize: previewSize, portraitLift: portraitLift)
+                if step == .goal { Spacer(minLength: 10) }
+                pageContent(previewSize: previewSize, choiceSpacing: 64)
                 Spacer(minLength: 10)
                 controls
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     title
-                    pageContent(previewSize: previewSize, portraitLift: 0)
+                    pageContent(previewSize: previewSize, choiceSpacing: 24)
                     controls
                 }
                 .padding(.vertical, 16)
@@ -105,22 +110,27 @@ struct Onboarding: View {
     }
 
     @ViewBuilder
-    private func pageContent(previewSize: CGFloat, portraitLift: CGFloat) -> some View {
+    private func pageContent(previewSize: CGFloat, choiceSpacing: CGFloat) -> some View {
         switch step {
         case .goal:
             VStack(spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    TextField("30", text: $goalInput)
-                        .digitsKeyboard()
-                        .multilineTextAlignment(.center)
-                        .frame(width: 30 + CGFloat(max(2, min(4, goalInput.count))) * 40)
-                        .font(.system(size: 72, weight: .heavy, design: .rounded))
-                        .accessibilityLabel("每日目标分钟数")
-                    Text("分钟").font(.headline)
+                Button {
+                    showsGoalPicker = true
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("\(goal, format: .number.grouping(.never))")
+                            .font(.system(size: 72, weight: .heavy, design: .rounded))
+                        Text("分钟").font(.headline)
+                        Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.semibold))
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("每日目标训练时长")
+                .accessibilityValue("\(goal) 分钟")
+                .accessibilityHint("打开时间滚轮")
                 .frame(maxWidth: .infinity)
-                if goal < DailyTrainingGoal.allowedMinutes.lowerBound || goal > DailyTrainingGoal.cautionThreshold {
-                    Text(goal < DailyTrainingGoal.allowedMinutes.lowerBound ? "每日目标至少 10 分钟。" : "每日目标超过 2 小时。请留出休息时间，避免过度训练。")
+                if goal > DailyTrainingGoal.cautionThreshold {
+                    Text(DailyTrainingGoal.cautionMessage)
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
                 }
             }
@@ -135,14 +145,19 @@ struct Onboarding: View {
                                 .transition(.scale(scale: 0.8, anchor: .bottomLeading).combined(with: .opacity))
                         }
                     }
-                    .offset(y: -portraitLift)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, choiceSpacing)
                 SpeciesPicker(selection: $species, isOnboarding: true)
-                Text("宠物名字").font(.footnote)
+            }
+        case .name:
+            VStack(spacing: 20) {
+                PetPortrait(species: species, size: previewSize, interactive: true).id(species)
                 TextField("团团", text: $name)
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 6)
+                    .focused($isEditingName)
+                    .submitLabel(.done)
+                    .onSubmit { isEditingName = false }
                     .accessibilityLabel("宠物名字")
             }
         case .growth:
@@ -230,13 +245,13 @@ struct Onboarding: View {
                     .labelStyle(.titleAndIcon).fontWeight(.bold)
             }
             .buttonStyle(.plain)
-            .disabled(step == .goal ? !DailyTrainingGoal.allowedMinutes.contains(goal) :
-                        step == .pet && (name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 12))
+            .disabled(step == .name && (name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 12))
         }
         .frame(minHeight: 44)
     }
 
     private func move(to next: Step) {
+        if step == .name { isEditingName = false }
         goingBack = next.rawValue < step.rawValue
         withAnimation(reduceMotion ? nil : .snappy(duration: 0.44, extraBounce: 0.12)) {
             showsPetHint = false

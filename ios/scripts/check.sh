@@ -131,8 +131,8 @@ assert '实际时长（分钟）' not in workout_editor and 'timing.entry(' in w
 print('PASS  Workout editor uses start and end wheel pickers')
 onboarding = (root / 'TrainingHabitat/Onboarding.swift').read_text()
 assert 'SpeciesPicker(selection: $species, isOnboarding: true)' in onboarding
-assert '.offset(y: -portraitLift)' in onboarding and 'portraitLift: 0' in onboarding
-assert '.padding(.bottom, 10)\n                SpeciesPicker(' in onboarding
+assert 'if step == .goal { Spacer(minLength: 10) }\n                pageContent(' in onboarding
+assert '.padding(.bottom, choiceSpacing)\n                SpeciesPicker(' in onboarding
 picker = onboarding.split('struct SpeciesPicker:', 1)[1]
 assert 'image.cropping(to: artwork.visibleBounds(for: sprite, image: image))' in picker
 assert '.frame(width: 38, height: 38)' in picker and 'isOnboarding ? Font.subheadline : .caption2' in picker
@@ -154,7 +154,17 @@ assert '.offset(x: goingBack ? -56 : 56, y: 10)' in onboarding and '.transition(
 assert 'habitatBackground\n                        .transition(.opacity)' in onboarding
 assert '.snappy(duration: 0.44, extraBounce: 0.12)' in onboarding
 print('PASS  Onboarding pet tap hint, directional spring transition and reduced motion')
-assert 'case goal, pet, growth, hearts, habitat' in onboarding
+assert 'case goal, pet, name, growth, hearts, habitat' in onboarding
+onboarding_content = onboarding.split('private func pageContent(', 1)[1].split('private var petHint:', 1)[0]
+selection, naming = onboarding_content.split('case .pet:', 1)[1].split('case .name:', 1)
+assert 'TextField(' not in selection and 'TextField("团团", text: $name)' in naming
+assert '.disabled(step == .name &&' in onboarding
+goal_page = onboarding_content.split('case .goal:', 1)[1].split('case .pet:', 1)[0]
+assert 'showsGoalPicker = true' in goal_page and 'TextField(' not in goal_page
+goal_editor = editor_source.split('struct OnboardingGoalPicker:', 1)[1].split('struct WorkoutEditor:', 1)[0]
+assert 'HourMinuteWheel(hours: hours, minutes: minutes, allowedHours: DailyTrainingGoal.allowedHours' in goal_editor
+assert 'DailyTrainingGoal.minutes(in: hour)' in goal_editor and 'DailyTrainingGoal.cautionMessage' in goal_editor
+print('PASS  Onboarding separates naming, aligns pet previews and uses time wheels for the goal')
 growth_demo = onboarding.split('private struct OnboardingGrowthDemo:', 1)[1].split('private struct OnboardingHeartsDemo:', 1)[0]
 assert 'PetPortrait(species: species, stage: PetExperience.stage(for: level)' in growth_demo
 assert 'ProgressView(value: Double(points), total: Double(PetExperience.pointsPerLevel))' in growth_demo

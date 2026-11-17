@@ -392,7 +392,7 @@ private struct DailyGoalEditor: View {
                 if let minutes, !DailyTrainingGoal.allowedMinutes.contains(minutes) {
                     Text("每日目标须为 10 至 1440 分钟。")
                 } else if let minutes, minutes > DailyTrainingGoal.cautionThreshold {
-                    Text("每日目标超过 2 小时。请留出休息时间，避免过度训练。")
+                    Text(DailyTrainingGoal.cautionMessage)
                 }
             }
         }

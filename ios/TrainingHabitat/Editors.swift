@@ -96,6 +96,59 @@ private struct PlanDurationPicker: View {
     }
 }
 
+struct OnboardingGoalPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var total: Int
+    let select: (Int) -> Void
+
+    init(goal: Int, select: @escaping (Int) -> Void) {
+        _total = State(initialValue: goal)
+        self.select = select
+    }
+
+    private var hour: Int { total / 60 }
+
+    private var hours: Binding<Int> {
+        Binding(get: { hour }, set: { newHour in
+            let range = DailyTrainingGoal.minutes(in: newHour)
+            total = newHour * 60 + min(range.upperBound, max(range.lowerBound, total % 60))
+        })
+    }
+
+    private var minutes: Binding<Int> {
+        Binding(get: { total % 60 }, set: { newMinute in
+            guard DailyTrainingGoal.minutes(in: hour).contains(newMinute) else { return }
+            total = hour * 60 + newMinute
+        })
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 10) {
+                HourMinuteWheel(hours: hours, minutes: minutes, allowedHours: DailyTrainingGoal.allowedHours,
+                                allowedMinutes: DailyTrainingGoal.minutes(in: hour))
+                Text(total > DailyTrainingGoal.cautionThreshold ? DailyTrainingGoal.cautionMessage :
+                        "每日目标至少 \(DailyTrainingGoal.allowedMinutes.lowerBound) 分钟。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 20)
+            .navigationTitle("每日训练目标")
+            .compactNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        select(total)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct WorkoutEditor: View {
     private enum TimeField: String, Identifiable {
         case start = "开始时间"
@@ -297,14 +350,16 @@ private struct WorkoutTimePicker: View {
 private struct HourMinuteWheel: View {
     @Binding var hours: Int
     @Binding var minutes: Int
+    var allowedHours = 0...23
+    var allowedMinutes = 0...59
 
     var body: some View {
         HStack(spacing: 0) {
             Picker("小时", selection: $hours) {
-                ForEach(0..<24) { Text("\($0) 小时").tag($0) }
+                ForEach(allowedHours, id: \.self) { Text("\($0) 小时").tag($0) }
             }
             Picker("分钟", selection: $minutes) {
-                ForEach(0..<60) { Text("\($0) 分钟").tag($0) }
+                ForEach(allowedMinutes, id: \.self) { Text("\($0) 分钟").tag($0) }
             }
         }
         .labelsHidden()

@@ -65,6 +65,15 @@ private func dailyGoalEditsValidateAndPersist() throws {
     try check(state.goalMinutes == 10)
 }
 
+private func onboardingGoalWheelsCoverExactlyTheValidRange() throws {
+    let values = DailyTrainingGoal.allowedHours.flatMap { hour in
+        DailyTrainingGoal.minutes(in: hour).map { hour * 60 + $0 }
+    }
+    try check(values == Array(DailyTrainingGoal.allowedMinutes))
+    try check(DailyTrainingGoal.minutes(in: 0) == 10...59)
+    try check(DailyTrainingGoal.minutes(in: 24) == 0...0)
+}
+
 private func workoutOverlapDetectsIntervalsButExcludesTheEditedRecord() throws {
     var state = try adopted()
     var recorded = workout(0, 10, 20)
@@ -412,6 +421,7 @@ struct TrainingChecks {
             ("onboarding and persistent data", onboardingAndPersistentDataUsedAfterSecondOpen),
             ("damaged store is preserved", damagedStoreSurfacesErrorAndKeepsFile),
             ("daily goal edits validate and survive reload", dailyGoalEditsValidateAndPersist),
+            ("onboarding goal wheels match the allowed duration", onboardingGoalWheelsCoverExactlyTheValidRange),
             ("workout overlaps exclude self and adjacent intervals", workoutOverlapDetectsIntervalsButExcludesTheEditedRecord),
             ("one XP per recorded minute regardless of daily goal", workoutMinutesEarnExperienceRegardlessOfDailyGoal),
             ("XP levels and three growth stages share thresholds", petLevelAndGrowthUseTheSameExperienceThresholds),
