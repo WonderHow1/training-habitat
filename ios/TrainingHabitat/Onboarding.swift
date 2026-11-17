@@ -1,7 +1,19 @@
 import SwiftUI
 
 struct Onboarding: View {
-    private enum Step: Int { case goal, pet, habitat }
+    private enum Step: Int {
+        case goal, pet, growth, hearts, habitat
+
+        var title: String {
+            switch self {
+            case .goal: "设定每日训练目标"
+            case .pet: "领养宠物"
+            case .growth: "宠物会长大"
+            case .hearts: "照顾宠物的爱心"
+            case .habitat: "选择栖息地"
+            }
+        }
+    }
     let model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step = Step.goal
@@ -94,7 +106,8 @@ struct Onboarding: View {
 
     @ViewBuilder
     private func pageContent(previewSize: CGFloat, portraitLift: CGFloat) -> some View {
-        if step == .goal {
+        switch step {
+        case .goal:
             VStack(spacing: 12) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     TextField("30", text: $goalInput)
@@ -111,7 +124,7 @@ struct Onboarding: View {
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
                 }
             }
-        } else {
+        case .pet:
             VStack(spacing: 4) {
                 PetPortrait(species: species, size: previewSize, interactive: true, onInteraction: dismissPetHint)
                     .id(species)
@@ -132,6 +145,12 @@ struct Onboarding: View {
                     .padding(.vertical, 6)
                     .accessibilityLabel("宠物名字")
             }
+        case .growth:
+            OnboardingGrowthDemo(startingSpecies: species, previewSize: previewSize)
+        case .hearts:
+            OnboardingHeartsDemo(species: species, previewSize: previewSize)
+        case .habitat:
+            EmptyView()
         }
     }
 
@@ -189,22 +208,21 @@ struct Onboarding: View {
     }
 
     private var title: some View {
-        Text(step == .goal ? "设定每日训练目标" : step == .pet ? "领养宠物" : "选择栖息地")
+        Text(step.title)
             .font(.system(size: 33, weight: .heavy))
             .accessibilityAddTraits(.isHeader)
     }
 
     private var controls: some View {
         HStack {
-            if step != .goal {
-                Button("返回") { move(to: step == .pet ? .goal : .pet) }.buttonStyle(.plain)
+            if let previous = Step(rawValue: step.rawValue - 1) {
+                Button("返回") { move(to: previous) }.buttonStyle(.plain)
             }
             Spacer()
             Button {
-                switch step {
-                case .goal: move(to: .pet)
-                case .pet: move(to: .habitat)
-                case .habitat:
+                if let next = Step(rawValue: step.rawValue + 1) {
+                    move(to: next)
+                } else {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) {
                         _ = model.change { state, now in
                             try state.completeOnboarding(goal: goal, name: name, species: species, habitat: habitat, at: now)
@@ -232,6 +250,118 @@ struct Onboarding: View {
 
     private func color(_ value: UInt32) -> Color {
         Color(red: Double(value >> 16) / 255, green: Double((value >> 8) & 255) / 255, blue: Double(value & 255) / 255)
+    }
+}
+
+private struct OnboardingGrowthDemo: View {
+    let startingSpecies: Species
+    let previewSize: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var speciesIndex = 0
+    @State private var level = 1
+    @State private var points = 0
+
+    private var examples: [Species] { [startingSpecies] + Species.allCases.filter { $0 != startingSpecies } }
+
+    var body: some View {
+        let species = examples[speciesIndex]
+        VStack(spacing: 14) {
+            Text("每记录满 1 分钟训练，获得 1 XP。每积满 \(PetExperience.pointsPerLevel) XP，宠物升一级。")
+                .font(.body)
+            HStack {
+                Text("Lv.1 幼年")
+                Text("Lv.2 青年")
+                Text("Lv.3 起成年")
+            }
+            .font(.footnote.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            PetPortrait(species: species, stage: PetExperience.stage(for: level), size: previewSize)
+                .id(species)
+                .accessibilityHidden(true)
+            VStack(spacing: 8) {
+                Text("示例 · \(species.name) · Lv.\(level) \(PetExperience.stageName(for: level))")
+                    .font(.subheadline.weight(.semibold))
+                ProgressView(value: Double(points), total: Double(PetExperience.pointsPerLevel))
+                    .tint(Color.primary.opacity(0.78))
+                    .accessibilityLabel("当前等级经验")
+                Text("\(points) / \(PetExperience.pointsPerLevel) XP")
+                    .font(.caption.monospacedDigit())
+            }
+            .frame(maxWidth: 248)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .task(id: reduceMotion || scenePhase != .active) {
+            guard !reduceMotion, scenePhase == .active else { return }
+            do {
+                while !Task.isCancelled {
+                    level = 1
+                    points = 0
+                    try await Task.sleep(for: .milliseconds(650))
+                    for nextLevel in 2...PetExperience.stageNames.count {
+                        for tick in 1...4 {
+                            withAnimation(.linear(duration: 0.28)) {
+                                points = PetExperience.pointsPerLevel * tick / 4
+                            }
+                            try await Task.sleep(for: .milliseconds(300))
+                        }
+                        level = nextLevel
+                        points = 0
+                        try await Task.sleep(for: .milliseconds(1200))
+                    }
+                    speciesIndex = (speciesIndex + 1) % examples.count
+                }
+            } catch { return }
+        }
+    }
+}
+
+private struct OnboardingHeartsDemo: View {
+    let species: Species
+    let previewSize: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var hearts = Pet.maximumHearts
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Text("宠物领养时有 \(Pet.maximumHearts) 颗心。从首个完整日开始，按北京时间结算。当天训练时长没达到每日目标，就会失去一颗心。")
+                .font(.body)
+            Text("爱心归零时，宠物会离世。")
+                .font(.subheadline.weight(.semibold))
+            PetPortrait(species: species, size: previewSize)
+                .saturation(hearts > 0 ? 1 : 0)
+                .opacity(hearts > 0 ? 1 : 0.43)
+                .accessibilityHidden(true)
+            HStack(spacing: 12) {
+                ForEach(0..<Pet.maximumHearts) { index in
+                    Image(systemName: index < hearts ? "heart.fill" : "heart")
+                        .foregroundStyle(index < hearts ? Color(red: 0.59, green: 0.14, blue: 0.29) : .primary.opacity(0.62))
+                }
+            }
+            .font(.title2)
+            .accessibilityHidden(true)
+            Text(hearts == Pet.maximumHearts ? "示例 · 初始 \(hearts) 颗心" :
+                    "示例 · 未达标第 \(Pet.maximumHearts - hearts) 天 · " +
+                    (hearts > 0 ? "剩余 \(hearts) 颗心" : "宠物已离世"))
+                .font(.subheadline.weight(.semibold))
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .task(id: reduceMotion || scenePhase != .active) {
+            guard !reduceMotion, scenePhase == .active else { return }
+            do {
+                while !Task.isCancelled {
+                    hearts = Pet.maximumHearts
+                    for remaining in stride(from: Pet.maximumHearts - 1, through: 0, by: -1) {
+                        try await Task.sleep(for: .milliseconds(950))
+                        withAnimation(.easeInOut(duration: 0.32)) { hearts = remaining }
+                    }
+                    try await Task.sleep(for: .milliseconds(1550))
+                }
+            } catch { return }
+        }
     }
 }
 

@@ -8,30 +8,28 @@ struct PetStats: View {
     @State private var showAdoption = false
 
     var body: some View {
-        let xp = model.state.experience(of: pet.id, at: model.now)
-        let level = xp / 100 + 1
-        let stage = min(level, 3)
+        let xp = PetExperience(total: model.state.experience(of: pet.id, at: model.now))
         let hp = model.state.health(of: pet.id)
         VStack(alignment: .leading, spacing: compact ? 5 : 10) {
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text(pet.name).font(compact ? .title2.bold() : .system(size: 47, weight: .heavy))
                     .lineLimit(1).minimumScaleFactor(0.65)
-                Text(hp > 0 ? ["幼年", "青年", "成年"][stage - 1] : "已离世")
+                Text(hp > 0 ? PetExperience.stageName(for: xp.level) : "已离世")
                     .font(.subheadline.weight(.semibold))
             }
             HStack(spacing: 4) {
-                ForEach(0..<3) { index in
+                ForEach(0..<Pet.maximumHearts) { index in
                     Image(systemName: "heart.fill")
                         .foregroundStyle(index < hp ? Color(red: 0.68, green: 0.22, blue: 0.36) : .gray.opacity(0.63))
                 }
             }
             .font(.caption)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("血量 \(hp) / 3")
+            .accessibilityLabel("血量 \(hp) / \(Pet.maximumHearts)")
             HStack(spacing: 10) {
-                Text("Lv.\(level)")
-                ProgressView(value: Double(xp % 100), total: 100)
-                Text("\(xp % 100) / 100 XP").monospacedDigit()
+                Text("Lv.\(xp.level)")
+                ProgressView(value: Double(xp.levelPoints), total: Double(PetExperience.pointsPerLevel))
+                Text("\(xp.levelPoints) / \(PetExperience.pointsPerLevel) XP").monospacedDigit()
             }
             .font(.caption.weight(.semibold))
             .padding(compact ? 0 : 8)
@@ -115,7 +113,7 @@ struct PetPage: View {
 
     private func panel(_ pet: Pet) -> some View {
         let awarded = model.state.experienceEntries(of: pet.id, at: model.now)
-        let xp = awarded.reduce(0) { $0 + $1.minutes }
+        let xp = PetExperience(total: awarded.reduce(0) { $0 + $1.minutes })
         let losses = model.state.misses
             .filter { event in event.petID == pet.id && !model.state.workouts.contains { $0.planID == event.planID } }
             .compactMap { event in model.state.plans.first { $0.id == event.planID } }
@@ -130,7 +128,7 @@ struct PetPage: View {
                     Button("重新领养") { adoption = true }.buttonStyle(.glass).font(.caption.bold())
                 }
             }
-            Text("Lv.\(xp / 100 + 1) · \(xp % 100) / 100 XP")
+            Text("Lv.\(xp.level) · \(xp.levelPoints) / \(PetExperience.pointsPerLevel) XP")
                 .font(.subheadline.weight(.semibold))
             if let workout = awarded.max(by: { $0.end < $1.end }) {
                 Button { open(.workout(workout)) } label: {
@@ -139,7 +137,12 @@ struct PetPage: View {
                 }
                 .buttonStyle(.glass).font(.footnote)
             }
-            if let missed = losses.first {
+            if let dailyLoss = model.state.dailyHeartLosses(for: pet.id).last,
+               losses.first.map({ $0.day <= dailyLoss.day }) ?? true {
+                Label("血量 −1 · \(DisplayDate.day(dailyLoss.day))未达 \(dailyLoss.goalMinutes) 分钟目标",
+                      systemImage: "heart.slash")
+                    .font(.footnote)
+            } else if let missed = losses.first {
                 Button { open(.plan(missed)) } label: {
                     Label("血量 −1 · " + missed.title, systemImage: "heart.slash").lineLimit(1)
                 }

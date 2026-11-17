@@ -104,7 +104,7 @@ final class AppModel {
         return state.plans.first { $0.id == timer.planID }?.title
     }
 
-    func stage(of pet: Pet) -> Int { min(3, state.experience(of: pet.id, at: now) / 100 + 1) }
+    func stage(of pet: Pet) -> Int { PetExperience(total: state.experience(of: pet.id, at: now)).stage }
 
     func setReminders(_ enabled: Bool) async {
         if enabled {
@@ -402,7 +402,7 @@ private struct DailyGoalEditor: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") {
                     guard let minutes else { return }
-                    if model.change({ state, _ in try state.setDailyGoal(minutes) }) { dismiss() }
+                    if model.change({ state, now in try state.setDailyGoal(minutes, at: now) }) { dismiss() }
                 }
                 .disabled(minutes.map { !DailyTrainingGoal.allowedMinutes.contains($0) } ?? true)
             }

@@ -54,14 +54,14 @@ private func dailyGoalEditsValidateAndPersist() throws {
     var state = try adopted()
     let pet = try require(state.activePet)
     try state.saveWorkout(workout(0, 10, 20), at: time(0, 11))
-    try checkThrows { try state.setDailyGoal(9) }
-    try checkThrows { try state.setDailyGoal(1441) }
+    try checkThrows { try state.setDailyGoal(9, at: time(0, 11)) }
+    try checkThrows { try state.setDailyGoal(1441, at: time(0, 11)) }
     try check(state.goalMinutes == 30)
-    try state.setDailyGoal(125)
+    try state.setDailyGoal(125, at: time(0, 11))
     let reopened = try JSONDecoder().decode(TrainingState.self, from: JSONEncoder().encode(state))
     try check(reopened.goalMinutes == 125)
     try check(reopened.activePet == pet && reopened.experience(of: pet.id, at: time(0, 11)) == 20)
-    try state.setDailyGoal(10)
+    try state.setDailyGoal(10, at: time(0, 11))
     try check(state.goalMinutes == 10)
 }
 
@@ -107,6 +107,14 @@ private func workoutMinutesEarnExperienceRegardlessOfDailyGoal() throws {
     try check(state.workouts.first?.planID == nil)
 }
 
+private func petLevelAndGrowthUseTheSameExperienceThresholds() throws {
+    for (total, level, stage, points) in [(0, 1, 1, 0), (99, 1, 1, 99), (100, 2, 2, 0),
+                                          (199, 2, 2, 99), (200, 3, 3, 0), (350, 4, 3, 50)] {
+        let progress = PetExperience(total: total)
+        try check(progress.level == level && progress.stage == stage && progress.levelPoints == points)
+    }
+}
+
 private func reschedulingRetainsIdentityAndRejectsCrossWeek() throws {
     var state = try adopted()
     try state.savePlan(title: "跑步", day: day, time: nil, minutes: 20, at: time(0))
@@ -133,18 +141,65 @@ private func midnightGraceDeviceCorrectionAndDuplicate() throws {
     try check(state.eligiblePlans(for: workout(0, 11, 20, source: .healthUnverified), at: plan.graceEnds).isEmpty)
     state.reconcile(at: plan.graceEnds)
     state.reconcile(at: plan.graceEnds)
-    try check(state.health(of: pet) == 2)
-    try check(state.misses.count == 1)
+    try check(state.status(of: plan, at: plan.graceEnds) == .missed)
+    try check(state.misses.isEmpty)
     let external = UUID()
     let record = workout(0, 11, 30, source: .healthAutomatic, external: external)
     try check(state.eligiblePlans(for: record, at: plan.correctionEnds).isEmpty)
     try state.saveWorkout(record, for: plan.id, at: time(3))
     try state.saveWorkout(workout(0, 11, 30, source: .healthAutomatic, external: external), for: plan.id, at: time(3))
     try check(state.workouts.count == 1)
-    try check(state.health(of: pet) == 3)
     try check(state.experience(of: pet, at: time(3)) == 30)
     state.deleteWorkout(record.id, at: time(3))
+    try check(state.status(of: plan, at: time(3)) == .missed)
+}
+
+private func dailyHeartsSettleAtMidnightOnceAndUseTheGoalInEffect() throws {
+    var state = TrainingState()
+    try state.completeOnboarding(goal: 30, name: "团团", species: .cat, habitat: .garden, at: time(0, 12))
+    let pet = try require(state.activePetID)
+    state.reconcile(at: time(1))
+    try check(state.health(of: pet) == Pet.maximumHearts)
+
+    try state.saveWorkout(workout(1, 9, 12), at: time(1, 12))
+    try state.saveWorkout(workout(1, 10, 18), at: time(1, 12))
+    try state.savePlan(title: "第一项", day: time(2), time: nil, minutes: 20, at: time(1, 12))
+    try state.savePlan(title: "第二项", day: time(2), time: nil, minutes: 20, at: time(1, 12))
+    try state.saveWorkout(workout(2, 9, 20), at: time(2, 12))
+    state.reconcile(at: time(3).addingTimeInterval(-1))
+    try check(state.health(of: pet) == Pet.maximumHearts)
+    try state.setDailyGoal(15, at: time(3, 9))
+    state.reconcile(at: time(3, 10))
     try check(state.health(of: pet) == 2)
+    try check(state.dailyHeartLosses(for: pet) == [.init(day: time(2), petID: pet, goalMinutes: 30)])
+    try state.saveWorkout(workout(3, 10, 15), at: time(3, 12))
+    state.reconcile(at: time(4))
+    try check(state.health(of: pet) == 2)
+    try check(state.misses.isEmpty)
+    try check(state.plans.allSatisfy { state.status(of: $0, at: time(4)) == .missed })
+    state.reconcile(at: time(5))
+    try check(state.health(of: pet) == 1)
+    try check(state.dailyHeartLosses(for: pet).last?.day == time(4))
+    let reloaded = try JSONDecoder().decode(TrainingState.self, from: JSONEncoder().encode(state))
+    try check(reloaded.dailyHeartLosses(for: pet) == state.dailyHeartLosses(for: pet))
+}
+
+private func oldSnapshotsKeepExistingLossesWithoutChargingPastDays() throws {
+    var state = try adopted()
+    let pet = try require(state.activePetID)
+    try state.savePlan(title: "旧计划", day: time(0), time: nil, minutes: 20, at: time(0))
+    let plan = try require(state.plans.first)
+    var legacy = try require(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
+    legacy.removeValue(forKey: "dailyHeartTracking")
+    legacy["misses"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode([MissedPlan(planID: plan.id, petID: pet)]))
+    state = try JSONDecoder().decode(TrainingState.self, from: JSONSerialization.data(withJSONObject: legacy))
+    state.reconcile(at: time(10, 12))
+    state.reconcile(at: time(11))
+    try check(state.health(of: pet) == 2)
+    try check(state.dailyHeartLosses(for: pet).isEmpty)
+    state.reconcile(at: time(12))
+    try check(state.health(of: pet) == 1)
+    try check(state.dailyHeartLosses(for: pet).map(\.day) == [time(11)])
 }
 
 private func delayedSettlementAndRecoveryLeaveNewPetUntouched() throws {
@@ -156,6 +211,7 @@ private func delayedSettlementAndRecoveryLeaveNewPetUntouched() throws {
     state.reconcile(at: time(5))
     try check(state.activePetID == nil)
     try check(state.health(of: old) == 0)
+    try check(state.displayedPet?.tenures.last?.end == time(3))
     try state.adopt(name: "新伙伴", species: .rabbit, habitat: .living, at: time(5))
     let new = try require(state.activePetID)
     let plan = try require(state.plans.first)
@@ -358,8 +414,11 @@ struct TrainingChecks {
             ("daily goal edits validate and survive reload", dailyGoalEditsValidateAndPersist),
             ("workout overlaps exclude self and adjacent intervals", workoutOverlapDetectsIntervalsButExcludesTheEditedRecord),
             ("one XP per recorded minute regardless of daily goal", workoutMinutesEarnExperienceRegardlessOfDailyGoal),
+            ("XP levels and three growth stages share thresholds", petLevelAndGrowthUseTheSameExperienceThresholds),
             ("rescheduling keeps identity", reschedulingRetainsIdentityAndRejectsCrossWeek),
             ("midnight, grace and device correction", midnightGraceDeviceCorrectionAndDuplicate),
+            ("one heart per missed full day using the historical goal", dailyHeartsSettleAtMidnightOnceAndUseTheGoalInEffect),
+            ("legacy health migrates without retroactive losses", oldSnapshotsKeepExistingLossesWithoutChargingPastDays),
             ("delayed settlement and pet recovery", delayedSettlementAndRecoveryLeaveNewPetUntouched),
             ("walkable terrain", terrainRejectsWallsAndShoreAndKeepsRouteInView),
             ("heading pet walks within bounds and can stop in place", headingPetStaysInItsLaneAndCanStopMidWalk),

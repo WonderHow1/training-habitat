@@ -154,6 +154,18 @@ assert '.offset(x: goingBack ? -56 : 56, y: 10)' in onboarding and '.transition(
 assert 'habitatBackground\n                        .transition(.opacity)' in onboarding
 assert '.snappy(duration: 0.44, extraBounce: 0.12)' in onboarding
 print('PASS  Onboarding pet tap hint, directional spring transition and reduced motion')
+assert 'case goal, pet, growth, hearts, habitat' in onboarding
+growth_demo = onboarding.split('private struct OnboardingGrowthDemo:', 1)[1].split('private struct OnboardingHeartsDemo:', 1)[0]
+assert 'PetPortrait(species: species, stage: PetExperience.stage(for: level)' in growth_demo
+assert 'ProgressView(value: Double(points), total: Double(PetExperience.pointsPerLevel))' in growth_demo
+assert 'speciesIndex = (speciesIndex + 1) % examples.count' in growth_demo
+hearts_demo = onboarding.split('private struct OnboardingHeartsDemo:', 1)[1].split('struct SpeciesPicker:', 1)[0]
+assert '当天训练时长没达到每日目标，就会失去一颗心' in hearts_demo
+assert 'stride(from: Pet.maximumHearts - 1, through: 0, by: -1)' in hearts_demo
+assert '示例 · 未达标第' in hearts_demo and '宠物已离世' in hearts_demo
+for demo in (growth_demo, hearts_demo):
+    assert 'guard !reduceMotion, scenePhase == .active else' in demo
+print('PASS  Onboarding explains live XP thresholds and animates example growth and heart loss')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}

@@ -10,6 +10,7 @@ struct TrainingState: Codable, Equatable {
     private(set) var activePetID: UUID?
     private(set) var misses: [MissedPlan] = []
     private(set) var timer: TrainingTimer?
+    private var dailyHeartTracking: DailyHeartTracking?
 
     var activePet: Pet? { pets.first { $0.id == activePetID } }
     var displayedPet: Pet? { activePet ?? pets.last }
@@ -25,10 +26,12 @@ struct TrainingState: Codable, Equatable {
         try adopt(name: name, species: species, habitat: habitat, at: now)
         goalMinutes = goal
         didOnboard = true
+        dailyHeartTracking = .init(nextDay: firstFullDay(from: now))
     }
 
-    mutating func setDailyGoal(_ minutes: Int) throws {
+    mutating func setDailyGoal(_ minutes: Int, at now: Date) throws {
         guard DailyTrainingGoal.allowedMinutes.contains(minutes) else { throw TrainingError.minutes }
+        reconcile(at: now)
         goalMinutes = minutes
     }
 
@@ -49,7 +52,19 @@ struct TrainingState: Codable, Equatable {
 
     func health(of petID: UUID) -> Int {
         let completed = Set(workouts.compactMap(\.planID))
-        return max(0, 3 - misses.count { $0.petID == petID && !completed.contains($0.planID) })
+        let planLosses = misses.count { $0.petID == petID && !completed.contains($0.planID) }
+        return max(0, Pet.maximumHearts - planLosses - dailyHeartLosses(for: petID).count)
+    }
+
+    func dailyHeartLosses(for petID: UUID) -> [DailyHeartCheck] {
+        let minutes = trainingMinutesByDay
+        return (dailyHeartTracking?.checks ?? []).filter {
+            $0.petID == petID && minutes[$0.day, default: 0] < $0.goalMinutes
+        }
+    }
+
+    private var trainingMinutesByDay: [Date: Int] {
+        Dictionary(workouts.map { ($0.day, $0.minutes) }, uniquingKeysWith: +)
     }
 
     func recoverablePets() -> [Pet] {
@@ -201,14 +216,36 @@ struct TrainingState: Codable, Equatable {
     }
 
     mutating func reconcile(at now: Date, revisedAt: Date? = nil) {
-        let existing = Set(misses.map(\.planID))
-        for plan in plans.sorted(by: { $0.graceEnds < $1.graceEnds })
-            where plan.graceEnds <= now && !existing.contains(plan.id) && status(of: plan, at: now) == .missed {
-            let petID = owner(at: plan.deadline)
-            misses.append(.init(planID: plan.id, petID: petID))
-            if petID == activePetID { settleDeath(at: revisedAt ?? plan.graceEnds) }
+        guard didOnboard else { return }
+        if dailyHeartTracking == nil {
+            dailyHeartTracking = .init(nextDay: firstFullDay(from: now))
         }
-        settleDeath(at: now)
+        settleDeath(at: revisedAt ?? now)
+        let today = TrainingCalendar.day(now)
+        guard let nextDay = dailyHeartTracking?.nextDay, nextDay < today else { return }
+        dailyHeartTracking?.nextDay = today
+        guard let pet = activePet, let start = pet.tenures.last?.start else { return }
+
+        let minutes = trainingMinutesByDay
+        var remaining = health(of: pet.id)
+        var day = max(nextDay, firstFullDay(from: start))
+        while day < today {
+            dailyHeartTracking?.checks.append(.init(day: day, petID: pet.id, goalMinutes: goalMinutes))
+            let followingDay = TrainingCalendar.addingDays(1, to: day)
+            if minutes[day, default: 0] < goalMinutes {
+                remaining -= 1
+                if remaining == 0 {
+                    settleDeath(at: followingDay)
+                    break
+                }
+            }
+            day = followingDay
+        }
+    }
+
+    private func firstFullDay(from date: Date) -> Date {
+        let day = TrainingCalendar.day(date)
+        return date == day ? day : TrainingCalendar.addingDays(1, to: day)
     }
 
     private func fits(_ workout: Workout, plan: TrainingPlan, at now: Date) -> Bool {

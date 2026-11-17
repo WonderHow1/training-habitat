@@ -170,6 +170,8 @@ struct WorkoutTiming {
 }
 
 struct Pet: Identifiable, Codable, Equatable {
+    static let maximumHearts = 3
+
     struct Tenure: Codable, Equatable {
         let start: Date
         var end: Date?
@@ -192,9 +194,34 @@ struct Pet: Identifiable, Codable, Equatable {
     }
 }
 
+struct PetExperience {
+    static let pointsPerLevel = 100
+    static let stageNames = ["幼年", "青年", "成年"]
+
+    let total: Int
+
+    var level: Int { total / Self.pointsPerLevel + 1 }
+    var levelPoints: Int { total % Self.pointsPerLevel }
+    var stage: Int { Self.stage(for: level) }
+
+    static func stage(for level: Int) -> Int { min(level, stageNames.count) }
+    static func stageName(for level: Int) -> String { stageNames[stage(for: level) - 1] }
+}
+
 struct MissedPlan: Codable, Equatable {
     let planID: UUID
     let petID: UUID?
+}
+
+struct DailyHeartCheck: Codable, Equatable {
+    let day: Date
+    let petID: UUID
+    let goalMinutes: Int
+}
+
+struct DailyHeartTracking: Codable, Equatable {
+    var nextDay: Date
+    var checks: [DailyHeartCheck] = []
 }
 
 struct TrainingTimer: Codable, Equatable {
