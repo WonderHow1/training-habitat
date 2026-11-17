@@ -7,9 +7,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("mp4", type=Path)
-portrait = parser.add_mutually_exclusive_group()
-portrait.add_argument("--portrait-timeline", type=Path)
-portrait.add_argument("--portrait-preview", action="store_true")
+parser.add_argument("--portrait-timeline", type=Path)
 args = parser.parse_args()
 ffprobe = os.environ.get("FFPROBE", "ffprobe")
 ffmpeg = os.environ.get("FFMPEG", "ffmpeg")
@@ -20,8 +18,6 @@ report = json.loads(subprocess.check_output([
 video, = (stream for stream in report["streams"] if stream["codec_type"] == "video")
 audio, = (stream for stream in report["streams"] if stream["codec_type"] == "audio")
 width, height, duration = 1920, 1080, 74
-if args.portrait_preview:
-    width, height, duration = 1080, 1920, 18
 if args.portrait_timeline:
     width, height = 1080, 1920
     shots = json.loads(args.portrait_timeline.read_text())["shots"]

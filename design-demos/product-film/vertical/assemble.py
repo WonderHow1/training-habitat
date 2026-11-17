@@ -134,14 +134,19 @@ def main():
         board(folder / (stem + ".png"), shot)
         touches(folder / (stem + ".ass"), shot)
         destination = folder / (stem + ".mp4")
-        src = f"[1:v]setpts=(PTS-STARTPTS)/{shot.get('speed', 1)},fps={FPS},"
+        # Normalize before trimming so a pause in the simulator's variable-rate
+        # frames does not shift the screen action relative to its touch cue.
+        seek = max(0, shot["start"] - 3)
+        offset = shot["start"] - seek
+        src = (f"[1:v]fps={FPS}:start_time=0,trim=start={offset:.6f},"
+               f"setpts=(PTS-STARTPTS)/{shot.get('speed', 1)},fps={FPS}:start_time=0,")
         crop = shot.get("crop")
         if crop:
             src += "crop=" + ":".join(map(str, crop)) + ","
         src += f"scale={SCREEN_WIDTH}:{SCREEN_HEIGHT}:flags=lanczos,setsar=1[screen];"
         video_filter = src + f"[0:v][screen]overlay={SCREEN_X}:{SCREEN_Y}:shortest=1,ass={stem}.ass"
         run(args.ffmpeg, "-loop", "1", "-framerate", FPS, "-i", stem + ".png",
-            "-ss", shot["start"], "-i", shot["file"], "-filter_complex", video_filter,
+            "-ss", seek, "-i", shot["file"], "-filter_complex", video_filter,
             "-t", shot["duration"], *encode, destination, cwd=folder)
         cut.append((destination, shot["duration"]))
         audio_cues.extend(elapsed + touch[0] for touch in shot.get("touches", []))
