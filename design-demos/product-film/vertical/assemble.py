@@ -11,6 +11,7 @@ import numpy as np
 from PIL import ImageDraw
 
 import title_cards as titles
+from onboarding_cards import CUES as ONBOARDING_CUES, DURATION as ONBOARDING_DURATION
 W, H, FPS = titles.WIDTH, titles.HEIGHT, titles.FPS
 SCREEN_WIDTH, SCREEN_HEIGHT = 672, 1462
 SCREEN_X, SCREEN_Y = (W - SCREEN_WIDTH) // 2, 295
@@ -149,6 +150,12 @@ def main():
     cut = [(folder / "opening.mp4", titles.OPENING), (folder / "pain.mp4", titles.PAIN)]
     audio_cues = [1.47, 4.37, 8.37]
     elapsed = titles.OPENING + titles.PAIN
+    onboarding = manifest.get("onboarding_seconds", 0)
+    if onboarding:
+        assert math.isclose(onboarding, ONBOARDING_DURATION)
+        cut.append((folder / "onboarding.mp4", onboarding))
+        audio_cues.extend(elapsed + cue for cue in ONBOARDING_CUES)
+        elapsed += onboarding
     encode = ["-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p"]
     for index, shot in enumerate(shots):
         assert math.isclose(round(shot["duration"] * FPS), shot["duration"] * FPS)
@@ -158,7 +165,7 @@ def main():
         render_board(args.ffmpeg, stage, shot, first)
         touches(folder / (stem + ".ass"), shot)
         destination = folder / (stem + ".mp4")
-        # Normalize before trimming so a pause in the simulator's variable-rate
+        # Normalize before trimming so a pause in the capture's variable-rate
         # frames does not shift the screen action relative to its touch cue.
         seek = max(0, shot["start"] - 3)
         offset = shot["start"] - seek

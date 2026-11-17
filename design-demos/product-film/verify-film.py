@@ -24,11 +24,16 @@ if args.portrait_timeline:
     fps = timeline.get("fps", 30)
     assert fps in (30, 60)
     shots = timeline["shots"]
-    duration = timeline.get("graphics_seconds", 18) + sum(shot["duration"] for shot in shots)
-    assert {shot["flow"] for shot in shots} == {"reschedule", "timer", "manual", "review"}
+    onboarding = timeline.get("onboarding_seconds", 0)
+    duration = timeline.get("graphics_seconds", 18) + onboarding + sum(shot["duration"] for shot in shots)
+    flows = {"reschedule", "timer", "manual", "review"}
+    if onboarding:
+        flows.add("habitat")
+        assert shots[0]["flow"] == "habitat" and shots[0]["duration"] >= 3
+    assert {shot["flow"] for shot in shots} == flows
     assert all(any(shot["touches"] for shot in shots if shot["flow"] == flow)
                for flow in ("reschedule", "timer", "manual"))
-    assert 35 <= duration <= 75
+    assert 35 <= duration <= (90 if onboarding else 75)
 frames = round(duration * fps)
 assert (video["codec_name"], video["width"], video["height"]) == ("h264", width, height)
 assert video["avg_frame_rate"] == f"{fps}/1" and int(video["nb_frames"]) == frames

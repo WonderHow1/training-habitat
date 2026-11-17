@@ -1,8 +1,25 @@
 {
   "fps": 60,
   "graphics_seconds": 16,
+  "onboarding_seconds": 22.4,
   "capture": "physical iPhone 15 via macOS iPhone Mirroring",
   "shots": [
+    {
+      "file": "iphone-native.mov",
+      "crop": [
+        632,
+        1370,
+        16,
+        76
+      ],
+      "start": 2.55,
+      "duration": 4.4,
+      "flow": "habitat",
+      "title": "和团团待一会儿。",
+      "caption": "在「宠物」页看经验、爱心，也能更换背景。",
+      "color": "#e2eede",
+      "touches": []
+    },
     {
       "file": "plan-live.mov",
       "crop": [

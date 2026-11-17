@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 import wave
@@ -7,6 +8,7 @@ from unittest.mock import patch
 import numpy as np
 
 import assemble
+import onboarding_cards as onboarding
 import title_cards
 from title_cards import FPS, HEIGHT, OUTRO, WIDTH, Titles
 
@@ -43,6 +45,31 @@ class VerticalFilmTests(unittest.TestCase):
                   assemble.SCREEN_X + assemble.SCREEN_WIDTH, assemble.SCREEN_Y + assemble.SCREEN_HEIGHT)
         self.assertNotEqual(first.tobytes(), last.tobytes())
         self.assertEqual(first.crop(screen).tobytes(), last.crop(screen).tobytes())
+
+    def test_onboarding_uses_all_app_choices_and_transitions(self):
+        assets = json.loads(title_cards.ART.read_text())
+        self.assertEqual(set(onboarding.SPECIES), set(assets["pets"]))
+        self.assertEqual(set(onboarding.HABITATS), set(assets["habitats"]))
+        cards = onboarding.OnboardingCards()
+        self.assertEqual(len({image.tobytes() for image in cards.thumbnails}), 5)
+        for scene, length in zip(onboarding.SCENES, onboarding.DURATIONS, strict=True):
+            frame = getattr(cards, scene)
+            first, last = frame(0), frame(length - 1 / FPS)
+            self.assertEqual(last.size, (WIDTH, HEIGHT))
+            self.assertNotEqual(first.tobytes(), last.tobytes())
+        first_cut = onboarding.DURATIONS[0]
+        self.assertEqual(cards.frame(first_cut).tobytes(),
+                         cards.goal(first_cut - 1 / FPS).tobytes())
+
+    def test_onboarding_explains_growth_and_daily_heart_settlement(self):
+        cards = onboarding.OnboardingCards()
+        with (patch("onboarding_cards.label", wraps=title_cards.label) as labels,
+              patch("onboarding_cards.appear", wraps=title_cards.appear) as captions):
+            cards.growth(3.8)
+            cards.hearts(5)
+        lines = [call.args[1] for call in labels.call_args_list + captions.call_args_list]
+        for fact in ("1 XP", "100 XP", "Lv.3 起", "3 颗心", "少 1 颗心", "首个完整日", "北京时间", "离世"):
+            self.assertTrue(any(fact in line for line in lines), fact)
 
     def test_touches_track_the_screen_and_end_at_cut(self):
         with tempfile.TemporaryDirectory() as directory:
