@@ -44,6 +44,11 @@ for name, (key, target) in targets.items():
     assert all(buildable.get('BlueprintIdentifier') == key for buildable in scheme.iter('BuildableReference'))
 entitlements = plistlib.loads((root / 'HealthCheck/HealthCheck.entitlements').read_bytes())
 assert entitlements == {'com.apple.developer.healthkit': True}
+today_header = (root / 'TrainingHabitat/RoutineViews.swift').read_text().split('private var header: some View {', 1)[1].split('private func habitatGesture', 1)[0]
+settings_button = today_header.split('Button { open(.settings) }', 1)[1]
+assert 'Image(systemName: "gearshape")' in settings_button
+assert '.accessibilityLabel("设置")' in settings_button
+print('PASS  Today settings gear and accessibility label')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}

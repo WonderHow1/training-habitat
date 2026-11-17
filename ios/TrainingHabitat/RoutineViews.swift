@@ -144,9 +144,9 @@ struct TodayView: View {
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
-            Button { open(.settings) } label: { Image(systemName: "bell").frame(width: 36, height: 36) }
+            Button { open(.settings) } label: { Image(systemName: "gearshape").frame(width: 36, height: 36) }
                 .buttonStyle(.glass)
-                .accessibilityLabel("提醒设置")
+                .accessibilityLabel("设置")
         }
         .padding(.vertical, 8)
     }
