@@ -176,10 +176,35 @@ struct MissedPlan: Codable, Equatable {
 struct TrainingTimer: Codable, Equatable {
     let planID: UUID
     let startedAt: Date
+    private(set) var pausedAt: Date? = nil
+    private var pausedSeconds: TimeInterval? = nil
+
+    init(planID: UUID, startedAt: Date) {
+        self.planID = planID
+        self.startedAt = startedAt
+    }
+
+    var sessionID: String { "\(planID.uuidString)/\(startedAt.timeIntervalSinceReferenceDate)" }
+    var isPaused: Bool { pausedAt != nil }
+    var displayStart: Date { startedAt.addingTimeInterval(pausedSeconds ?? 0) }
+
+    func seconds(at now: Date) -> Int {
+        Int(max(0, min(86_400, (pausedAt ?? now).timeIntervalSince(displayStart))))
+    }
+
+    mutating func pause(at now: Date) {
+        if pausedAt == nil { pausedAt = max(startedAt, now) }
+    }
+
+    mutating func resume(at now: Date) {
+        guard let pausedAt, now >= pausedAt else { return }
+        pausedSeconds = (pausedSeconds ?? 0) + now.timeIntervalSince(pausedAt)
+        self.pausedAt = nil
+    }
 }
 
 enum TrainingError: LocalizedError {
-    case name, minutes, schedule, workout, ineligible, pet, timer
+    case name, minutes, schedule, workout, ineligible, pet, timer, timerMinimum
 
     var errorDescription: String? {
         switch self {
@@ -190,6 +215,7 @@ enum TrainingError: LocalizedError {
         case .ineligible: "这条训练暂时无法关联到该计划。"
         case .pet: "当前无法领养或恢复这只宠物。"
         case .timer: "请先结束正在计时的训练。"
+        case .timerMinimum: "累计满 1 分钟才能记录。"
         }
     }
 }

@@ -5,6 +5,166 @@
 	};
 	"objectVersion" = "56";
 	"objects" = {
+		"F292A9CBE183000000000001" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "TimerLiveActivity.swift";
+			"sourceTree" = "<group>";
+		};
+		"F292A9CBE183000000000002" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "TimerActivity.swift";
+			"sourceTree" = "<group>";
+		};
+		"F292A9CBE183000000000003" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "TimerWidget.swift";
+			"sourceTree" = "<group>";
+		};
+		"F292A9CBE183000000000004" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"path" = "Info.plist";
+			"sourceTree" = "<group>";
+		};
+		"F292A9CBE183000000000005" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"F292A9CBE183000000000002",
+				"F292A9CBE183000000000003",
+				"F292A9CBE183000000000004",
+			);
+			"path" = "TimerActivity";
+			"sourceTree" = "<group>";
+		};
+		"F292A9CBE183000000000006" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.app-extension";
+			"includeInIndex" = "0";
+			"path" = "TimerActivity.appex";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"F292A9CBE183000000000007" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F292A9CBE183000000000001";
+		};
+		"F292A9CBE183000000000008" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F292A9CBE183000000000002";
+		};
+		"F292A9CBE183000000000009" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F292A9CBE183000000000002";
+		};
+		"F292A9CBE18300000000000A" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F292A9CBE183000000000003";
+		};
+		"F292A9CBE18300000000000B" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"F292A9CBE183000000000009",
+				"F292A9CBE18300000000000A",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"F292A9CBE18300000000000D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F292A9CBE183000000000006";
+			"settings" = {
+				"ATTRIBUTES" = (
+					"RemoveHeadersOnCopy",
+				);
+			};
+		};
+		"F292A9CBE18300000000000C" = {
+			"isa" = "PBXCopyFilesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"dstPath" = "";
+			"dstSubfolderSpec" = "13";
+			"files" = (
+				"F292A9CBE18300000000000D",
+			);
+			"name" = "Embed App Extensions";
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"F292A9CBE18300000000000F" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"APPLICATION_EXTENSION_API_ONLY" = "YES";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_FILE" = "TimerActivity/Info.plist";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "训练计时";
+				"MARKETING_VERSION" = "0.1.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(TRAINING_HABITAT_BUNDLE_ID).timer";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"SKIP_INSTALL" = "YES";
+			};
+		};
+		"F292A9CBE18300000000000E" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"APPLICATION_EXTENSION_API_ONLY" = "YES";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_FILE" = "TimerActivity/Info.plist";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "训练计时";
+				"MARKETING_VERSION" = "0.1.0";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(TRAINING_HABITAT_BUNDLE_ID).timer";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"SKIP_INSTALL" = "YES";
+			};
+		};
+		"F292A9CBE183000000000010" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"F292A9CBE18300000000000F",
+				"F292A9CBE18300000000000E",
+			);
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Debug";
+		};
+		"F292A9CBE183000000000011" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "TimerActivity";
+			"productName" = "TimerActivity";
+			"productType" = "com.apple.product-type.app-extension";
+			"productReference" = "F292A9CBE183000000000006";
+			"buildConfigurationList" = "F292A9CBE183000000000010";
+			"buildPhases" = (
+				"F292A9CBE18300000000000B",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+		};
+		"F292A9CBE183000000000012" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"proxyType" = "1";
+			"remoteGlobalIDString" = "F292A9CBE183000000000011";
+			"remoteInfo" = "TimerActivity";
+		};
+		"F292A9CBE183000000000013" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "F292A9CBE183000000000011";
+			"targetProxy" = "F292A9CBE183000000000012";
+		};
 		"0316698D7E5B10F9F174CB01" = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -113,6 +273,7 @@
 				"88D2CF8A1014E24B20BC41E5",
 				"992C8EF64F9FF8BF1FB3E823",
 				"245AE9A68650605F35413D4F",
+				"F292A9CBE183000000000001",
 			);
 			"path" = "TrainingHabitat";
 			"sourceTree" = "<group>";
@@ -157,6 +318,7 @@
 			"children" = (
 				"C8F824CAF120F2307269A84D",
 				"846B310011E534867B3CD752",
+				"F292A9CBE183000000000006",
 			);
 			"name" = "Products";
 			"sourceTree" = "<group>";
@@ -167,6 +329,7 @@
 				"EDC38883AFA4D0E044243263",
 				"92B8404C7609CC353489654B",
 				"C4103770D272234C9A005845",
+				"F292A9CBE183000000000005",
 				"FBDC4F23F93125BBEEAE800C",
 			);
 			"sourceTree" = "<group>";
@@ -235,6 +398,8 @@
 				"E365DE5E8E0EBDE0CFA3D1B3",
 				"82CC78E8FF16662749089392",
 				"4FD348C8EF2BFAF086AA3B58",
+				"F292A9CBE183000000000007",
+				"F292A9CBE183000000000008",
 			);
 			"runOnlyForDeploymentPostprocessing" = "0";
 		};
@@ -273,7 +438,9 @@
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
 				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
 				"MARKETING_VERSION" = "0.1.0";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "dev.fahran.traininghabitat.personal";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(TRAINING_HABITAT_BUNDLE_ID)";
+				"INFOPLIST_KEY_NSSupportsLiveActivities" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) TRAINING_APP";
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"TARGETED_DEVICE_FAMILY" = "1";
 				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
@@ -293,7 +460,9 @@
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
 				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
 				"MARKETING_VERSION" = "0.1.0";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "dev.fahran.traininghabitat.personal";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(TRAINING_HABITAT_BUNDLE_ID)";
+				"INFOPLIST_KEY_NSSupportsLiveActivities" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) TRAINING_APP";
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"TARGETED_DEVICE_FAMILY" = "1";
 				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
@@ -318,10 +487,12 @@
 				"4964704A28137F6F0C42C99E",
 				"0C4184968A29F923CF3BFB0A",
 				"BAB0649E00871132DA7BBE8B",
+				"F292A9CBE18300000000000C",
 			);
 			"buildRules" = (
 			);
 			"dependencies" = (
+				"F292A9CBE183000000000013",
 			);
 			"name" = "TrainingHabitat";
 			"productName" = "TrainingHabitat";
@@ -428,6 +599,7 @@
 				"CLANG_ENABLE_MODULES" = "YES";
 				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
 				"SDKROOT" = "iphoneos";
+				"TRAINING_HABITAT_BUNDLE_ID" = "dev.fahran.traininghabitat.personal";
 				"SWIFT_VERSION" = "6.0";
 				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
 				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
@@ -441,6 +613,7 @@
 				"CLANG_ENABLE_MODULES" = "YES";
 				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
 				"SDKROOT" = "iphoneos";
+				"TRAINING_HABITAT_BUNDLE_ID" = "dev.fahran.traininghabitat.personal";
 				"SWIFT_VERSION" = "6.0";
 				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
 				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
@@ -491,6 +664,7 @@
 			"targets" = (
 				"3B37698485DFAC16F7BFCC6C",
 				"4CF6B11BEDC9BD7031F33394",
+				"F292A9CBE183000000000011",
 			);
 		};
 	};

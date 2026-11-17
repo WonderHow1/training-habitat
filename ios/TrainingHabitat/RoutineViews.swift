@@ -25,6 +25,7 @@ struct TodayView: View {
     let model: AppModel
     @Binding var expanded: Bool
     let open: (SheetRoute) -> Void
+    let openTimer: (TrainingPlan) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var isDragging = false
     @State private var drag = HabitatZoomDrag()
@@ -34,7 +35,6 @@ struct TodayView: View {
     @State private var cardFrame: CGRect = .zero
     @State private var transitionSource: CGRect?
     @State private var recordOptions: UUID?
-    @State private var timerPlan: TrainingPlan?
 
     private var todayPlans: [TrainingPlan] {
         model.state.plans.filter { $0.day == model.today }
@@ -71,19 +71,11 @@ struct TodayView: View {
             if dragProgress != nil { setExpanded(expanded) }
             resetDrag()
         }
-        .sheet(item: $timerPlan) { plan in
-            NavigationStack { TimerView(model: model, plan: plan) }
-        }
     }
 
     private var dailyList: some View {
         List {
             header.listRowSeparator(.hidden)
-            if let timer = model.state.timer,
-               let plan = model.state.plans.first(where: { $0.id == timer.planID }) {
-                Button("继续\(plan.title)计时", systemImage: "timer") { timerPlan = plan }
-                    .listRowSeparator(.hidden)
-            }
             if let pet = model.state.displayedPet {
                 Button {
                     transitionSource = cardFrame
@@ -123,6 +115,7 @@ struct TodayView: View {
                     .background(.quaternary.opacity(0.53), in: .rect(cornerRadius: 18))
                 }
                 .buttonStyle(.plain).listRowSeparator(.hidden)
+                .planRowActions(model: model, plan: plan, open: open)
             }
         }
         .listStyle(.plain)
@@ -193,7 +186,7 @@ struct TodayView: View {
                     .buttonStyle(.glass).accessibilityLabel("直接记录")
             } else {
                 Button(model.state.timer?.planID == plan.id ? "计时中" : "记录") {
-                    if model.state.timer?.planID == plan.id { timerPlan = plan }
+                    if model.state.timer?.planID == plan.id { openTimer(plan) }
                     else { withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { recordOptions = plan.id } }
                 }
                 .buttonStyle(.glass).font(.subheadline.weight(.semibold))
@@ -213,7 +206,10 @@ struct TodayView: View {
     private func startTimer(_ plan: TrainingPlan) {
         if model.state.timer?.planID == plan.id || model.change({ state, now in
             try state.startTimer(for: plan.id, at: now)
-        }) { timerPlan = plan }
+        }) {
+            model.syncTimerActivity(allowStart: true)
+            openTimer(plan)
+        }
     }
 }
 
@@ -323,19 +319,23 @@ struct PlanLabel: View {
 
 extension View {
     func planRowActions(model: AppModel, plan: TrainingPlan, open: @escaping (SheetRoute) -> Void) -> some View {
+        trainingRowActions(edit: { open(.editPlan(plan)) }) {
+            model.change { state, _ in state.deletePlan(plan.id) }
+        }
+    }
+
+    func trainingRowActions(edit: @escaping () -> Void, delete: @escaping () -> Void) -> some View {
+        self
         #if os(iOS)
-        swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) { model.change { state, _ in state.deletePlan(plan.id) } } label: {
-                Label("删除", systemImage: "trash")
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button("删除", systemImage: "trash", role: .destructive, action: delete)
+                Button("编辑", systemImage: "pencil", action: edit).tint(.gray)
             }
-            Button { open(.editPlan(plan)) } label: { Label("编辑", systemImage: "pencil") }.tint(.gray)
-        }
-        #else
-        contextMenu {
-            Button("编辑") { open(.editPlan(plan)) }
-            Button("删除", role: .destructive) { model.change { state, _ in state.deletePlan(plan.id) } }
-        }
         #endif
+            .contextMenu {
+                Button("编辑", systemImage: "pencil", action: edit)
+                Button("删除", systemImage: "trash", role: .destructive, action: delete)
+            }
     }
 }
 
@@ -510,14 +510,9 @@ struct ReviewView: View {
                             .padding(.vertical, 6)
                         }
                         .buttonStyle(.plain).listRowSeparator(.hidden)
-                        #if os(iOS)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                model.change { state, now in state.deleteWorkout(workout.id, at: now) }
-                            } label: { Label("删除", systemImage: "trash") }
-                            Button { open(.manual(nil, workout)) } label: { Label("编辑", systemImage: "pencil") }.tint(.gray)
+                        .trainingRowActions(edit: { open(.manual(nil, workout)) }) {
+                            model.change { state, now in state.deleteWorkout(workout.id, at: now) }
                         }
-                        #endif
                     }
                 }
             }

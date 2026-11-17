@@ -172,6 +172,19 @@ struct TrainingState: Codable, Equatable {
 
     mutating func clearTimer() { timer = nil }
 
+    mutating func pauseTimer(at now: Date) { timer?.pause(at: now) }
+
+    mutating func resumeTimer(at now: Date) { timer?.resume(at: now) }
+
+    mutating func finishTimer(at now: Date) throws {
+        guard let timer, let plan = plans.first(where: { $0.id == timer.planID }) else { return }
+        let seconds = timer.seconds(at: now)
+        guard seconds >= 60 else { throw TrainingError.timerMinimum }
+        let record = Workout(title: plan.title, start: timer.startedAt, end: timer.pausedAt ?? now, seconds: seconds)
+        try saveWorkout(record, for: plan.id, at: now)
+        clearTimer()
+    }
+
     mutating func reconcile(at now: Date, revisedAt: Date? = nil) {
         let existing = Set(misses.map(\.planID))
         for plan in plans.sorted(by: { $0.graceEnds < $1.graceEnds })

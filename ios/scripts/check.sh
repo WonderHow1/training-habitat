@@ -22,7 +22,7 @@ root, project = map(Path, sys.argv[1:])
 project = plistlib.loads(project.read_bytes())
 objects = project['objects']
 targets = {objects[key]['name']: (key, objects[key]) for key in objects[project['rootObject']]['targets']}
-assert set(targets) == {'TrainingHabitat', 'HealthCheck'}
+assert set(targets) == {'TrainingHabitat', 'HealthCheck', 'TimerActivity'}
 for name, (key, target) in targets.items():
     configs = objects[target['buildConfigurationList']]['buildConfigurations']
     for config in configs:
@@ -31,6 +31,7 @@ for name, (key, target) in targets.items():
         assert 'DEVELOPMENT_TEAM' not in settings
         assert (settings.get('CODE_SIGN_ENTITLEMENTS') == 'HealthCheck/HealthCheck.entitlements') == (name == 'HealthCheck')
         assert ('INFOPLIST_KEY_NSHealthShareUsageDescription' in settings) == (name == 'HealthCheck')
+        assert (settings.get('INFOPLIST_KEY_NSSupportsLiveActivities') == 'YES') == (name == 'TrainingHabitat')
     entries = {}
     for phase in target['buildPhases']:
         build_phase = objects[phase]
@@ -38,10 +39,22 @@ for name, (key, target) in targets.items():
     expected_sources = list((root / name).glob('*.swift'))
     if name == 'TrainingHabitat':
         expected_sources += list((root / 'TrainingCore').glob('*.swift'))
+        expected_sources.append(root / 'TimerActivity/TimerActivity.swift')
         assert entries['PBXResourcesBuildPhase'] == {'PixelArtwork.json', 'Assets.xcassets'}
+        assert entries['PBXCopyFilesBuildPhase'] == {'TimerActivity.appex'}
+        assert len(target['dependencies']) == 1
+        assert objects[target['dependencies'][0]]['target'] == targets['TimerActivity'][0]
     assert entries['PBXSourcesBuildPhase'] == {source.name for source in expected_sources}
-    scheme = ET.parse(root / 'TrainingHabitat.xcodeproj/xcshareddata/xcschemes' / f'{name}.xcscheme')
-    assert all(buildable.get('BlueprintIdentifier') == key for buildable in scheme.iter('BuildableReference'))
+    if name != 'TimerActivity':
+        scheme = ET.parse(root / 'TrainingHabitat.xcodeproj/xcshareddata/xcschemes' / f'{name}.xcscheme')
+        assert all(buildable.get('BlueprintIdentifier') == key for buildable in scheme.iter('BuildableReference'))
+widget_info = plistlib.loads((root / 'TimerActivity/Info.plist').read_bytes())
+assert widget_info['NSExtension']['NSExtensionPointIdentifier'] == 'com.apple.widgetkit-extension'
+timer_widget = (root / 'TimerActivity/TimerWidget.swift').read_text()
+assert 'DynamicIslandExpandedRegion(.bottom)' in timer_widget
+assert '累计满 1 分钟才能记录' not in timer_widget
+editor_source = (root / 'TrainingHabitat/Editors.swift').read_text()
+assert '累计满 1 分钟才能记录' in editor_source and '.disabled(elapsed < 60)' in editor_source
 entitlements = plistlib.loads((root / 'HealthCheck/HealthCheck.entitlements').read_bytes())
 assert entitlements == {'com.apple.developer.healthkit': True}
 routine_views = (root / 'TrainingHabitat/RoutineViews.swift').read_text()
@@ -63,6 +76,12 @@ assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in plan_editor and 'p
 assert '.disabled(hours == 0 && minutes == 0)' in plan_editor
 assert routine_views.count('AddPlanButton { open(.addPlan(') == 2
 print('PASS  Empty new plan duration, wheel confirmation and shared add plan button')
+row_actions = routine_views.split('func trainingRowActions(', 1)[1].split('private struct AddPlanButton', 1)[0]
+assert '.swipeActions(' in row_actions and '.contextMenu {' in row_actions
+assert row_actions.count('action: edit') == row_actions.count('action: delete') == 2
+assert routine_views.count('.planRowActions(') == 3
+assert '.trainingRowActions(edit: { open(.manual(nil, workout)) })' in routine_views
+print('PASS  Today, Plan and Review share long-press and swipe actions')
 workout_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[1].split('struct PlanDetails', 1)[0]
 assert 'case start = "开始时间"' in workout_editor and 'case end = "结束时间"' in workout_editor
 assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in workout_editor and '.pickerStyle(.wheel)' in workout_editor

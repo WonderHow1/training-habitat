@@ -5,11 +5,13 @@
 ## 用免费 Apple 账户安装
 
 1. 安装完整的 Xcode 26 或更新版本，并完成首次启动。直接用真机时，安装 iOS 开发所需的组件即可。 [Apple Xcode 下载](https://apps.apple.com/cn/app/xcode/id497799835) · [平台组件说明](https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components)
-2. 打开 `TrainingHabitat.xcodeproj`。在 Xcode 的 `Settings → Accounts` 加入自己的 Apple 账户，选中 `TrainingHabitat` 目标，在 `Signing & Capabilities` 中启用自动签名，并选择自己的 `Personal Team`。
+2. 打开 `TrainingHabitat.xcodeproj`。在 Xcode 的 `Settings → Accounts` 加入自己的 Apple 账户。为 `TrainingHabitat` 和随包安装的 `TimerActivity` 目标启用自动签名，并在 `Signing & Capabilities` 选择同一个 `Personal Team`。
 3. 用线连接并解锁 iPhone，按提示信任 Mac。开启 iPhone 的「设置 → 隐私与安全性 → 开发者模式」，按系统提示完成重启和确认。 [Apple 开发者模式说明](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
 4. 选择 `TrainingHabitat` scheme 和这台 iPhone，点 Xcode 的运行按钮。首次打开后设定目标、领养、选背景，再到「计划」新增一项训练做验收。
 
 免费个人签名的安装凭证 7 天有效，期满后使用相同 Team 和 Bundle Identifier 从 Xcode 再运行。保留手机上的 App 以便更新安装沿用原容器。 [Apple 个人团队限制](https://developer.apple.com/help/account/basics/about-your-developer-account)
+
+训练计时使用本机实时活动。支持灵动岛的 iPhone 可以在 App 进入后台后查看计时，长按灵动岛展开取消、暂停或继续、完成操作。系统关闭实时活动时，仍可在 App 内查看最小化计时条。 [Apple 实时活动说明](https://developer.apple.com/documentation/ActivityKit/displaying-live-data-with-live-activities)
 
 ## Apple 健康真机自检
 

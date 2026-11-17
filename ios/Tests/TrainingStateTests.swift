@@ -209,6 +209,47 @@ private func workoutWheelsDeriveDurationAndPreserveExistingTiming() throws {
     try check(edited.seconds == 1_500 && edited.id == imported.id)
 }
 
+private func timerRetainsPausesAndRecordsOnlyActiveTime() throws {
+    var state = try adopted()
+    let start = time(0, 9)
+    func offset(_ seconds: TimeInterval) -> Date { start.addingTimeInterval(seconds) }
+    try state.savePlan(title: "跑步", day: day, time: nil, minutes: 1, at: time(0))
+    let plan = try require(state.plans.first)
+    try state.startTimer(for: plan.id, at: start)
+    let id = try require(state.timer?.sessionID)
+
+    state.pauseTimer(at: offset(25))
+    state.pauseTimer(at: offset(30))
+    let encoded = try JSONEncoder().encode(state)
+    state = try JSONDecoder().decode(TrainingState.self, from: encoded)
+    try check(state.timer?.sessionID == id && state.timer?.isPaused == true)
+    try check(state.timer?.seconds(at: offset(300)) == 25)
+    try checkThrows { try state.finishTimer(at: offset(300)) }
+    try check(state.workouts.isEmpty && state.timer != nil)
+
+    state.resumeTimer(at: offset(300))
+    state.resumeTimer(at: offset(310))
+    state.pauseTimer(at: offset(335))
+    try check(state.timer?.seconds(at: offset(400)) == 60)
+    try state.finishTimer(at: offset(400))
+    let entry = try require(state.workouts.first)
+    try check(entry.start == start && entry.end == offset(335) && entry.seconds == 60)
+    try check(entry.planID == plan.id && state.timer == nil)
+    try state.finishTimer(at: offset(401))
+    try check(state.workouts.count == 1)
+}
+
+private func timerOpensSnapshotsSavedBeforePausingWasAvailable() throws {
+    struct LegacyTimer: Codable {
+        let planID: UUID
+        let startedAt: Date
+    }
+    let legacy = LegacyTimer(planID: UUID(), startedAt: time(0))
+    let decoded = try JSONDecoder().decode(TrainingTimer.self, from: JSONEncoder().encode(legacy))
+    try check(decoded.planID == legacy.planID && !decoded.isPaused)
+    try check(decoded.seconds(at: time(0, 0, 2)) == 120)
+}
+
 private struct Failure: Error, CustomStringConvertible {
     let description: String
 }
@@ -240,7 +281,9 @@ struct TrainingChecks {
             ("walkable terrain", terrainRejectsWallsAndShoreAndKeepsRouteInView),
             ("habitat zoom follows the card and screen edges", habitatZoomMovesBetweenCardAndFullViewport),
             ("habitat pull respects scroll, axis and reversal", habitatPullConsumesScrollBeforeZoomAndReverses),
-            ("workout time wheels derive and preserve duration", workoutWheelsDeriveDurationAndPreserveExistingTiming)
+            ("workout time wheels derive and preserve duration", workoutWheelsDeriveDurationAndPreserveExistingTiming),
+            ("timer persists pauses and records active time exactly once", timerRetainsPausesAndRecordsOnlyActiveTime),
+            ("existing timer snapshots reopen", timerOpensSnapshotsSavedBeforePausingWasAvailable)
         ]
         var failures: [String] = []
         for (name, run) in tests {

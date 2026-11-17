@@ -11,12 +11,14 @@ struct TrainingHabitatApp: App {
 @MainActor
 @Observable
 final class AppModel {
+    static let shared = AppModel()
     private(set) var state = TrainingState()
     private(set) var now = Date()
     private(set) var loadError: String?
     var error: String?
     private var store: LocalStore?
     private var notificationTask: Task<Void, Never>?
+    private var activityTask: Task<Void, Never>?
 
     init() { load() }
 
@@ -46,8 +48,10 @@ final class AppModel {
             try update(&next, currentTime)
             if next != state {
                 try store.save(next)
+                let timerChanged = next.timer != state.timer || timerTitle(in: next) != timerTitle(in: state)
                 state = next
                 updateNotifications()
+                if timerChanged { syncTimerActivity() }
             }
             return true
         } catch {
@@ -57,6 +61,45 @@ final class AppModel {
     }
 
     func refresh() { change { _, _ in } }
+
+    var timerPlan: TrainingPlan? {
+        guard let timer = state.timer else { return nil }
+        return state.plans.first { $0.id == timer.planID }
+    }
+
+    func timerAction(_ action: WorkoutTimerAction, sessionID: String) {
+        guard state.timer?.sessionID == sessionID else { return }
+        change { next, now in
+            switch action {
+            case .pause: next.pauseTimer(at: now)
+            case .resume: next.resumeTimer(at: now)
+            case .cancel: next.clearTimer()
+            case .finish: try next.finishTimer(at: now)
+            }
+        }
+    }
+
+    func performLiveTimerAction(_ action: WorkoutTimerAction, sessionID: String) async {
+        guard let timer = state.timer, timer.sessionID == sessionID else { return }
+        if action == .finish, timer.seconds(at: Date()) < 60 { return }
+        timerAction(action, sessionID: sessionID)
+        await activityTask?.value
+    }
+
+    func syncTimerActivity(allowStart: Bool = false) {
+        #if os(iOS)
+        let previous = activityTask
+        activityTask = Task {
+            await previous?.value
+            await TimerLiveActivity.sync(timer: state.timer, title: timerPlan?.title, allowStart: allowStart)
+        }
+        #endif
+    }
+
+    private func timerTitle(in state: TrainingState) -> String? {
+        guard let timer = state.timer else { return nil }
+        return state.plans.first { $0.id == timer.planID }?.title
+    }
 
     func stage(of pet: Pet) -> Int { min(3, state.experience(of: pet.id, at: now) / 100 + 1) }
 
@@ -157,10 +200,11 @@ private enum AppTab: Hashable { case today, plan, review, pet }
 
 struct AppRoot: View {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var model = AppModel()
+    @State private var model = AppModel.shared
     @State private var selection: AppTab = .today
     @State private var habitatVisible = true
     @State private var sheet: SheetRoute?
+    @State private var timerPlan: TrainingPlan?
 
     var body: some View {
         Group {
@@ -204,9 +248,16 @@ struct AppRoot: View {
                 }
             }
         }
+        .sheet(item: $timerPlan) { plan in
+            NavigationStack { TimerView(model: model, plan: plan) }
+        }
+        .onChange(of: model.state.timer?.sessionID) { _, sessionID in
+            if sessionID == nil { timerPlan = nil }
+        }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             model.refresh()
+            model.syncTimerActivity(allowStart: true)
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(20)) } catch { break }
                 model.refresh()
@@ -217,18 +268,28 @@ struct AppRoot: View {
     private var mainTabs: some View {
         TabView(selection: $selection) {
             Tab("今天", systemImage: "house", value: .today) {
-                TodayView(model: model, expanded: $habitatVisible) { sheet = $0 }
+                TodayView(model: model, expanded: $habitatVisible, open: { sheet = $0 }, openTimer: { timerPlan = $0 })
+                    .safeAreaInset(edge: .bottom, spacing: 0) { timerPreview }
                     .hideTabBar(habitatVisible)
             }
             Tab("计划", systemImage: "calendar", value: .plan) {
                 NavigationStack { PlansView(model: model) { sheet = $0 } }
+                    .safeAreaInset(edge: .bottom, spacing: 0) { timerPreview }
             }
             Tab("回顾", systemImage: "clock.arrow.circlepath", value: .review) {
                 NavigationStack { ReviewView(model: model) { sheet = $0 } }
+                    .safeAreaInset(edge: .bottom, spacing: 0) { timerPreview }
             }
             Tab("宠物", systemImage: "pawprint", value: .pet) {
                 PetPage(model: model, active: selection == .pet) { sheet = $0 }
+                    .safeAreaInset(edge: .bottom, spacing: 0) { timerPreview }
             }
+        }
+    }
+
+    @ViewBuilder private var timerPreview: some View {
+        if let timer = model.state.timer, let plan = model.timerPlan {
+            TimerPreview(timer: timer, title: plan.title) { timerPlan = plan }
         }
     }
 }

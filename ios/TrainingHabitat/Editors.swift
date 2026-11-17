@@ -367,37 +367,87 @@ struct TimerView: View {
     let model: AppModel
     let plan: TrainingPlan
     @Environment(\.dismiss) private var dismiss
-    @State private var draft: Workout?
 
     var body: some View {
         VStack(spacing: 20) {
             Text(plan.title).font(.title2.bold())
             if let timer = model.state.timer, timer.planID == plan.id {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let elapsed = max(0, Int(context.date.timeIntervalSince(timer.startedAt)))
+                    let elapsed = timer.seconds(at: context.date)
                     Text(Duration.seconds(elapsed).formatted(.time(pattern: .minuteSecond)))
                         .font(.system(size: 60, weight: .bold, design: .monospaced))
-                    Button("结束并记录") {
-                        let end = Date()
-                        let seconds = min(86_400, Int(end.timeIntervalSince(timer.startedAt)))
-                        guard seconds >= 60 else { return }
-                        draft = Workout(title: plan.title, start: timer.startedAt, end: end, seconds: seconds)
-                    }
-                    .buttonStyle(.glassProminent).disabled(elapsed < 60)
-                }
-                Button("取消计时", role: .destructive) {
-                    if model.change({ state, _ in state.clearTimer() }) { dismiss() }
+                    timerControls(timer, elapsed: elapsed)
                 }
             }
         }
         .padding()
         .navigationTitle("训练计时")
         .compactNavigationTitle()
-        .toolbar { Button("稍后回来") { dismiss() } }
-        .sheet(item: $draft, onDismiss: {
-            if model.state.timer == nil { dismiss() }
-        }) { workout in
-            NavigationStack { WorkoutEditor(model: model, plan: plan, existing: workout) }
+        .toolbar { Button("最小化") { dismiss() } }
+    }
+
+    private func timerControls(_ timer: TrainingTimer, elapsed: Int) -> some View {
+        VStack(spacing: 14) {
+            Button {
+                model.timerAction(timer.isPaused ? .resume : .pause, sessionID: timer.sessionID)
+            } label: {
+                controlLabel(timer.isPaused ? "继续" : "暂停", icon: timer.isPaused ? "play.fill" : "pause.fill")
+            }
+            .buttonStyle(.glass)
+
+            VStack(spacing: 7) {
+                Button {
+                    model.timerAction(.finish, sessionID: timer.sessionID)
+                } label: {
+                    controlLabel("结束并记录", icon: "checkmark")
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(elapsed < 60)
+                if elapsed < 60 {
+                    Text("累计满 1 分钟才能记录").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+
+            Button(role: .destructive) {
+                model.timerAction(.cancel, sessionID: timer.sessionID)
+            } label: {
+                controlLabel("取消计时", icon: "xmark").foregroundStyle(.red)
+            }
+            .buttonStyle(.glass)
         }
+        .frame(maxWidth: 320)
+    }
+
+    private func controlLabel(_ title: String, icon: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 48)
+    }
+}
+
+struct TimerPreview: View {
+    let timer: TrainingTimer
+    let title: String
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack(spacing: 10) {
+                Image(systemName: timer.isPaused ? "pause.fill" : "timer")
+                Text(title).lineLimit(1)
+                if timer.isPaused { Text("已暂停").font(.caption).foregroundStyle(.secondary) }
+                Spacer(minLength: 8)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text(Duration.seconds(timer.seconds(at: context.date)).formatted(.time(pattern: .minuteSecond)))
+                        .monospacedDigit()
+                }
+                Image(systemName: "chevron.up").font(.caption.weight(.semibold))
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 12).padding(.vertical, 6)
+        }
+        .buttonStyle(.glass)
+        .accessibilityHint("打开训练计时")
+        .padding(.horizontal, 16).padding(.vertical, 6)
     }
 }
