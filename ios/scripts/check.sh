@@ -159,13 +159,25 @@ growth_demo = onboarding.split('private struct OnboardingGrowthDemo:', 1)[1].spl
 assert 'PetPortrait(species: species, stage: PetExperience.stage(for: level)' in growth_demo
 assert 'ProgressView(value: Double(points), total: Double(PetExperience.pointsPerLevel))' in growth_demo
 assert 'speciesIndex = (speciesIndex + 1) % examples.count' in growth_demo
+assert growth_demo.index('ProgressView(') < growth_demo.index('每记录满 1 分钟训练')
 hearts_demo = onboarding.split('private struct OnboardingHeartsDemo:', 1)[1].split('struct SpeciesPicker:', 1)[0]
 assert '当天训练时长没达到每日目标，就会失去一颗心' in hearts_demo
 assert 'stride(from: Pet.maximumHearts - 1, through: 0, by: -1)' in hearts_demo
 assert '示例 · 未达标第' in hearts_demo and '宠物已离世' in hearts_demo
+assert hearts_demo.index('PetPortrait(') < hearts_demo.index('PetHeartRow(') < hearts_demo.index('宠物领养时有')
 for demo in (growth_demo, hearts_demo):
     assert 'guard !reduceMotion, scenePhase == .active else' in demo
 print('PASS  Onboarding explains live XP thresholds and animates example growth and heart loss')
+pet_views = (root / 'TrainingHabitat/PetViews.swift').read_text()
+assert 'PetHeartRow(remaining: hp)' in pet_views
+assert pet_views.count('PixelHeart(isFilled: false)') == 2
+assert 'systemName: "heart' not in pet_views and 'systemImage: "heart' not in pet_views
+assert 'PetHeartRow(remaining: hearts, width: 22' in hearts_demo
+assert 'PixelHeartShape()' in portrait_view and 'FillStyle(antialiased: false)' in portrait_view
+pet_hint = onboarding.split('private var petHint:', 1)[1].split('private func dismissPetHint', 1)[0]
+assert 'PixelSpeechBubble()' in pet_hint and 'FillStyle(antialiased: false)' in pet_hint
+assert '.allowsHitTesting(false)' in pet_hint
+print('PASS  Onboarding and pet screens share pixel hearts, and the hint uses a pixel bubble')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}

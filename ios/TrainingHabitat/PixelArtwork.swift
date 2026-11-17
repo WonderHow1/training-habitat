@@ -104,6 +104,55 @@ struct PixelImage: View {
     }
 }
 
+struct PixelHeart: View {
+    let isFilled: Bool
+    var width: CGFloat = 14
+
+    var body: some View {
+        PixelHeartShape()
+            .fill(isFilled ? Color(red: 0.68, green: 0.22, blue: 0.36) : Color.gray.opacity(0.68),
+                  style: FillStyle(antialiased: false))
+            .frame(width: width, height: width * 10 / 11)
+            .accessibilityHidden(true)
+    }
+}
+
+struct PetHeartRow: View {
+    let remaining: Int
+    var width: CGFloat = 14
+    var spacing: CGFloat = 4
+
+    var body: some View {
+        HStack(spacing: spacing) {
+            ForEach(0..<Pet.maximumHearts) { index in
+                PixelHeart(isFilled: index < remaining, width: width)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("血量 \(remaining) / \(Pet.maximumHearts)")
+    }
+}
+
+private struct PixelHeartShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let pixelWidth = rect.width / 11
+        let pixelHeight = rect.height / 10
+        func pixels(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat = 1) -> CGRect {
+            CGRect(x: rect.minX + x * pixelWidth, y: rect.minY + y * pixelHeight,
+                   width: width * pixelWidth, height: height * pixelHeight)
+        }
+        var path = Path()
+        path.addRect(pixels(1, 0, 3))
+        path.addRect(pixels(7, 0, 3))
+        path.addRect(pixels(0, 1, 11, 4))
+        for row in 5..<10 {
+            let inset = CGFloat(row - 4)
+            path.addRect(pixels(inset, CGFloat(row), 11 - 2 * inset))
+        }
+        return path
+    }
+}
+
 struct PetPortrait: View {
     private enum Playback: Equatable {
         case reaction(UUID)

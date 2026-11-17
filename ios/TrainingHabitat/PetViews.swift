@@ -17,15 +17,7 @@ struct PetStats: View {
                 Text(hp > 0 ? PetExperience.stageName(for: xp.level) : "已离世")
                     .font(.subheadline.weight(.semibold))
             }
-            HStack(spacing: 4) {
-                ForEach(0..<Pet.maximumHearts) { index in
-                    Image(systemName: "heart.fill")
-                        .foregroundStyle(index < hp ? Color(red: 0.68, green: 0.22, blue: 0.36) : .gray.opacity(0.63))
-                }
-            }
-            .font(.caption)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("血量 \(hp) / \(Pet.maximumHearts)")
+            PetHeartRow(remaining: hp)
             HStack(spacing: 10) {
                 Text("Lv.\(xp.level)")
                 ProgressView(value: Double(xp.levelPoints), total: Double(PetExperience.pointsPerLevel))
@@ -139,12 +131,19 @@ struct PetPage: View {
             }
             if let dailyLoss = model.state.dailyHeartLosses(for: pet.id).last,
                losses.first.map({ $0.day <= dailyLoss.day }) ?? true {
-                Label("血量 −1 · \(DisplayDate.day(dailyLoss.day))未达 \(dailyLoss.goalMinutes) 分钟目标",
-                      systemImage: "heart.slash")
-                    .font(.footnote)
+                Label {
+                    Text("血量 −1 · \(DisplayDate.day(dailyLoss.day))未达 \(dailyLoss.goalMinutes) 分钟目标")
+                } icon: {
+                    PixelHeart(isFilled: false)
+                }
+                .font(.footnote)
             } else if let missed = losses.first {
                 Button { open(.plan(missed)) } label: {
-                    Label("血量 −1 · " + missed.title, systemImage: "heart.slash").lineLimit(1)
+                    Label {
+                        Text("血量 −1 · " + missed.title).lineLimit(1)
+                    } icon: {
+                        PixelHeart(isFilled: false)
+                    }
                 }
                 .buttonStyle(.glass).font(.footnote)
             }

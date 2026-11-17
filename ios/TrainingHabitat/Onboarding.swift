@@ -155,20 +155,16 @@ struct Onboarding: View {
     }
 
     private var petHint: some View {
-        VStack(alignment: .leading, spacing: -2) {
-            Text("点我试试！")
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(.white.opacity(0.94), in: .rect(cornerRadius: 12))
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 9))
-                .rotationEffect(.degrees(180))
-                .foregroundStyle(.white.opacity(0.94))
-                .padding(.leading, 14)
-                .accessibilityHidden(true)
-        }
-        .allowsHitTesting(false)
+        Text("点我试试！")
+            .font(.footnote.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .padding(.bottom, 9)
+            .background {
+                PixelSpeechBubble()
+                    .fill(.white.opacity(0.94), style: FillStyle(antialiased: false))
+            }
+            .allowsHitTesting(false)
     }
 
     private func dismissPetHint() {
@@ -253,6 +249,37 @@ struct Onboarding: View {
     }
 }
 
+private struct PixelSpeechBubble: Shape {
+    func path(in rect: CGRect) -> Path {
+        let pixel: CGFloat = 3
+        let left = rect.minX
+        let right = rect.maxX
+        let top = rect.minY
+        let bottom = rect.maxY - 3 * pixel
+        let tail = left + 5 * pixel
+        let points: [(CGFloat, CGFloat)] = [
+            (left + 2 * pixel, top), (right - 2 * pixel, top),
+            (right - 2 * pixel, top + pixel), (right - pixel, top + pixel),
+            (right - pixel, top + 2 * pixel), (right, top + 2 * pixel),
+            (right, bottom - 2 * pixel), (right - pixel, bottom - 2 * pixel),
+            (right - pixel, bottom - pixel), (right - 2 * pixel, bottom - pixel),
+            (right - 2 * pixel, bottom), (tail + 4 * pixel, bottom),
+            (tail + 4 * pixel, bottom + pixel), (tail + 3 * pixel, bottom + pixel),
+            (tail + 3 * pixel, bottom + 2 * pixel), (tail + 2 * pixel, bottom + 2 * pixel),
+            (tail + 2 * pixel, rect.maxY), (tail, rect.maxY), (tail, bottom),
+            (left + 2 * pixel, bottom), (left + 2 * pixel, bottom - pixel),
+            (left + pixel, bottom - pixel), (left + pixel, bottom - 2 * pixel),
+            (left, bottom - 2 * pixel), (left, top + 2 * pixel),
+            (left + pixel, top + 2 * pixel), (left + pixel, top + pixel),
+            (left + 2 * pixel, top + pixel)
+        ]
+        var path = Path()
+        path.addLines(points.map { CGPoint(x: $0.0, y: $0.1) })
+        path.closeSubpath()
+        return path
+    }
+}
+
 private struct OnboardingGrowthDemo: View {
     let startingSpecies: Species
     let previewSize: CGFloat
@@ -266,16 +293,7 @@ private struct OnboardingGrowthDemo: View {
 
     var body: some View {
         let species = examples[speciesIndex]
-        VStack(spacing: 14) {
-            Text("每记录满 1 分钟训练，获得 1 XP。每积满 \(PetExperience.pointsPerLevel) XP，宠物升一级。")
-                .font(.body)
-            HStack {
-                Text("Lv.1 幼年")
-                Text("Lv.2 青年")
-                Text("Lv.3 起成年")
-            }
-            .font(.footnote.weight(.semibold))
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 20) {
             PetPortrait(species: species, stage: PetExperience.stage(for: level), size: previewSize)
                 .id(species)
                 .accessibilityHidden(true)
@@ -289,6 +307,16 @@ private struct OnboardingGrowthDemo: View {
                     .font(.caption.monospacedDigit())
             }
             .frame(maxWidth: 248)
+            VStack(spacing: 8) {
+                Text("每记录满 1 分钟训练，获得 1 XP。每积满 \(PetExperience.pointsPerLevel) XP，宠物升一级。")
+                    .font(.body)
+                HStack {
+                    Text("Lv.1 幼年")
+                    Text("Lv.2 青年")
+                    Text("Lv.3 起成年")
+                }
+                .font(.footnote.weight(.semibold))
+            }
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
@@ -325,27 +353,25 @@ private struct OnboardingHeartsDemo: View {
     @State private var hearts = Pet.maximumHearts
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text("宠物领养时有 \(Pet.maximumHearts) 颗心。从首个完整日开始，按北京时间结算。当天训练时长没达到每日目标，就会失去一颗心。")
-                .font(.body)
-            Text("爱心归零时，宠物会离世。")
-                .font(.subheadline.weight(.semibold))
+        VStack(spacing: 20) {
             PetPortrait(species: species, size: previewSize)
                 .saturation(hearts > 0 ? 1 : 0)
                 .opacity(hearts > 0 ? 1 : 0.43)
                 .accessibilityHidden(true)
-            HStack(spacing: 12) {
-                ForEach(0..<Pet.maximumHearts) { index in
-                    Image(systemName: index < hearts ? "heart.fill" : "heart")
-                        .foregroundStyle(index < hearts ? Color(red: 0.59, green: 0.14, blue: 0.29) : .primary.opacity(0.62))
-                }
+            VStack(spacing: 8) {
+                PetHeartRow(remaining: hearts, width: 22, spacing: 10)
+                    .accessibilityHidden(true)
+                Text(hearts == Pet.maximumHearts ? "示例 · 初始 \(hearts) 颗心" :
+                        "示例 · 未达标第 \(Pet.maximumHearts - hearts) 天 · " +
+                        (hearts > 0 ? "剩余 \(hearts) 颗心" : "宠物已离世"))
+                    .font(.subheadline.weight(.semibold))
             }
-            .font(.title2)
-            .accessibilityHidden(true)
-            Text(hearts == Pet.maximumHearts ? "示例 · 初始 \(hearts) 颗心" :
-                    "示例 · 未达标第 \(Pet.maximumHearts - hearts) 天 · " +
-                    (hearts > 0 ? "剩余 \(hearts) 颗心" : "宠物已离世"))
-                .font(.subheadline.weight(.semibold))
+            VStack(spacing: 8) {
+                Text("宠物领养时有 \(Pet.maximumHearts) 颗心。从首个完整日开始，按北京时间结算。当天训练时长没达到每日目标，就会失去一颗心。")
+                    .font(.body)
+                Text("爱心归零时，宠物会离世。")
+                    .font(.subheadline.weight(.semibold))
+            }
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
