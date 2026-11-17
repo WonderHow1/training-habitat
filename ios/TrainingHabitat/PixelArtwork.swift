@@ -28,7 +28,7 @@ final class PixelArtwork {
     static let shared = PixelArtwork()
     private let content: Content?
     private var images: [String: CGImage] = [:]
-    private var croppedImages: [String: CGImage] = [:]
+    private var spriteBounds: [String: CGRect] = [:]
     private var textures: [String: SKTexture] = [:]
 
     private init() {
@@ -50,20 +50,18 @@ final class PixelArtwork {
         return image
     }
 
-    func croppedImage(_ key: String?) -> CGImage? {
-        guard let key else { return nil }
-        if let cached = croppedImages[key] { return cached }
-        guard let image = image(key) else { return nil }
-
+    func visibleBounds(for key: String, image: CGImage) -> CGRect {
+        if let cached = spriteBounds[key] { return cached }
         let width = image.width
         let height = image.height
+        let canvas = CGRect(x: 0, y: 0, width: width, height: height)
         let bytesPerRow = width * 4
         let rgba = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                                       bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: rgba),
-              let pixels = context.data?.assumingMemoryBound(to: UInt8.self) else { return image }
+              let pixels = context.data?.assumingMemoryBound(to: UInt8.self) else { return canvas }
         context.setBlendMode(.copy)
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        context.draw(image, in: canvas)
 
         var left = width
         var top = height
@@ -77,11 +75,10 @@ final class PixelArtwork {
                 bottom = max(bottom, y)
             }
         }
-        guard left <= right, top <= bottom else { return image }
+        guard left <= right, top <= bottom else { return canvas }
         let bounds = CGRect(x: left, y: top, width: right - left + 1, height: bottom - top + 1)
-        let cropped = image.cropping(to: bounds) ?? image
-        croppedImages[key] = cropped
-        return cropped
+        spriteBounds[key] = bounds
+        return bounds
     }
 
     func texture(_ key: String?) -> SKTexture? {
@@ -97,13 +94,9 @@ final class PixelArtwork {
 
 struct PixelImage: View {
     let art: String?
-    var visibleHeight: CGFloat?
 
     var body: some View {
-        if let visibleHeight, let image = PixelArtwork.shared.croppedImage(art) {
-            Image(decorative: image, scale: 1).resizable().interpolation(.none)
-                .frame(width: visibleHeight * CGFloat(image.width) / CGFloat(image.height), height: visibleHeight)
-        } else if let image = PixelArtwork.shared.image(art) {
+        if let image = PixelArtwork.shared.image(art) {
             Image(decorative: image, scale: 1).resizable().interpolation(.none)
         } else {
             Color.clear
@@ -188,9 +181,9 @@ struct PetPortrait: View {
 
     @ViewBuilder private var portrait: some View {
         let art = pose ?? sprites?.resting[stage - 1]
-        if walksHorizontally, let sprites {
-            strollingPortrait(resting: sprites.resting[stage - 1], steps: sprites.walk[stage - 1],
-                              reactions: sprites.reactions[stage - 1])
+        if walksHorizontally, let sprites, let image = PixelArtwork.shared.image(sprites.resting[stage - 1]) {
+            let resting = sprites.resting[stage - 1]
+            strollingPortrait(resting: resting, steps: sprites.walk[stage - 1], image: image)
         } else {
             PixelImage(art: art)
                 .frame(width: size, height: size)
@@ -215,16 +208,15 @@ struct PetPortrait: View {
         playback = .reaction(UUID())
     }
 
-    private func strollingPortrait(resting: String, steps: [String], reactions: [PixelArtwork.Frame]) -> some View {
+    private func strollingPortrait(resting: String, steps: [String], image: CGImage) -> some View {
         let walkingFrames = species == .goldfish ? [] : steps
-        let frames = [resting] + walkingFrames + reactions.map(\.png)
-        let width = frames.compactMap { key -> CGFloat? in
-            guard let image = PixelArtwork.shared.croppedImage(key) else { return nil }
-            return size * CGFloat(image.width) / CGFloat(image.height)
-        }.max() ?? size
+        let canvas = CGSize(width: image.width, height: image.height)
+        let bounds = PixelArtwork.shared.visibleBounds(for: resting, image: image)
+        let width = 2 * max(bounds.midX, canvas.width - bounds.midX) * size / bounds.height
 
         return GeometryReader { lane in
             let slot = min(width, lane.size.width)
+            let pixelSize = size * slot / (bounds.height * width)
             let distance = min(78, lane.size.width - slot)
             let rightAlignedStart = lane.size.width - slot - distance
             let canWalk = !reduceMotion && scenePhase == .active && playback == nil && distance > 0
@@ -232,7 +224,11 @@ struct PetPortrait: View {
                 let sample = stroll.sample(at: clock.date)
                 let step = sample.step.flatMap { walkingFrames.isEmpty ? nil : walkingFrames[$0 % walkingFrames.count] }
                 let scale: CGFloat = reduceMotion || stroll.movingLeft == species.walkingSpriteFacesLeft ? 1 : -1
-                PixelImage(art: pose ?? step ?? resting, visibleHeight: size * slot / width)
+                PixelImage(art: pose ?? step ?? resting)
+                    .frame(width: canvas.width * pixelSize, height: canvas.height * pixelSize)
+                    .offset(x: (canvas.width / 2 - bounds.midX) * pixelSize,
+                            y: (canvas.height / 2 - bounds.midY) * pixelSize)
+                    .frame(width: bounds.width * pixelSize, height: bounds.height * pixelSize)
                     .scaleEffect(x: scale, y: 1)
                     #if os(iOS)
                     .overlay {

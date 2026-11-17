@@ -90,6 +90,8 @@ assert '.position(x: rightAlignedStart + slot / 2 + sample.fraction * distance, 
 assert 'Double.random(in: 0.8...2.7, using:' in portrait_view
 assert 'stroll.stop(at: .now)' in portrait_view and 'playback = .reaction(UUID())' in portrait_view
 assert 'TitlePetTapTarget(label:' in portrait_view and 'tap.cancelsTouchesInView = false' in portrait_view
+assert 'visibleBounds(for: resting, image: image)' in portrait_view
+assert '.frame(width: canvas.width * pixelSize, height: canvas.height * pixelSize)' in portrait_view
 for title in ('训练计划', '训练回顾'):
     toolbar = routine_views.split(f'.navigationTitle("{title}")', 1)[1].split('.primaryAction', 1)[0]
     assert 'ToolbarItem(placement: .largeTitle)' in toolbar
@@ -134,7 +136,10 @@ for pet in art['pets'].values():
     assert len(pet['resting']) == len(pet['reactions']) == len(pet['walk']) == 3
     assert len(pet['growth']) == 2 and all(len(frames) == 8 for frames in pet['growth'])
     assert len(set(pet['resting'])) == 3
-    for image in pet['resting']:
-        assert base64.b64decode(image).startswith(b'\x89PNG\r\n\x1a\n')
+    frames = pet['resting'] + [image for sequence in pet['walk'] + pet['growth'] for image in sequence]
+    frames += [frame['png'] for sequence in pet['reactions'] for frame in sequence]
+    pngs = [base64.b64decode(frame) for frame in frames]
+    assert all(png.startswith(b'\x89PNG\r\n\x1a\n') for png in pngs)
+    assert len({png[16:24] for png in pngs}) == 1
 print('PASS  project target membership, isolated HealthKit signing and prototype artwork')
 PY
