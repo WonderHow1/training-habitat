@@ -110,6 +110,8 @@ struct WorkoutEditor: View {
     @State private var title: String
     @State private var timing: WorkoutTiming
     @State private var timeField: TimeField?
+    @State private var recordToConfirm: Workout?
+    @State private var showingConfirmation = false
 
     init(model: AppModel, plan: TrainingPlan?, existing: Workout?) {
         self.model = model
@@ -149,12 +151,15 @@ struct WorkoutEditor: View {
                               ? DisplayDate.clock(timing.end) : DisplayDate.dateTime(timing.end)) {
                 timeField = .end
             }
-            if draft == nil {
+            if let draft {
+                LabeledContent("记录时长", value: "\(draft.minutes) 分钟")
+                if let plan {
+                    Text(planRecordingNote(for: draft, plan: plan))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            } else {
                 Text("请选择已结束的训练，时长须在 1 分钟到 24 小时之间。")
                     .font(.footnote).foregroundStyle(.secondary)
-            }
-            if let plan {
-                Text("达标时关联「\(plan.title)」。").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .navigationTitle(editing ? "编辑训练记录" : "手动记录")
@@ -178,14 +183,43 @@ struct WorkoutEditor: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") {
                     guard let record = draft else { return }
-                    if model.change({ state, now in
-                        try state.saveWorkout(record, for: plan?.id, at: now)
-                        if state.timer?.planID == plan?.id { state.clearTimer() }
-                    }) { dismiss() }
+                    if record.start == existing?.start, record.end == existing?.end {
+                        save(record)
+                    } else {
+                        recordToConfirm = record
+                        showingConfirmation = true
+                    }
                 }
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft == nil)
             }
         }
+        .alert("确认训练时间", isPresented: $showingConfirmation, presenting: recordToConfirm) { record in
+            Button("返回检查", role: .cancel) {}
+            let overlaps = !model.state.overlappingWorkouts(for: record).isEmpty
+            Button(overlaps ? "仍然保存" : "确认保存") { save(record) }
+        } message: { record in
+            let summary = "记录时长 \(record.minutes) 分钟。\n\(DisplayDate.dateTime(record.start)) 至 \(DisplayDate.dateTime(record.end))。"
+            let overlaps = model.state.overlappingWorkouts(for: record)
+            Text(overlaps.isEmpty ? summary :
+                 summary + "\n与 \(overlaps.count) 条已有记录的时间重叠。继续保存会分别累计训练时长和宠物经验。")
+        }
+    }
+
+    private func save(_ record: Workout) {
+        if model.change({ state, now in
+            try state.saveWorkout(record, for: plan?.id, at: now)
+            if state.timer?.planID == plan?.id { state.clearTimer() }
+        }) { dismiss() }
+    }
+
+    private func planRecordingNote(for record: Workout, plan: TrainingPlan) -> String {
+        if model.state.eligiblePlans(for: record, at: Date()).contains(where: { $0.id == plan.id }) {
+            return "保存后将完成「\(plan.title)」。"
+        }
+        if record.minutes < plan.minutes {
+            return "本计划需单次训练达到 \(plan.minutes) 分钟。这次保存为训练记录，计划仍待完成。"
+        }
+        return "这次保存为训练记录。当前时间段无法用于完成「\(plan.title)」。"
     }
 }
 
@@ -371,6 +405,8 @@ struct TimerView: View {
     var body: some View {
         VStack(spacing: 20) {
             Text(plan.title).font(.title2.bold())
+            Text("计划目标 \(model.timerPlan?.minutes ?? plan.minutes) 分钟")
+                .font(.subheadline).foregroundStyle(.secondary)
             if let timer = model.state.timer, timer.planID == plan.id {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let elapsed = timer.seconds(at: context.date)

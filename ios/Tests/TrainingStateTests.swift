@@ -50,6 +50,38 @@ private func damagedStoreSurfacesErrorAndKeepsFile() throws {
     try check(try Data(contentsOf: file) == data)
 }
 
+private func dailyGoalEditsValidateAndPersist() throws {
+    var state = try adopted()
+    let pet = try require(state.activePet)
+    try state.saveWorkout(workout(0, 10, 20), at: time(0, 11))
+    try checkThrows { try state.setDailyGoal(9) }
+    try checkThrows { try state.setDailyGoal(1441) }
+    try check(state.goalMinutes == 30)
+    try state.setDailyGoal(125)
+    let reopened = try JSONDecoder().decode(TrainingState.self, from: JSONEncoder().encode(state))
+    try check(reopened.goalMinutes == 125)
+    try check(reopened.activePet == pet && reopened.experience(of: pet.id, at: time(0, 11)) == 20)
+    try state.setDailyGoal(10)
+    try check(state.goalMinutes == 10)
+}
+
+private func workoutOverlapDetectsIntervalsButExcludesTheEditedRecord() throws {
+    var state = try adopted()
+    var recorded = workout(0, 10, 20)
+    recorded.seconds = 60 // A paused timer's elapsed time can be shorter than its time range.
+    let now = time(0, 12)
+    try state.saveWorkout(recorded, at: now)
+    try check(state.overlappingWorkouts(for: recorded).isEmpty)
+    let duplicate = workout(0, 10, 20)
+    try check(state.overlappingWorkouts(for: duplicate).map(\.id) == [recorded.id])
+    let start = time(0, 10, 15)
+    let partial = Workout(title: "下肢力量", start: start, end: time(0, 10, 35), seconds: 1200)
+    try check(state.overlappingWorkouts(for: partial).map(\.id) == [recorded.id])
+    let next = Workout(title: "拉伸", start: recorded.end, end: time(0, 10, 30), seconds: 600)
+    try check(state.overlappingWorkouts(for: next).isEmpty)
+    try check(state.workouts.count == 1)
+}
+
 private func workoutMinutesEarnExperienceRegardlessOfDailyGoal() throws {
     var state = try adopted()
     try state.savePlan(title: "跑步", day: day, time: nil, minutes: 17, at: time(0))
@@ -262,12 +294,30 @@ private func timerRetainsPausesAndRecordsOnlyActiveTime() throws {
     state.resumeTimer(at: offset(310))
     state.pauseTimer(at: offset(335))
     try check(state.timer?.seconds(at: offset(400)) == 60)
-    try state.finishTimer(at: offset(400))
+    let result = try require(state.finishTimer(at: offset(400)))
     let entry = try require(state.workouts.first)
     try check(entry.start == start && entry.end == offset(335) && entry.seconds == 60)
     try check(entry.planID == plan.id && state.timer == nil)
-    try state.finishTimer(at: offset(401))
+    try check(result.id == entry.id && result.minutes == 1 && result.outcome == .completedPlan)
+    try check(try state.finishTimer(at: offset(401)) == nil)
     try check(state.workouts.count == 1)
+}
+
+private func timerReportsWhySavedTrainingDidNotCompleteItsPlan() throws {
+    var state = try adopted()
+    let start = time(0, 9)
+    try state.savePlan(title: "跑步", day: day, time: nil, minutes: 2, at: time(0))
+    let plan = try require(state.plans.first)
+    try state.startTimer(for: plan.id, at: start)
+    let shortEnd = start.addingTimeInterval(66)
+    let short = try require(state.finishTimer(at: shortEnd))
+    try check(short.minutes == 1 && short.outcome == .belowTarget(requiredMinutes: 2))
+    try check(state.workouts.first?.planID == nil && state.status(of: plan, at: shortEnd) == .upcoming)
+
+    try state.startTimer(for: plan.id, at: plan.deadline.addingTimeInterval(-60))
+    let late = try require(state.finishTimer(at: plan.deadline.addingTimeInterval(60)))
+    try check(late.minutes == 2 && late.outcome == .unlinked)
+    try check(state.workouts.count == 2)
 }
 
 private func timerOpensSnapshotsSavedBeforePausingWasAvailable() throws {
@@ -305,6 +355,8 @@ struct TrainingChecks {
         let tests: [(String, () throws -> Void)] = [
             ("onboarding and persistent data", onboardingAndPersistentDataUsedAfterSecondOpen),
             ("damaged store is preserved", damagedStoreSurfacesErrorAndKeepsFile),
+            ("daily goal edits validate and survive reload", dailyGoalEditsValidateAndPersist),
+            ("workout overlaps exclude self and adjacent intervals", workoutOverlapDetectsIntervalsButExcludesTheEditedRecord),
             ("one XP per recorded minute regardless of daily goal", workoutMinutesEarnExperienceRegardlessOfDailyGoal),
             ("rescheduling keeps identity", reschedulingRetainsIdentityAndRejectsCrossWeek),
             ("midnight, grace and device correction", midnightGraceDeviceCorrectionAndDuplicate),
@@ -315,6 +367,7 @@ struct TrainingChecks {
             ("habitat pull respects scroll, axis and reversal", habitatPullConsumesScrollBeforeZoomAndReverses),
             ("workout time wheels derive and preserve duration", workoutWheelsDeriveDurationAndPreserveExistingTiming),
             ("timer persists pauses and records active time exactly once", timerRetainsPausesAndRecordsOnlyActiveTime),
+            ("timer distinguishes below-target and otherwise unlinked saves", timerReportsWhySavedTrainingDidNotCompleteItsPlan),
             ("existing timer snapshots reopen", timerOpensSnapshotsSavedBeforePausingWasAvailable)
         ]
         var failures: [String] = []

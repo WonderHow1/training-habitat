@@ -21,10 +21,15 @@ struct TrainingState: Codable, Equatable {
 
     mutating func completeOnboarding(goal: Int, name: String, species: Species, habitat: Habitat, at now: Date) throws {
         guard !didOnboard else { return }
-        guard (10...1440).contains(goal) else { throw TrainingError.minutes }
+        guard DailyTrainingGoal.allowedMinutes.contains(goal) else { throw TrainingError.minutes }
         try adopt(name: name, species: species, habitat: habitat, at: now)
         goalMinutes = goal
         didOnboard = true
+    }
+
+    mutating func setDailyGoal(_ minutes: Int) throws {
+        guard DailyTrainingGoal.allowedMinutes.contains(minutes) else { throw TrainingError.minutes }
+        goalMinutes = minutes
     }
 
     mutating func adopt(name: String, species: Species, habitat: Habitat, at now: Date) throws {
@@ -122,6 +127,10 @@ struct TrainingState: Codable, Equatable {
         }.sorted { ($0.scheduledAt ?? $0.day) < ($1.scheduledAt ?? $1.day) }
     }
 
+    func overlappingWorkouts(for record: Workout) -> [Workout] {
+        workouts.filter { $0.id != record.id && $0.start < record.end && record.start < $0.end }
+    }
+
     mutating func saveWorkout(_ entry: Workout, for planID: UUID? = nil, at now: Date) throws {
         var record = entry
         record.title = record.title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -172,13 +181,23 @@ struct TrainingState: Codable, Equatable {
 
     mutating func resumeTimer(at now: Date) { timer?.resume(at: now) }
 
-    mutating func finishTimer(at now: Date) throws {
-        guard let timer, let plan = plans.first(where: { $0.id == timer.planID }) else { return }
+    @discardableResult
+    mutating func finishTimer(at now: Date) throws -> TimerFinishResult? {
+        guard let timer, let plan = plans.first(where: { $0.id == timer.planID }) else { return nil }
         let seconds = timer.seconds(at: now)
         guard seconds >= 60 else { throw TrainingError.timerMinimum }
         let record = Workout(title: plan.title, start: timer.startedAt, end: timer.pausedAt ?? now, seconds: seconds)
         try saveWorkout(record, for: plan.id, at: now)
         clearTimer()
+        let outcome: TimerFinishResult.Outcome
+        if workouts.contains(where: { $0.id == record.id && $0.planID == plan.id }) {
+            outcome = .completedPlan
+        } else if seconds < plan.minutes * 60 {
+            outcome = .belowTarget(requiredMinutes: plan.minutes)
+        } else {
+            outcome = .unlinked
+        }
+        return .init(id: record.id, minutes: record.minutes, outcome: outcome)
     }
 
     mutating func reconcile(at now: Date, revisedAt: Date? = nil) {

@@ -104,6 +104,23 @@ struct TrainingPlan: Identifiable, Codable, Equatable {
     var correctionEnds: Date { TrainingCalendar.addingDays(7, to: deadline) }
 }
 
+enum DailyTrainingGoal {
+    static let allowedMinutes = 10...1440
+    static let cautionThreshold = 120
+}
+
+struct TimerFinishResult: Identifiable, Equatable {
+    enum Outcome: Equatable {
+        case completedPlan
+        case belowTarget(requiredMinutes: Int)
+        case unlinked
+    }
+
+    let id: UUID
+    let minutes: Int
+    let outcome: Outcome
+}
+
 enum WorkoutSource: String, Codable {
     case manual, healthUnverified, healthAutomatic
 }

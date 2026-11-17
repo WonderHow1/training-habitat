@@ -81,8 +81,8 @@ struct Onboarding: View {
                     Text("分钟").font(.headline)
                 }
                 .frame(maxWidth: .infinity)
-                if goal < 10 || goal > 120 {
-                    Text(goal < 10 ? "每日目标至少 10 分钟。" : "每日目标超过 2 小时。请留出休息时间，避免过度训练。")
+                if goal < DailyTrainingGoal.allowedMinutes.lowerBound || goal > DailyTrainingGoal.cautionThreshold {
+                    Text(goal < DailyTrainingGoal.allowedMinutes.lowerBound ? "每日目标至少 10 分钟。" : "每日目标超过 2 小时。请留出休息时间，避免过度训练。")
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
                 }
             }
@@ -152,7 +152,7 @@ struct Onboarding: View {
                     .labelStyle(.titleAndIcon).fontWeight(.bold)
             }
             .buttonStyle(.plain)
-            .disabled(step == .goal ? !(10...1440).contains(goal) :
+            .disabled(step == .goal ? !DailyTrainingGoal.allowedMinutes.contains(goal) :
                         step == .pet && (name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name.count > 12))
         }
         .frame(minHeight: 44)

@@ -609,7 +609,7 @@ struct PlansView: View {
             HStack(spacing: 2) {
                 ForEach(0..<7) { offset in
                     let day = TrainingCalendar.addingDays(offset, to: week)
-                    let isSelected = TrainingCalendar.day(selected) == day
+                    let isSelected = !showWeek && TrainingCalendar.day(selected) == day
                     Button {
                         selected = day
                         showWeek = false

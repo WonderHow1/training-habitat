@@ -16,6 +16,7 @@ final class AppModel {
     private(set) var now = Date()
     private(set) var loadError: String?
     var error: String?
+    var timerResult: TimerFinishResult?
     private var store: LocalStore?
     private var notificationTask: Task<Void, Never>?
     private var activityTask: Task<Void, Never>?
@@ -69,14 +70,16 @@ final class AppModel {
 
     func timerAction(_ action: WorkoutTimerAction, sessionID: String) {
         guard state.timer?.sessionID == sessionID else { return }
-        change { next, now in
+        var result: TimerFinishResult?
+        let saved = change { next, now in
             switch action {
             case .pause: next.pauseTimer(at: now)
             case .resume: next.resumeTimer(at: now)
             case .cancel: next.clearTimer()
-            case .finish: try next.finishTimer(at: now)
+            case .finish: result = try next.finishTimer(at: now)
             }
         }
+        if saved, let result { timerResult = result }
     }
 
     func performLiveTimerAction(_ action: WorkoutTimerAction, sessionID: String) async {
@@ -285,12 +288,56 @@ struct AppRoot: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { timerPreview }
             }
         }
+        .overlay(alignment: .top) {
+            if scenePhase == .active, sheet == nil, timerPlan == nil, let result = model.timerResult {
+                TimerResultBanner(result: result) { model.timerResult = nil }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .task(id: result.id) {
+                        do { try await Task.sleep(for: .seconds(10)) } catch { return }
+                        if model.timerResult?.id == result.id { model.timerResult = nil }
+                    }
+            }
+        }
     }
 
     @ViewBuilder private var timerPreview: some View {
         if let timer = model.state.timer, let plan = model.timerPlan {
             TimerPreview(timer: timer, title: plan.title) { timerPlan = plan }
         }
+    }
+}
+
+private struct TimerResultBanner: View {
+    let result: TimerFinishResult
+    let dismiss: () -> Void
+
+    private var message: String {
+        switch result.outcome {
+        case .completedPlan:
+            "已记录 \(result.minutes) 分钟，计划已完成。"
+        case let .belowTarget(requiredMinutes):
+            "已记录 \(result.minutes) 分钟，本计划需单次训练达到 \(requiredMinutes) 分钟。"
+        case .unlinked:
+            "已记录 \(result.minutes) 分钟。这次训练未关联到计划，可在「回顾」查看。"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle").accessibilityHidden(true)
+            Text(message).font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: dismiss) {
+                Image(systemName: "xmark").frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("关闭训练结果")
+        }
+        .padding(.leading, 14)
+        .padding(.vertical, 6)
+        .background(.regularMaterial, in: .rect(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 3)
     }
 }
 
@@ -301,7 +348,11 @@ private struct SettingsView: View {
     var body: some View {
         Form {
             Section("训练") {
-                LabeledContent("每日训练目标", value: "\(model.state.goalMinutes) 分钟")
+                NavigationLink {
+                    DailyGoalEditor(model: model)
+                } label: {
+                    LabeledContent("每日训练目标", value: "\(model.state.goalMinutes) 分钟")
+                }
                 Toggle("训练与补记提醒", isOn: Binding(get: { model.state.reminders }, set: { enabled in
                     Task { await model.setReminders(enabled) }
                 }))
@@ -315,5 +366,46 @@ private struct SettingsView: View {
         .navigationTitle("设置")
         .compactNavigationTitle()
         .toolbar { Button("完成") { dismiss() } }
+    }
+}
+
+private struct DailyGoalEditor: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var input: String
+    private var minutes: Int? { Int(input.trimmingCharacters(in: .whitespacesAndNewlines)) }
+
+    init(model: AppModel) {
+        self.model = model
+        _input = State(initialValue: String(model.state.goalMinutes))
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                HStack {
+                    TextField("每日目标分钟数", text: $input)
+                        .digitsKeyboard()
+                    Text("分钟").foregroundStyle(.secondary)
+                }
+            } footer: {
+                if let minutes, !DailyTrainingGoal.allowedMinutes.contains(minutes) {
+                    Text("每日目标须为 10 至 1440 分钟。")
+                } else if let minutes, minutes > DailyTrainingGoal.cautionThreshold {
+                    Text("每日目标超过 2 小时。请留出休息时间，避免过度训练。")
+                }
+            }
+        }
+        .navigationTitle("每日训练目标")
+        .compactNavigationTitle()
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("保存") {
+                    guard let minutes else { return }
+                    if model.change({ state, _ in try state.setDailyGoal(minutes) }) { dismiss() }
+                }
+                .disabled(minutes.map { !DailyTrainingGoal.allowedMinutes.contains($0) } ?? true)
+            }
+        }
     }
 }

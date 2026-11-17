@@ -76,6 +76,7 @@ assert 'Button { showPicker = true }' in plan_summary
 assert '.multilineTextAlignment(.center)' in plan_summary
 assert '.number.grouping(.never)' in plan_summary and 'chevron.down' not in plan_summary
 assert '.background(isSelected ? Color.primary.opacity(0.08) : .clear' in plan_summary
+assert 'let isSelected = !showWeek && TrainingCalendar.day(selected) == day' in plan_summary
 assert '.underline(' not in plan_summary
 print('PASS  Plan calendar title and selected date treatment')
 title_view = routine_views.split('private struct TrainingPageTitle:', 1)[1].split('struct PlansView:', 1)[0]
