@@ -123,6 +123,22 @@ class VerticalFilmTests(unittest.TestCase):
             self.assertIn(r"\move" + f"({x},{start_y},{x},{end_y},0,450)", script)
             self.assertIn("0:00:01.00,0:00:01.55", script)
 
+    def test_updated_sheet_sequences_keep_the_complete_training_workflows(self):
+        timeline = json.loads(Path(__file__).with_name("timeline.json").read_text())
+        _, plan, timer_start, timer_finish, manual_start, manual_finish, review = timeline["shots"]
+        self.assertEqual([shot["flow"] for shot in timeline["shots"][1:]],
+                         ["reschedule", "timer", "timer", "manual", "manual", "review"])
+        self.assertEqual(len(plan["touches"]), 6)  # Open, edit, open calendar, choose, dismiss, save.
+        self.assertEqual(len(timer_start["touches"]), 2)
+        self.assertIn("剪短", timer_finish["caption"])
+        self.assertEqual(len(timer_finish["touches"]), 1)
+        self.assertGreater(timer_finish["touches"][0][2], .75)
+        self.assertEqual(manual_start["file"], manual_finish["file"])
+        self.assertAlmostEqual(manual_start["start"] + manual_start["duration"], manual_finish["start"], places=4)
+        self.assertEqual(len(manual_start["touches"]), 5)
+        self.assertEqual(len(manual_finish["touches"]), 5)
+        self.assertTrue(review["touches"])
+
     def test_score_has_stereo_music_and_separate_clicks(self):
         def read(path):
             with wave.open(str(path)) as track:
