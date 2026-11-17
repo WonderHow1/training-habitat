@@ -1,25 +1,42 @@
 import Foundation
 
 struct HorizontalPetStroll {
-    let offset: CGFloat
-    let movingLeft: Bool
-    let step: Int?
+    struct Sample {
+        let fraction: CGFloat
+        let step: Int?
+    }
 
-    init(elapsed: TimeInterval, distance: CGFloat) {
-        guard distance > 0 else {
-            offset = 0
-            movingLeft = false
-            step = nil
-            return
-        }
-        let crossing = Double(distance) / 26
-        let leg = crossing + 0.5
-        let phase = max(0, elapsed).truncatingRemainder(dividingBy: 2 * leg)
-        movingLeft = phase >= leg
-        let timeInLeg = movingLeft ? phase - leg : phase
-        let fraction = min(1, timeInLeg / crossing)
-        offset = distance * (movingLeft ? 1 - fraction : fraction)
-        step = timeInLeg < crossing ? Int(timeInLeg / 0.135) : nil
+    private var origin: CGFloat = 0.5
+    private var destination: CGFloat = 0.5
+    private var startedAt: Date?
+    private var duration: TimeInterval = 0
+    private(set) var movingLeft = false
+
+    var isWalking: Bool { startedAt != nil }
+
+    func sample(at now: Date) -> Sample {
+        guard let startedAt else { return .init(fraction: origin, step: nil) }
+        let elapsed = max(0, now.timeIntervalSince(startedAt))
+        let progress = min(1, elapsed / duration)
+        return .init(fraction: origin + (destination - origin) * progress,
+                     step: progress < 1 ? Int(elapsed / 0.135) : nil)
+    }
+
+    mutating func stop(at now: Date) {
+        origin = sample(at: now).fraction
+        startedAt = nil
+    }
+
+    mutating func walk<R: RandomNumberGenerator>(distance: CGFloat, at now: Date, using random: inout R) -> TimeInterval {
+        stop(at: now)
+        guard distance > 0 else { return 0 }
+        let minimumTravel: CGFloat = 0.22
+        movingLeft = origin >= minimumTravel && (origin > 1 - minimumTravel || Bool.random(using: &random))
+        let choices = movingLeft ? 0...(origin - minimumTravel) : (origin + minimumTravel)...1
+        destination = CGFloat.random(in: choices, using: &random)
+        duration = max(0.2, Double(abs(destination - origin) * distance) / Double.random(in: 20...34, using: &random))
+        startedAt = now
+        return duration
     }
 }
 

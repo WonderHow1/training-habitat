@@ -507,10 +507,9 @@ private struct TrainingPageTitle: View {
                 .accessibilityAddTraits(.isHeader)
                 .layoutPriority(1)
             if let pet = model.state.displayedPet {
-                PetPortrait(species: pet.species, stage: model.stage(of: pet), size: petHeight,
+                PetPortrait(species: pet.species, stage: model.stage(of: pet), size: petHeight, interactive: true,
                             walksHorizontally: true)
                     .id(pet.id)
-                    .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

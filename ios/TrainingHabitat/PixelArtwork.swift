@@ -2,6 +2,9 @@ import Foundation
 import ImageIO
 import SpriteKit
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 final class PixelArtwork {
@@ -124,18 +127,16 @@ struct PetPortrait: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var pose: String?
     @State private var playback: Playback?
-    @State private var strollStarted = Date()
+    @State private var stroll = HorizontalPetStroll()
 
     private var sprites: PixelArtwork.Sprites? { PixelArtwork.shared.pet(species) }
 
     var body: some View {
         Group {
-            if interactive {
-                Button { playback = .reaction(UUID()) } label: { portrait }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("摸摸\(species.name)")
-            } else {
+            if walksHorizontally {
                 portrait
+            } else {
+                petControl { portrait }
             }
         }
         .onChange(of: stage) { previous, next in
@@ -143,7 +144,14 @@ struct PetPortrait: View {
         }
         .task(id: playback) {
             pose = nil
-            guard let playback, let sprites else { return }
+            guard let playback else { return }
+            defer {
+                if !Task.isCancelled, self.playback == playback {
+                    pose = nil
+                    self.playback = nil
+                }
+            }
+            guard let sprites else { return }
             switch playback {
             case .reaction:
                 let frames = sprites.reactions[stage - 1]
@@ -162,7 +170,6 @@ struct PetPortrait: View {
                     try? await Task.sleep(for: .milliseconds(80))
                 }
             }
-            if !Task.isCancelled { pose = nil }
         }
         .task(id: reduceMotion) {
             guard animatePreview, !reduceMotion else { return }
@@ -182,16 +189,35 @@ struct PetPortrait: View {
     @ViewBuilder private var portrait: some View {
         let art = pose ?? sprites?.resting[stage - 1]
         if walksHorizontally, let sprites {
-            strollingPortrait(resting: sprites.resting[stage - 1], steps: sprites.walk[stage - 1])
+            strollingPortrait(resting: sprites.resting[stage - 1], steps: sprites.walk[stage - 1],
+                              reactions: sprites.reactions[stage - 1])
         } else {
             PixelImage(art: art)
                 .frame(width: size, height: size)
         }
     }
 
-    private func strollingPortrait(resting: String, steps: [String]) -> some View {
+    @ViewBuilder
+    private func petControl<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if interactive {
+            Button(action: react) {
+                content().contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("摸摸\(species.name)")
+        } else {
+            content()
+        }
+    }
+
+    private func react() {
+        if walksHorizontally { stroll.stop(at: .now) }
+        playback = .reaction(UUID())
+    }
+
+    private func strollingPortrait(resting: String, steps: [String], reactions: [PixelArtwork.Frame]) -> some View {
         let walkingFrames = species == .goldfish ? [] : steps
-        let frames = [resting] + walkingFrames + (pose.map { [$0] } ?? [])
+        let frames = [resting] + walkingFrames + reactions.map(\.png)
         let width = frames.compactMap { key -> CGFloat? in
             guard let image = PixelArtwork.shared.croppedImage(key) else { return nil }
             return size * CGFloat(image.width) / CGFloat(image.height)
@@ -199,16 +225,112 @@ struct PetPortrait: View {
 
         return GeometryReader { lane in
             let slot = min(width, lane.size.width)
-            let distance = reduceMotion ? 0 : min(54, lane.size.width - slot)
-            TimelineView(.animation(minimumInterval: 1 / 30, paused: distance == 0 || scenePhase != .active)) { clock in
-                let stroll = HorizontalPetStroll(elapsed: clock.date.timeIntervalSince(strollStarted), distance: distance)
-                let step = stroll.step.flatMap { walkingFrames.isEmpty ? nil : walkingFrames[$0 % walkingFrames.count] }
-                let scale: CGFloat = distance == 0 || stroll.movingLeft == species.walkingSpriteFacesLeft ? 1 : -1
+            let distance = min(78, lane.size.width - slot)
+            let rightAlignedStart = lane.size.width - slot - distance
+            let canWalk = !reduceMotion && scenePhase == .active && playback == nil && distance > 0
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: !canWalk || !stroll.isWalking)) { clock in
+                let sample = stroll.sample(at: clock.date)
+                let step = sample.step.flatMap { walkingFrames.isEmpty ? nil : walkingFrames[$0 % walkingFrames.count] }
+                let scale: CGFloat = reduceMotion || stroll.movingLeft == species.walkingSpriteFacesLeft ? 1 : -1
                 PixelImage(art: pose ?? step ?? resting, visibleHeight: size * slot / width)
                     .scaleEffect(x: scale, y: 1)
-                    .position(x: slot / 2 + stroll.offset, y: size / 2)
+                    #if os(iOS)
+                    .overlay {
+                        if interactive { TitlePetTapTarget(label: "摸摸\(species.name)", react: react) }
+                    }
+                    #endif
+                    .position(x: rightAlignedStart + slot / 2 + sample.fraction * distance, y: size / 2)
+            }
+            .task(id: canWalk ? distance : 0) {
+                stroll.stop(at: .now)
+                guard canWalk else { return }
+                var random = SystemRandomNumberGenerator()
+                while !Task.isCancelled {
+                    do {
+                        try await Task.sleep(for: .seconds(Double.random(in: 0.8...2.7, using: &random)))
+                        try Task.checkCancellation()
+                        guard playback == nil else { return }
+                        let duration = stroll.walk(distance: distance, at: .now, using: &random)
+                        try await Task.sleep(for: .seconds(duration))
+                        try Task.checkCancellation()
+                        stroll.stop(at: .now)
+                    } catch {
+                        return
+                    }
+                }
             }
         }
         .frame(height: size)
     }
 }
+
+#if os(iOS)
+private struct TitlePetTapTarget: UIViewRepresentable {
+    let label: String
+    let react: () -> Void
+
+    func makeUIView(context: Context) -> TargetView {
+        let view = TargetView()
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = true
+        view.accessibilityTraits = .button
+        return view
+    }
+
+    func updateUIView(_ view: TargetView, context: Context) {
+        view.accessibilityLabel = label
+        view.react = react
+    }
+
+    static func dismantleUIView(_ view: TargetView, coordinator: ()) {
+        view.detach()
+    }
+
+    final class TargetView: UIView, UIGestureRecognizerDelegate {
+        var react: (() -> Void)?
+        private weak var attachedWindow: UIWindow?
+        private lazy var tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            detach()
+            attachedWindow = window
+            tap.cancelsTouchesInView = false
+            tap.delegate = self
+            window?.addGestureRecognizer(tap)
+        }
+
+        func detach() {
+            attachedWindow?.removeGestureRecognizer(tap)
+            attachedWindow = nil
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let window, window.isKeyWindow, window.rootViewController?.presentedViewController == nil,
+                  !bounds.isEmpty, bounds.insetBy(dx: -8, dy: -6).contains(touch.location(in: self)) else { return false }
+            // The large title's hosting view can paint the pet while suppressing its hit testing.
+            // Recognize only taps on the visible sprite and let other UIKit gestures continue.
+            var ancestor: UIView? = self
+            while let view = ancestor {
+                if view.isHidden || view.alpha < 0.01 { return false }
+                if view !== self, view.clipsToBounds, !view.bounds.contains(touch.location(in: view)) { return false }
+                ancestor = view.superview
+            }
+            return true
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
+
+        override func accessibilityActivate() -> Bool {
+            guard let react else { return false }
+            react()
+            return true
+        }
+
+        @objc private func handleTap() {
+            react?()
+        }
+    }
+}
+#endif

@@ -80,13 +80,16 @@ assert '.underline(' not in plan_summary
 print('PASS  Plan calendar title and selected date treatment')
 title_view = routine_views.split('private struct TrainingPageTitle:', 1)[1].split('struct PlansView:', 1)[0]
 assert 'PetPortrait(species: pet.species, stage: model.stage(of: pet)' in title_view
-assert 'if let pet = model.state.displayedPet' in title_view and '.accessibilityHidden(true)' in title_view
+assert 'if let pet = model.state.displayedPet' in title_view and 'interactive: true' in title_view
 assert '.frame(maxWidth: .infinity, alignment: .leading)' in title_view
 assert '@ScaledMetric(relativeTo: .largeTitle)' in title_view and 'size: petHeight' in title_view
 assert 'walksHorizontally: true' in title_view
 portrait_view = (root / 'TrainingHabitat/PixelArtwork.swift').read_text()
-assert '.position(x: slot / 2 + stroll.offset, y: size / 2)' in portrait_view
-assert 'reduceMotion ? 0 : min(54, lane.size.width - slot)' in portrait_view
+assert 'rightAlignedStart = lane.size.width - slot - distance' in portrait_view
+assert '.position(x: rightAlignedStart + slot / 2 + sample.fraction * distance, y: size / 2)' in portrait_view
+assert 'Double.random(in: 0.8...2.7, using:' in portrait_view
+assert 'stroll.stop(at: .now)' in portrait_view and 'playback = .reaction(UUID())' in portrait_view
+assert 'TitlePetTapTarget(label:' in portrait_view and 'tap.cancelsTouchesInView = false' in portrait_view
 for title in ('训练计划', '训练回顾'):
     toolbar = routine_views.split(f'.navigationTitle("{title}")', 1)[1].split('.primaryAction', 1)[0]
     assert 'ToolbarItem(placement: .largeTitle)' in toolbar
