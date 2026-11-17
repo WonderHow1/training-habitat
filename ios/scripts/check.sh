@@ -78,6 +78,15 @@ assert '.number.grouping(.never)' in plan_summary and 'chevron.down' not in plan
 assert '.background(isSelected ? Color.primary.opacity(0.08) : .clear' in plan_summary
 assert '.underline(' not in plan_summary
 print('PASS  Plan calendar title and selected date treatment')
+title_view = routine_views.split('private struct TrainingPageTitle:', 1)[1].split('struct PlansView:', 1)[0]
+assert 'PetPortrait(species: pet.species, stage: model.stage(of: pet)' in title_view
+assert 'if let pet = model.state.displayedPet' in title_view and '.accessibilityHidden(true)' in title_view
+assert '.frame(maxWidth: .infinity, alignment: .leading)' in title_view
+for title in ('训练计划', '训练回顾'):
+    toolbar = routine_views.split(f'.navigationTitle("{title}")', 1)[1].split('.primaryAction', 1)[0]
+    assert 'ToolbarItem(placement: .largeTitle)' in toolbar
+    assert f'TrainingPageTitle(title: "{title}", model: model)' in toolbar
+print('PASS  Plan and Review large titles show the current pet and growth stage')
 plan_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[0]
 assert '_minutes = State(initialValue: plan?.minutes)' in plan_editor
 assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in plan_editor and 'plan?.minutes ??' not in plan_editor

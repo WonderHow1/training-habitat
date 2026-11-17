@@ -495,6 +495,26 @@ private struct AddPlanButton: View {
     }
 }
 
+private struct TrainingPageTitle: View {
+    let title: LocalizedStringKey
+    let model: AppModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.largeTitle.bold())
+                .accessibilityAddTraits(.isHeader)
+            if let pet = model.state.displayedPet {
+                PetPortrait(species: pet.species, stage: model.stage(of: pet), size: 38)
+                    .id(pet.id)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 11.67) // Match the top inset of the system's large text title.
+    }
+}
+
 struct PlansView: View {
     let model: AppModel
     let open: (SheetRoute) -> Void
@@ -541,6 +561,9 @@ struct PlansView: View {
         .listStyle(.plain)
         .navigationTitle("训练计划")
         .toolbar {
+            ToolbarItem(placement: .largeTitle) {
+                TrainingPageTitle(title: "训练计划", model: model)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("新增计划", systemImage: "plus") { open(.addPlan(max(selected, model.today))) }
             }
@@ -662,6 +685,9 @@ struct ReviewView: View {
         .listStyle(.plain)
         .navigationTitle("训练回顾")
         .toolbar {
+            ToolbarItem(placement: .largeTitle) {
+                TrainingPageTitle(title: "训练回顾", model: model)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("手动记录", systemImage: "plus") { open(.manual(nil, nil)) }
             }
