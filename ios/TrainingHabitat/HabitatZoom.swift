@@ -44,7 +44,7 @@ struct HabitatZoomGeometry {
         )
     }
 
-    func cornerRadius(at progress: CGFloat) -> CGFloat { Self.cardRadius * (1 - progress) }
+    func minimumCornerRadius(at progress: CGFloat) -> CGFloat { Self.cardRadius * (1 - progress) }
 
     private func interpolate(_ from: CGFloat, _ to: CGFloat, _ progress: CGFloat) -> CGFloat {
         from + (to - from) * progress

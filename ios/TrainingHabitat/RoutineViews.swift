@@ -291,7 +291,7 @@ private struct TodayHabitatZoom: View, Animatable {
             .opacity(max(0, (fraction - 0.6) / 0.4))
             .allowsHitTesting(fraction >= 0.99)
         }
-        .clipShape(.rect(cornerRadius: geometry.cornerRadius(at: fraction)))
+        .clipShape(ConcentricRectangle(corners: .concentric(minimum: .fixed(geometry.minimumCornerRadius(at: fraction)))))
         .opacity(fraction > 0 ? 1 : 0)
         .position(x: frame.midX - viewport.minX, y: frame.midY - viewport.minY)
     }

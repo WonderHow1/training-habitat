@@ -157,7 +157,9 @@ private func habitatZoomMovesBetweenCardAndFullViewport() throws {
     try check(zoom.frame(at: 0) == card)
     try check(zoom.frame(at: 0.5) == CGRect(x: 8, y: 101.5, width: 386, height: 567))
     try check(zoom.frame(at: 1) == screen)
-    try check(zoom.cornerRadius(at: 0) == 22 && zoom.cornerRadius(at: 1) == 0)
+    try check(zoom.minimumCornerRadius(at: 0) == HabitatZoomGeometry.cardRadius)
+    try check(zoom.minimumCornerRadius(at: 0.5) == HabitatZoomGeometry.cardRadius / 2)
+    try check(zoom.minimumCornerRadius(at: 1) == 0)
     try check(HabitatZoomGeometry(card: .zero, viewport: screen).frame(at: 1) == screen)
 }
 
