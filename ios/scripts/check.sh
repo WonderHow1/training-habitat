@@ -71,6 +71,15 @@ settings_button = today_header.split('Button { openFromToday(.settings) }', 1)[1
 assert 'Image(systemName: "gearshape")' in settings_button
 assert '.accessibilityLabel("设置")' in settings_button
 print('PASS  Today settings gear and accessibility label')
+app_source = (root / 'TrainingHabitat/TrainingHabitatApp.swift').read_text()
+assert 'TabView(selection: tabSelection)' in app_source
+tab_selection = app_source.split('private var tabSelection:', 1)[1].split('private var timerPreview:', 1)[0]
+assert 'guard tab == selection else {\n                selection = tab\n                return' in tab_selection
+assert 'guard sheet == nil, timerPlan == nil else { return }' in tab_selection
+assert 'case .today where !habitatVisible, .plan:\n                sheet = .addPlan(model.today)' in tab_selection
+assert 'case .review:\n                sheet = .manual(nil, nil)' in tab_selection
+assert 'case .today, .pet:\n                break' in tab_selection
+print('PASS  Retapping Today, Plan and Review opens existing quick actions')
 plan_summary = routine_views.split('private var summary: some View {', 1)[1].split('struct ReviewView', 1)[0]
 assert 'Button { showPicker = true }' in plan_summary
 assert '.multilineTextAlignment(.center)' in plan_summary

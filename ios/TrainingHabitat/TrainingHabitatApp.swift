@@ -269,7 +269,7 @@ struct AppRoot: View {
     }
 
     private var mainTabs: some View {
-        TabView(selection: $selection) {
+        TabView(selection: tabSelection) {
             Tab("今天", systemImage: "house", value: .today) {
                 TodayView(model: model, expanded: $habitatVisible, open: { sheet = $0 }, openTimer: { timerPlan = $0 })
                     .safeAreaInset(edge: .bottom, spacing: 0) { timerPreview }
@@ -299,6 +299,24 @@ struct AppRoot: View {
                     }
             }
         }
+    }
+
+    private var tabSelection: Binding<AppTab> {
+        Binding(get: { selection }, set: { tab in
+            guard tab == selection else {
+                selection = tab
+                return
+            }
+            guard sheet == nil, timerPlan == nil else { return }
+            switch tab {
+            case .today where !habitatVisible, .plan:
+                sheet = .addPlan(model.today)
+            case .review:
+                sheet = .manual(nil, nil)
+            case .today, .pet:
+                break
+            }
+        })
     }
 
     @ViewBuilder private var timerPreview: some View {
