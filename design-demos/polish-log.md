@@ -10,7 +10,7 @@
 
 四屏独立状态、详情、标签切换、手动完成、改期、补记、设备更正、死亡恢复、首次领养和手机宽度均用 Chrome 点按验证。Python Playwright 未安装，技能的自动外观体检跳过，使用浏览器截图人工复核和浏览器断言验证。
 
-[训练栖地复核图](previews/dir-1.jpg) · [夜跑手账复核图](previews/dir-2.jpg) · [团团日记复核图](previews/dir-3.jpg)
+三版独立复核图保存在 Git 标签 `prototype-v1.2`。
 
 ## A 版 Liquid Glass 原型
 

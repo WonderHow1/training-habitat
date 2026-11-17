@@ -5,7 +5,7 @@
 - [日常使用原型](ios-prototype.html) 从全屏栖息地进入今天、计划、回顾和宠物页面。演示板上的四台手机可以独立操作。
 - [新用户引导原型](new-user.html) 从设定训练目标开始，依次领养宠物、选择栖息地。点「重置新用户演示」可重新体验。
 
-初稿见 [六稿总览](thumbs.html)。
+初稿见 [六稿总览截图](previews/thumbs.jpg)。可交互的历史方向稿保存在 Git 标签 `prototype-v1.2`。
 
 打开原型时，「今天」默认展示全屏栖息地。在场景内上滑进入训练页，训练页滚到顶部后继续下滑即可回到栖息地。两个方向都随拖动缩放，短拖会回到当前画面。在训练页点整张宠物卡片也能打开栖息地，卡片插画底部渐隐至白色信息区。[手机首屏](previews/habitat-entry.png)
 
@@ -48,6 +48,6 @@
 
 ## 源码与验证
 
-`python3 design-demos/build.py` 生成原型和方向稿。`node --test design-demos/tests/training.mjs` 验证训练规则。`node design-demos/tests/browser.mjs` 用本机 Chrome 验证业务流程、玻璃动画、滚动叠层和辅助功能模式。可用 `PIXEL_CHROME` 指定 Chrome 路径，可用 `PIXEL_SCREENSHOTS` 指定截图目录。
+`python3 design-demos/build.py` 生成日常使用和新用户引导原型。`node --test design-demos/tests/training.mjs` 验证训练规则。`node design-demos/tests/browser.mjs` 用本机 Chrome 验证业务流程、玻璃动画、滚动叠层和辅助功能模式。可用 `PIXEL_CHROME` 指定 Chrome 路径，可用 `PIXEL_SCREENSHOTS` 指定截图目录。
 
 [方向确认](direction-approved.md) · [打磨前后对照](previews/polish.jpg) · [打磨与验证记录](polish-log.md)

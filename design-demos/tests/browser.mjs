@@ -202,8 +202,8 @@ async function swipeWorkout(id, direction = 'left', touch = false) {
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.sheet'))}))`), false);
 }
 
-async function demoDirection(index, glass = false) {
-  const name = glass ? 'ios-prototype' : `dir-${index}`;
+async function verifyDailyPrototype() {
+  const name = 'ios-prototype';
   const habitatGrowth = lead('.habitat-entry-header .growth');
   await navigate(name + '.html', 1440, 1100);
   assert.equal(await evaluate('document.querySelectorAll(".phone-app").length'), 4);
@@ -211,323 +211,277 @@ async function demoDirection(index, glass = false) {
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-shell")].every(x => x.getBoundingClientRect().width >= 300)'));
   assert.ok(await evaluate('document.querySelector("canvas").getContext("2d").getImageData(70,55,1,1).data[3] === 255'));
   await screenshot(name);
-  if (glass) {
-    await includes('.board-nav a[href="new-user.html"]', '新用户引导原型');
-    assert.equal(await evaluate('document.querySelectorAll(".onboarding, [data-action=open-onboarding], #demo-scene option[value=onboarding]").length'), 0);
-    assert.equal(await inHabitat(), true);
-    await includes(lead('.habitat-entry-header > h2:first-child'), '团团');
-    await includes(lead('.habitat-entry-status'), '幼年');
-    await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
-    await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
-    await clickLead('toggle-pet-age');
-    await includes(lead(act('toggle-pet-age')), '领养于2026年11月9日');
-    assert.equal(await inHabitat(), true);
-    await clickLead('toggle-pet-age');
-    await includes(lead(act('toggle-pet-age')), '年龄7 天');
-    await includes(habitatGrowth, 'Lv.1');
-    await includes(habitatGrowth, '0 / 100 XP');
-    assert.ok(await evaluate(`(() => {
-      const growth = document.querySelector(${JSON.stringify(habitatGrowth)});
-      const attributes = growth.nextElementSibling.children;
-      return attributes.length === 2 && [growth, ...attributes].every(element => {
-        const pill = getComputedStyle(element);
-        return pill.backgroundColor === 'rgba(255, 255, 255, 0.5)' &&
-          pill.backgroundImage === 'none' && pill.borderRadius === '20px';
-      });
-    })()`), 'The full-screen experience, age and weight pills have matching 50% opaque white fills');
-    await assertPetCentered(lead('.habitat-landscape'));
-    assert.ok(await evaluate(`(() => {
-      const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
-      const rect = entry.getBoundingClientRect();
-      const frame = entry.closest('.ios-screen').getBoundingClientRect();
-      const behind = entry.closest('.ios-screen').querySelector('.app-scroll');
-      return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
-    })()`));
-    const landscape = JSON.stringify(lead('.habitat-landscape'));
-    assert.ok(await evaluate(`new Promise(resolve => {
-      const canvas = document.querySelector(${landscape});
-      const still = canvas.cloneNode();
-      drawScene(still);
-      const rest = still.toDataURL();
-      const end = performance.now() + 3300;
-      function check() {
-        if (canvas.toDataURL() !== rest) resolve(true);
-        else if (performance.now() >= end) resolve(false);
-        else requestAnimationFrame(check);
+  await includes('.board-nav a[href="new-user.html"]', '新用户引导原型');
+  assert.deepEqual(await evaluate('[...document.querySelectorAll(".board-nav a")].map(link => link.getAttribute("href"))'), ['new-user.html']);
+  assert.equal(await evaluate('document.querySelectorAll(".onboarding, [data-action=open-onboarding], #demo-scene option[value=onboarding]").length'), 0);
+  assert.equal(await inHabitat(), true);
+  await includes(lead('.habitat-entry-header > h2:first-child'), '团团');
+  await includes(lead('.habitat-entry-status'), '幼年');
+  await includes(lead('.habitat-entry-header .pet-attributes'), '年龄7 天');
+  await includes(lead('.habitat-entry-header .pet-attributes'), '体重3.2 公斤');
+  await clickLead('toggle-pet-age');
+  await includes(lead(act('toggle-pet-age')), '领养于2026年11月9日');
+  assert.equal(await inHabitat(), true);
+  await clickLead('toggle-pet-age');
+  await includes(lead(act('toggle-pet-age')), '年龄7 天');
+  await includes(habitatGrowth, 'Lv.1');
+  await includes(habitatGrowth, '0 / 100 XP');
+  assert.ok(await evaluate(`(() => {
+    const growth = document.querySelector(${JSON.stringify(habitatGrowth)});
+    const attributes = growth.nextElementSibling.children;
+    return attributes.length === 2 && [growth, ...attributes].every(element => {
+      const pill = getComputedStyle(element);
+      return pill.backgroundColor === 'rgba(255, 255, 255, 0.5)' &&
+        pill.backgroundImage === 'none' && pill.borderRadius === '20px';
+    });
+  })()`), 'The full-screen experience, age and weight pills have matching 50% opaque white fills');
+  await assertPetCentered(lead('.habitat-landscape'));
+  assert.ok(await evaluate(`(() => {
+    const entry = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+    const rect = entry.getBoundingClientRect();
+    const frame = entry.closest('.ios-screen').getBoundingClientRect();
+    const behind = entry.closest('.ios-screen').querySelector('.app-scroll');
+    return rect.top === frame.top && rect.bottom === frame.bottom && behind.inert;
+  })()`));
+  const landscape = JSON.stringify(lead('.habitat-landscape'));
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const canvas = document.querySelector(${landscape});
+    const still = canvas.cloneNode();
+    drawScene(still);
+    const rest = still.toDataURL();
+    const end = performance.now() + 3300;
+    function check() {
+      if (canvas.toDataURL() !== rest) resolve(true);
+      else if (performance.now() >= end) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'An untouched pet blinks in the habitat');
+  const pet = lead('.scene-pet-touch');
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const target = document.querySelector(${JSON.stringify(pet)});
+    const start = performance.now();
+    function check() {
+      const offset = parseFloat(target.style.getPropertyValue('--pet-offset-x'));
+      if (Math.abs(offset) >= 8) {
+        const rect = target.getBoundingClientRect();
+        const scene = target.parentElement.getBoundingClientRect();
+        resolve(rect.left >= scene.left && rect.right <= scene.right && Math.abs(rect.left + rect.width / 2 - scene.left - scene.width / 2) >= 8);
+      } else if (performance.now() - start > 3800) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'The pet walks away from the center and the touch target follows inside the scene');
+  assert.ok(await evaluate(`(() => {
+    const canvas = document.querySelector(${landscape});
+    const target = document.querySelector(${JSON.stringify(pet)});
+    const stop = wanderingPet(canvas, target, canvas.parentElement.querySelector('.habitat-continue'), 10600);
+    const feet = centeredPetPosition(canvas, canvas.dataset.species).y + stop.y + 24;
+    return canvas.width / 2 + stop.x + 16 <= gardenShoreAt(feet);
+  })()`), 'The route stays on the grass at its eastern edge');
+  await click(pet);
+  assert.ok(await evaluate(`(() => {
+    const canvas = document.querySelector(${landscape});
+    const { width, height } = canvas;
+    const still = canvas.cloneNode();
+    drawScene(still);
+    function read(frame) {
+      const pixels = frame.getContext('2d').getImageData(0, 0, width, height).data;
+      let outline = 0, heart = false;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index] === 99 && pixels[index + 1] === 62 && pixels[index + 2] === 73) outline++;
+        if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) heart = true;
       }
-      check();
-    })`), 'An untouched pet blinks in the habitat');
-    const pet = lead('.scene-pet-touch');
-    assert.ok(await evaluate(`new Promise(resolve => {
-      const target = document.querySelector(${JSON.stringify(pet)});
-      const start = performance.now();
-      function check() {
-        const offset = parseFloat(target.style.getPropertyValue('--pet-offset-x'));
-        if (Math.abs(offset) >= 8) {
-          const rect = target.getBoundingClientRect();
-          const scene = target.parentElement.getBoundingClientRect();
-          resolve(rect.left >= scene.left && rect.right <= scene.right && Math.abs(rect.left + rect.width / 2 - scene.left - scene.width / 2) >= 8);
-        } else if (performance.now() - start > 3800) resolve(false);
-        else requestAnimationFrame(check);
-      }
-      check();
-    })`), 'The pet walks away from the center and the touch target follows inside the scene');
-    assert.ok(await evaluate(`(() => {
-      const canvas = document.querySelector(${landscape});
-      const target = document.querySelector(${JSON.stringify(pet)});
-      const stop = wanderingPet(canvas, target, canvas.parentElement.querySelector('.habitat-continue'), 10600);
-      const feet = centeredPetPosition(canvas, canvas.dataset.species).y + stop.y + 24;
-      return canvas.width / 2 + stop.x + 16 <= gardenShoreAt(feet);
-    })()`), 'The route stays on the grass at its eastern edge');
-    await click(pet);
-    assert.ok(await evaluate(`(() => {
-      const canvas = document.querySelector(${landscape});
-      const { width, height } = canvas;
-      const still = canvas.cloneNode();
-      drawScene(still);
-      function read(frame) {
-        const pixels = frame.getContext('2d').getImageData(0, 0, width, height).data;
-        let outline = 0, heart = false;
-        for (let index = 0; index < pixels.length; index += 4) {
-          if (pixels[index] === 99 && pixels[index + 1] === 62 && pixels[index + 2] === 73) outline++;
-          if (pixels[index] === 228 && pixels[index + 1] === 109 && pixels[index + 2] === 142) heart = true;
-        }
-        return { outline, heart };
-      }
-      const animated = read(canvas);
-      return animated.heart && animated.outline === read(still).outline;
-    })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
-    await guidePetTo(.23, .57, true);
-    assert.ok(await evaluate(`new Promise(resolve => {
-      const target = document.querySelector(${JSON.stringify(pet)});
-      const x = () => parseFloat(target.style.getPropertyValue('--pet-offset-x'));
-      let arrived;
-      const start = performance.now();
-      function check() {
-        const elapsed = performance.now() - start;
-        if (elapsed < 200) requestAnimationFrame(check);
-        else if ((arrived ??= x()) !== x() && elapsed < 1600) resolve(false);
-        else if (Math.abs(x() - arrived) >= 8) resolve(x() < -45);
-        else if (elapsed > 3800) resolve(false);
-        else requestAnimationFrame(check);
-      }
-      check();
-    })`), 'After pausing, the pet begins walking near the tapped location');
-    assert.equal(await inHabitat(), true);
-    await enterToday();
-    await assertPetCentered(lead('.habitat-link .pixel-scene'));
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-link .scene-label'))}) === null`),
-      true, 'The Today habitat preview has no visible label');
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-open'))}).getAttribute('aria-label')`),
-      '打开全屏栖息地');
-    await includes(lead('.habitat-link .pet-attributes'), '年龄7 天');
-    await includes(lead('.habitat-link .pet-attributes'), '体重3.2 公斤');
-    await includes(lead('.today-task'), '今日训练');
-    assert.equal(await todayHeadline(), '今天已经锻炼0小时');
-    const headingSizes = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.app-head :is(.kicker, .today-duration, .today-remaining)'))})].map(text => getComputedStyle(text).fontSize)`);
-    assert.deepEqual(headingSizes, ['13px', '28px', '13px']);
-    await includes(lead('.app-head h2 + .today-remaining'), '你距离目标还有30分钟');
-    await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
-    assert.equal(await workoutOpen('today'), false);
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .swipe-actions')}).inert`), true);
-    await evaluate('window.scrollTo(0, 0)');
-    await screenshot(name + '-today');
-    await swipeWorkout('today');
-    await includes(workout('today') + ' .swipe-actions', '编辑删除');
-    await screenshot(name + '-workout-swipe');
-    await swipeWorkout('today', 'right');
-    await clickLead('quick-record', 'today');
-    await includes(workout('today') + ' .quick-record-options', '计时直接记录');
-    await clickLead('quick-manual', 'today');
-  } else await clickLead('manual', 'today');
+      return { outline, heart };
+    }
+    const animated = read(canvas);
+    return animated.heart && animated.outline === read(still).outline;
+  })()`), 'The cat keeps its original silhouette and shows a pixel heart on tap');
+  await guidePetTo(.23, .57, true);
+  assert.ok(await evaluate(`new Promise(resolve => {
+    const target = document.querySelector(${JSON.stringify(pet)});
+    const x = () => parseFloat(target.style.getPropertyValue('--pet-offset-x'));
+    let arrived;
+    const start = performance.now();
+    function check() {
+      const elapsed = performance.now() - start;
+      if (elapsed < 200) requestAnimationFrame(check);
+      else if ((arrived ??= x()) !== x() && elapsed < 1600) resolve(false);
+      else if (Math.abs(x() - arrived) >= 8) resolve(x() < -45);
+      else if (elapsed > 3800) resolve(false);
+      else requestAnimationFrame(check);
+    }
+    check();
+  })`), 'After pausing, the pet begins walking near the tapped location');
+  assert.equal(await inHabitat(), true);
+  await enterToday();
+  await assertPetCentered(lead('.habitat-link .pixel-scene'));
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-link .scene-label'))}) === null`),
+    true, 'The Today habitat preview has no visible label');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.habitat-open'))}).getAttribute('aria-label')`),
+    '打开全屏栖息地');
+  await includes(lead('.habitat-link .pet-attributes'), '年龄7 天');
+  await includes(lead('.habitat-link .pet-attributes'), '体重3.2 公斤');
+  await includes(lead('.today-task'), '今日训练');
+  assert.equal(await todayHeadline(), '今天已经锻炼0小时');
+  const headingSizes = await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.app-head :is(.kicker, .today-duration, .today-remaining)'))})].map(text => getComputedStyle(text).fontSize)`);
+  assert.deepEqual(headingSizes, ['13px', '28px', '13px']);
+  await includes(lead('.app-head h2 + .today-remaining'), '你距离目标还有30分钟');
+  await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.habitat-entry'))}).getAnimations().map(animation => animation.finished))`);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lead('.app-scroll'))}).textContent.includes('下一次训练')`), false);
+  assert.equal(await workoutOpen('today'), false);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .swipe-actions')}).inert`), true);
+  await evaluate('window.scrollTo(0, 0)');
+  await screenshot(name + '-today');
+  await swipeWorkout('today');
+  await includes(workout('today') + ' .swipe-actions', '编辑删除');
+  await screenshot(name + '-workout-swipe');
+  await swipeWorkout('today', 'right');
+  await clickLead('quick-record', 'today');
+  await includes(workout('today') + ' .quick-record-options', '计时直接记录');
+  await clickLead('quick-manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
-  if (glass) {
-    await includes(lead('.sheet button[type="submit"]'), '保存记录');
-    await includes(lead('.sheet-note'), '保存后会计入「校园夜跑」');
-    assert.ok(await evaluate(`(() => {
-      const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
-      const field = sheet.querySelector('input[name="title"]');
-      return sheet.contains(document.activeElement) &&
-        getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px' &&
-        getComputedStyle(field).backdropFilter.includes('blur') && getComputedStyle(field).backgroundImage.includes('linear-gradient');
-    })()`));
-    await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().map(animation => animation.finished))`);
-    await screenshot(name + '-record');
-  }
+  await includes(lead('.sheet button[type="submit"]'), '保存记录');
+  await includes(lead('.sheet-note'), '保存后会计入「校园夜跑」');
+  assert.ok(await evaluate(`(() => {
+    const sheet = document.querySelector(${JSON.stringify(lead('.sheet'))});
+    const field = sheet.querySelector('input[name="title"]');
+    return sheet.contains(document.activeElement) &&
+      getComputedStyle(sheet).borderWidth === '0px' && getComputedStyle(field).borderWidth === '0px' &&
+      getComputedStyle(field).backdropFilter.includes('blur') && getComputedStyle(field).backgroundImage.includes('linear-gradient');
+  })()`));
+  await evaluate(`Promise.allSettled(document.querySelector(${JSON.stringify(lead('.sheet'))}).getAnimations().map(animation => animation.finished))`);
+  await screenshot(name + '-record');
   await submit();
-  if (glass) assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
-  else {
-    await includes(lead('.sheet h3'), '确认关联');
-    await submit();
-  }
+  assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
   await includes(lead('.today-task'), '已完成');
-  if (glass) {
-    await includes(lead('.habitat .growth'), '0 / 100 XP');
-    assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
-    await includes(lead('.today-remaining'), '你距离目标还有10分钟');
-    await clickLead('habitat');
-    assert.equal(await inHabitat(), true);
-    await includes(habitatGrowth, '0 / 100 XP');
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar i')}).style.width`), '0%');
-    await enterToday();
-    await includes('[data-phone="week"] .week-summary dd', '0 / 3');
-    await clickLead('tab', 'week');
-    await includes(lead('.week-summary dd'), '1 / 3');
-    await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
-    await clickLead('day', '2026-11-19');
-    await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
-  } else {
-    await includes(lead('.habitat'), '成长 2 次');
-    await includes('[data-phone="week"] .week-total strong', '0 / 3');
-  }
+  await includes(lead('.habitat .growth'), '0 / 100 XP');
+  assert.equal(await todayHeadline(), '今天已经锻炼0.33小时');
+  await includes(lead('.today-remaining'), '你距离目标还有10分钟');
+  await clickLead('habitat');
+  assert.equal(await inHabitat(), true);
+  await includes(habitatGrowth, '0 / 100 XP');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar i')}).style.width`), '0%');
+  await enterToday();
+  await includes('[data-phone="week"] .week-summary dd', '0 / 3');
+  await clickLead('tab', 'week');
+  await includes(lead('.week-summary dd'), '1 / 3');
+  await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
+  await clickLead('day', '2026-11-19');
+  await includes(lead('.week-summary > div:nth-child(2) dd'), '20 分钟');
   await clickLead('tab', 'log');
   await includes(lead('.record-feed'), '校园夜跑');
-  if (glass) {
-    await verifyHeatmapAfterSaving();
-    await clickLead('review-add');
-  }
+  await verifyHeatmapAfterSaving();
+  await clickLead('review-add');
   await clickLead('import');
   await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
   await submit();
   await clickLead('tab', 'week');
   await clickLead('previous');
-  if (glass) await includes(lead('.week-summary > div:nth-child(2) dd'), '79 分钟');
+  await includes(lead('.week-summary > div:nth-child(2) dd'), '79 分钟');
   await clickLead('detail', 'old');
   await includes(lead('.sheet .sheet-status'), '已完成');
   await includes(lead('.sheet-note'), '撤销本次扣血');
-  if (glass) {
-    assert.ok(await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.sheet dl div'))})]
-      .every(row => getComputedStyle(row).borderBottomWidth === '0px')`));
-  }
+  assert.ok(await evaluate(`[...document.querySelectorAll(${JSON.stringify(lead('.sheet dl div'))})]
+    .every(row => getComputedStyle(row).borderBottomWidth === '0px')`));
   await clickLead('close');
   await clickLead('detail', 'grace');
   await includes(lead('.sheet'), '补记截止');
   await clickLead('manual', 'grace');
   await submit();
-  if (!glass) await submit();
   await clickLead('detail', 'grace');
   await includes(lead('.sheet .sheet-status'), '已完成');
   await clickLead('close');
   await click('#reset');
-  if (glass) {
-    assert.equal(await inHabitat(), true);
-    await enterToday();
-    await clickLead('detail', 'today');
-    await clickLead('manual', 'today');
-    await change(lead('.sheet input[name="minutes"]'), '10');
-    await submit();
-    await includes(lead('.toast'), '已保存训练记录，计划尚未完成');
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .chip.upcoming')}) === null`), true);
-    await includes(lead('.habitat .growth'), '0 / 100 XP');
-    await clickLead('tab', 'log');
-    await clickLead('record', 'record-2');
-    await includes(lead('.sheet dl'), '关联计划未关联');
-    await clickLead('close');
-    await clickLead('tab', 'home');
-    await clickLead('detail', 'today');
-    await includes(lead('.sheet .sheet-status'), '待训练');
-  }
-  await (glass ? click(lead('.sheet ' + act('edit-plan', 'today'))) : clickLead('reschedule', 'today'));
+  assert.equal(await inHabitat(), true);
+  await enterToday();
+  await clickLead('detail', 'today');
+  await clickLead('manual', 'today');
+  await change(lead('.sheet input[name="minutes"]'), '10');
+  await submit();
+  await includes(lead('.toast'), '已保存训练记录，计划尚未完成');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(workout('today') + ' .chip.upcoming')}) === null`), true);
+  await includes(lead('.habitat .growth'), '0 / 100 XP');
+  await clickLead('tab', 'log');
+  await clickLead('record', 'record-2');
+  await includes(lead('.sheet dl'), '关联计划未关联');
+  await clickLead('close');
+  await clickLead('tab', 'home');
+  await clickLead('detail', 'today');
+  await includes(lead('.sheet .sheet-status'), '待训练');
+  await click(lead('.sheet ' + act('edit-plan', 'today')));
   await change(lead('input[name="date"]'), '2026-11-17');
   await change(lead('.sheet input[name="start"]'), '19:45');
   await submit();
   await includes(lead('.today-task'), '今天无计划训练');
-  if (glass) {
-    await clickLead('tab', 'week');
-    await clickLead('day', '2026-11-17');
-    await includes(lead(act('detail', 'today')), '11月17日 19:45');
-  } else await includes(lead('.following'), '11月17日 19:45');
+  await clickLead('tab', 'week');
+  await clickLead('day', '2026-11-17');
+  await includes(lead(act('detail', 'today')), '11月17日 19:45');
 
-  if (index === 1) {
-    const petSummary = lead(glass ? '.habitat-entry-header' : '.habitat');
-    await change('#demo-scene', 'death');
-    await includes(petSummary, '已离世');
-    await clickLead('adopt');
-    await change(lead('input[name="name"]'), '点点');
-    if (glass) {
-      const form = lead('form[data-form="adopt"]');
-      await includes(form + ' .species-options', '仓鼠');
-      const previews = await evaluate(`[...document.querySelectorAll(${JSON.stringify(form + ' .species-choice canvas')})].map(canvas => canvas.toDataURL())`);
-      assert.equal(new Set(previews).size, 10);
-      await click(form + ' .species-choice:has(input[value="dog"])');
-      const rooms = new Set();
-      for (const habitat of ['garden', 'running-track', 'living', 'bedroom', 'gym']) {
-        await change(form + ' select[name="habitat"]', habitat);
-        rooms.add(await evaluate(`document.querySelector(${JSON.stringify(form + ' .habitat-choice-preview canvas')}).toDataURL()`));
-        if (habitat === 'running-track') await screenshot('ios-prototype-running-track');
-      }
-      assert.equal(rooms.size, 5);
-      await screenshot('ios-prototype-adoption');
-    }
-    await submit();
-    await includes(petSummary, '点点');
-    if (glass) {
-      const portrait = JSON.stringify(lead('.habitat-landscape'));
-      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.species`), 'dog');
-      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'gym');
-      await includes(lead('.pet-attributes'), '0 天');
-      await includes(lead('.pet-attributes'), '6 公斤');
-      await clickLead('habitat-settings');
-      await verifyCenteredHabitatChoices(lead('.sheet .habitat-choice-preview canvas'), lead('.sheet select[name="habitat"]'));
-      await submit();
-      assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'running-track');
-      await clickLead('tab', 'home');
-      assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.pixel-scene[data-species="dog"][data-habitat="running-track"]'))}))`));
-    }
-    await clickLead('tab', 'log');
-    if (glass) await clickLead('review-add');
-    await clickLead('import');
-    await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
-    await submit();
-    await clickLead('tab', 'pet');
-    await clickLead('restore', 'moss');
-    await clickLead('confirm-restore', 'moss');
-    await includes(petSummary, '团团');
-    if (!glass) {
-      await change('#demo-scene', 'onboarding');
-      await submit();
-      await change(lead('input[name="title"]'), '校园夜跑');
-      await change(lead('input[name="date"]'), '2026-11-17');
-      await submit();
-      await click(lead('.sheet [data-action="onboard-finish"].secondary'));
-      await includes(lead('.following'), '11月17日');
-      await change('#demo-time', '2026-11-19T01:00');
-      await click('#advance');
-      await includes('#demo-feedback', '已按北京时间更新结算');
-      await clickLead('tab', 'week');
-      await clickLead('detail', 'plan-3');
-      await includes(lead('.sheet .sheet-status'), '已漏练');
-    }
+  const petSummary = lead('.habitat-entry-header');
+  await change('#demo-scene', 'death');
+  await includes(petSummary, '已离世');
+  await clickLead('adopt');
+  await change(lead('input[name="name"]'), '点点');
+  const form = lead('form[data-form="adopt"]');
+  await includes(form + ' .species-options', '仓鼠');
+  const previews = await evaluate(`[...document.querySelectorAll(${JSON.stringify(form + ' .species-choice canvas')})].map(canvas => canvas.toDataURL())`);
+  assert.equal(new Set(previews).size, 10);
+  await click(form + ' .species-choice:has(input[value="dog"])');
+  const rooms = new Set();
+  for (const habitat of ['garden', 'running-track', 'living', 'bedroom', 'gym']) {
+    await change(form + ' select[name="habitat"]', habitat);
+    rooms.add(await evaluate(`document.querySelector(${JSON.stringify(form + ' .habitat-choice-preview canvas')}).toDataURL()`));
+    if (habitat === 'running-track') await screenshot('ios-prototype-running-track');
   }
+  assert.equal(rooms.size, 5);
+  await screenshot('ios-prototype-adoption');
+  await submit();
+  await includes(petSummary, '点点');
+  const portrait = JSON.stringify(lead('.habitat-landscape'));
+  assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.species`), 'dog');
+  assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'gym');
+  await includes(lead('.pet-attributes'), '0 天');
+  await includes(lead('.pet-attributes'), '6 公斤');
+  await clickLead('habitat-settings');
+  await verifyCenteredHabitatChoices(lead('.sheet .habitat-choice-preview canvas'), lead('.sheet select[name="habitat"]'));
+  await submit();
+  assert.equal(await evaluate(`document.querySelector(${portrait}).dataset.habitat`), 'running-track');
+  await clickLead('tab', 'home');
+  assert.ok(await evaluate(`Boolean(document.querySelector(${JSON.stringify(lead('.pixel-scene[data-species="dog"][data-habitat="running-track"]'))}))`));
+  await clickLead('tab', 'log');
+  await clickLead('review-add');
+  await clickLead('import');
+  await click(lead('.sheet [data-action="device"]:nth-of-type(1)'));
+  await submit();
+  await clickLead('tab', 'pet');
+  await clickLead('restore', 'moss');
+  await clickLead('confirm-restore', 'moss');
+  await includes(petSummary, '团团');
 
-  await navigate(name + '.html', 390, glass ? 760 : 1120);
+  await navigate(name + '.html', 390, 760);
   assert.equal(await evaluate('document.documentElement.scrollWidth === document.documentElement.clientWidth'), true);
   assert.ok(await evaluate('[...document.querySelectorAll(".ios-status")].every(el => { const island = el.nextElementSibling.getBoundingClientRect(); return el.children[0].getBoundingClientRect().right < island.left && el.children[1].getBoundingClientRect().left > island.right; })'));
-  if (glass) assert.ok(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar')}).getBoundingClientRect().width > 80`));
+  assert.ok(await evaluate(`document.querySelector(${JSON.stringify(habitatGrowth + ' .growth-bar')}).getBoundingClientRect().width > 80`));
   await screenshot(name + '-mobile');
-  if (glass) {
-    await verifySwipe();
-    await clickLead('detail', 'today');
-  }
+  await verifySwipe();
+  await clickLead('detail', 'today');
   await clickLead('manual', 'today');
   await includes(lead('.sheet h3'), '手动记录');
   await screenshot(name + '-mobile-record');
   await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
   assert.equal(await evaluate('document.querySelectorAll(".sheet").length'), 0);
-  if (glass) {
-    await clickLead('tab', 'pet');
-    await includes(lead('.pet-scene-panel'), '0 / 100 XP');
-    await settleHabitatAnimation();
-    assert.ok(await evaluate(`(() => {
-      const petScene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
-      const panel = petScene.querySelector('.pet-scene-panel').getBoundingClientRect();
-      const header = petScene.querySelector('.habitat-entry-header').getBoundingClientRect();
-      const nav = document.querySelector(${JSON.stringify(lead('.tabbar'))}).getBoundingClientRect();
-      return petScene.getBoundingClientRect().height === innerHeight && header.bottom < panel.top && panel.bottom < nav.top;
-    })()`));
-    await screenshot(name + '-mobile-pet');
-  }
+  await clickLead('tab', 'pet');
+  await includes(lead('.pet-scene-panel'), '0 / 100 XP');
+  await settleHabitatAnimation();
+  assert.ok(await evaluate(`(() => {
+    const petScene = document.querySelector(${JSON.stringify(lead('.habitat-entry'))});
+    const panel = petScene.querySelector('.pet-scene-panel').getBoundingClientRect();
+    const header = petScene.querySelector('.habitat-entry-header').getBoundingClientRect();
+    const nav = document.querySelector(${JSON.stringify(lead('.tabbar'))}).getBoundingClientRect();
+    return petScene.getBoundingClientRect().height === innerHeight && header.bottom < panel.top && panel.bottom < nav.top;
+  })()`));
+  await screenshot(name + '-mobile-pet');
 }
 
 async function assertPetCentered(selector) {
@@ -1720,8 +1674,7 @@ try {
   ({ sessionId } = await cmd('Target.attachToTarget', { targetId, flatten: true }));
   await cmd('Runtime.enable');
   await cmd('Page.enable');
-  for (const direction of [1, 2, 3]) await demoDirection(direction);
-  await demoDirection(1, true);
+  await verifyDailyPrototype();
   await verifyGlass();
   await verifyCustomProjects();
   await verifyTrainingManagement();
@@ -1731,17 +1684,14 @@ try {
   await navigate('ios-prototype.html', 900, 1000);
   await click('.board-nav a[href="new-user.html"]');
   await waitForPage('new-user.html');
+  assert.deepEqual(await evaluate('[...document.querySelectorAll(".board-nav a")].map(link => link.getAttribute("href"))'), ['ios-prototype.html']);
   await includes(lead('.onboarding h2'), '设定每日训练目标');
   await click('.board-nav a[href="ios-prototype.html"]');
   await waitForPage('ios-prototype.html');
   assert.equal(await inHabitat(), true);
   await captureGrowthAudit();
-  await navigate('thumbs.html', 1440, 940);
-  assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
-  assert.equal(await evaluate('document.querySelectorAll("[data-thumb] a").length'), 3);
-  await screenshot('thumbs');
   assert.deepEqual(errors, [], 'Browser console exceptions');
-  console.log('Browser verification passed for the Liquid Glass prototype, three directions, and six candidates.');
+  console.log('Browser verification passed for the daily prototype and new-user guide.');
 } catch (error) {
   failed = true;
   console.error(error);
