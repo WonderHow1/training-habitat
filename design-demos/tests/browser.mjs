@@ -1668,45 +1668,6 @@ async function verifyNarrowTrainingSummary() {
   assert.equal(await evaluate('document.activeElement.dataset.action'), 'pet-guide');
   assert.equal(await inHabitat(), true);
 }
-async function verifyProductFilmDirections() {
-  const page = 'product-film/方向预览.html';
-  const verifyFrames = () => evaluate(`(async () => {
-    await Promise.all([...document.images].map(img => img.decode()));
-    const frames = [...document.querySelectorAll('.frame')];
-    return frames.length > 0 && frames.every(frame => {
-      const box = frame.parentElement.getBoundingClientRect();
-      const rect = frame.getBoundingClientRect();
-      const title = frame.querySelector('h2').getBoundingClientRect();
-      return rect.width > 100 && Math.abs(rect.width - box.width) < 1 &&
-        Math.abs(rect.height - box.height) < 1 &&
-        title.left >= box.left - 1 && title.right <= box.right + 1 && title.bottom <= box.bottom + 1 &&
-        frame.querySelector('img').naturalWidth > 0;
-    }) && document.documentElement.scrollWidth === document.documentElement.clientWidth;
-  })()`);
-  await navigate(page, 1600, 925);
-  assert.equal(await evaluate('document.querySelectorAll("[data-thumb]").length'), 6);
-  assert.equal(await verifyFrames(), true, 'Candidate thumbnails fit and all product art decodes');
-  await screenshot('film-directions');
-  const labels = { a: '校园一周', b: '像素陪练', c: '实机跟练' };
-  for (const [direction, label] of Object.entries(labels)) {
-    const url = page + '?view=' + direction;
-    await click(`[data-view="${direction}"]`);
-    await waitForPage(url);
-    assert.equal(await evaluate('document.querySelector("h1").textContent.trim()'), `${direction.toUpperCase()}  ${label}`);
-    assert.equal(await evaluate('document.querySelectorAll(".detail .frame").length'), 3);
-    assert.equal(await evaluate('document.querySelector("[aria-current]").dataset.view'), direction);
-    assert.equal(await evaluate('document.querySelectorAll(".swatches i").length'), 4);
-    assert.equal(await verifyFrames(), true, `Direction ${direction} fits and all product art decodes`);
-    if (direction === 'b') {
-      const heights = await evaluate('[...document.querySelectorAll(".stages .sprite")].map(sprite => sprite.height)');
-      assert.equal(heights.length, 3);
-      assert.ok(heights[0] < heights[1] && heights[1] < heights[2], 'Stage images keep the same scale for each source pixel');
-    }
-    await screenshot(`film-direction-${direction}`);
-  }
-  await navigate(page + '?view=c', 390, 844);
-  assert.equal(await verifyFrames(), true, 'The direction board fits a narrow viewport');
-}
 let failed = false;
 try {
   const { targetId } = await cmd('Target.createTarget', { url: 'about:blank' });
@@ -1729,9 +1690,8 @@ try {
   await waitForPage('ios-prototype.html');
   assert.equal(await inHabitat(), true);
   await captureGrowthAudit();
-  await verifyProductFilmDirections();
   assert.deepEqual(errors, [], 'Browser console exceptions');
-  console.log('Browser verification passed for the daily prototype, new-user guide and product film directions.');
+  console.log('Browser verification passed for the daily prototype and new-user guide.');
 } catch (error) {
   failed = true;
   console.error(error);

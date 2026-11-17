@@ -1,4 +1,5 @@
 import json
+import re
 import tempfile
 import unittest
 import wave
@@ -14,6 +15,16 @@ from title_cards import FPS, HEIGHT, OUTRO, WIDTH, Titles
 
 
 class VerticalFilmTests(unittest.TestCase):
+    def test_only_the_approved_film_is_published_and_its_readme_links_resolve(self):
+        film = Path(__file__).resolve().parents[1]
+        approved = film / "vertical" / "训练栖地-竖屏短片.mp4"
+        self.assertEqual(sorted(film.rglob("*.mp4")), [approved])
+        entry = (film / "README.md").read_text()
+        self.assertIn(f"(vertical/{approved.name})", entry)
+        for readme in (film / "README.md", film / "vertical" / "README.md"):
+            for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", readme.read_text()):
+                self.assertTrue((readme.parent / link).is_file(), f"{readme}: {link}")
+
     def test_portrait_titles_and_visible_pixel_growth(self):
         titles = Titles()
         for scene, times in ((titles.opener, (0, 1.49, 3.95)),
