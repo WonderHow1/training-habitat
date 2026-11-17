@@ -161,6 +161,10 @@ assert 'TextField(' not in selection and 'TextField("团团", text: $name)' in n
 assert '.disabled(step == .name &&' in onboarding
 goal_page = onboarding_content.split('case .goal:', 1)[1].split('case .pet:', 1)[0]
 assert 'showsGoalPicker = true' in goal_page and 'TextField(' not in goal_page
+assert 'prominentInputFont = Font.system(size: 72, weight: .heavy, design: .rounded)' in onboarding
+assert '.font(prominentInputFont)' in goal_page and '.font(prominentInputFont)' in naming
+naming_layout = onboarding.split('private func namingPage(', 1)[1].split('@ViewBuilder', 1)[0]
+assert 'ScrollView {' in naming_layout and 'ViewThatFits' not in naming_layout
 goal_editor = editor_source.split('struct OnboardingGoalPicker:', 1)[1].split('struct WorkoutEditor:', 1)[0]
 assert 'HourMinuteWheel(hours: hours, minutes: minutes, allowedHours: DailyTrainingGoal.allowedHours' in goal_editor
 assert 'DailyTrainingGoal.minutes(in: hour)' in goal_editor and 'DailyTrainingGoal.cautionMessage' in goal_editor

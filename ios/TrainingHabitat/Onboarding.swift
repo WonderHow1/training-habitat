@@ -31,6 +31,7 @@ struct Onboarding: View {
 
     private let rainbow: [UInt32] = [0xfa8198, 0xffa258, 0xffda49, 0x91d568, 0x57cfbf, 0x7cafff, 0xc492f5]
     private let ink = Color(red: 0.08, green: 0.19, blue: 0.29)
+    private let prominentInputFont = Font.system(size: 72, weight: .heavy, design: .rounded)
 
     var body: some View {
         GeometryReader { geometry in
@@ -42,10 +43,13 @@ struct Onboarding: View {
                         .transition(.opacity)
                 }
                 ZStack {
+                    let previewSize = min(176, max(118, geometry.size.height * 0.28))
                     if step == .habitat {
                         habitatStep(top: top)
+                    } else if step == .name {
+                        namingPage(top: top, previewSize: previewSize, viewportHeight: geometry.size.height)
                     } else {
-                        page(top: top, previewSize: min(176, max(118, geometry.size.height * 0.28)))
+                        page(top: top, previewSize: previewSize)
                     }
                 }
                 .id(step)
@@ -109,6 +113,21 @@ struct Onboarding: View {
         .padding(.bottom, 14)
     }
 
+    private func namingPage(top: CGFloat, previewSize: CGFloat, viewportHeight: CGFloat) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                title.padding(.top, top)
+                pageContent(previewSize: previewSize, choiceSpacing: 0)
+                Spacer(minLength: 10)
+                controls
+            }
+            .frame(minHeight: max(0, viewportHeight - 14), alignment: .topLeading)
+            .padding(.horizontal, 28)
+            .padding(.bottom, 14)
+        }
+        .scrollIndicators(.hidden)
+    }
+
     @ViewBuilder
     private func pageContent(previewSize: CGFloat, choiceSpacing: CGFloat) -> some View {
         switch step {
@@ -119,7 +138,7 @@ struct Onboarding: View {
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text("\(goal, format: .number.grouping(.never))")
-                            .font(.system(size: 72, weight: .heavy, design: .rounded))
+                            .font(prominentInputFont)
                         Text("分钟").font(.headline)
                         Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.semibold))
                     }
@@ -152,7 +171,7 @@ struct Onboarding: View {
             VStack(spacing: 20) {
                 PetPortrait(species: species, size: previewSize, interactive: true).id(species)
                 TextField("团团", text: $name)
-                    .font(.title3.weight(.semibold))
+                    .font(prominentInputFont)
                     .multilineTextAlignment(.center)
                     .padding(.vertical, 6)
                     .focused($isEditingName)
