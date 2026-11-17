@@ -42,18 +42,26 @@ Style: Touch,Helvetica,30,&H0000D3FF,&H0000D3FF,&H00473C23,&H00000000,0,0,0,0,10
 [Events]
 Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 """
+    # The reversed inner path keeps the control under the touch visible.
+    ring = ("m 0 11 l 7 11 7 4 34 4 34 11 41 11 41 34 34 34 34 41 7 41 7 34 0 34 "
+            "m 7 17 l 7 28 14 28 14 34 27 34 27 28 34 28 34 17 27 17 27 11 14 11 14 17 7 17")
     events = []
-    for time, x, y, hold in shot.get("touches", []):
-        assert 0 <= time < shot["duration"] and 0 <= x <= 1 and 0 <= y <= 1 and hold > 0
-        px = int(SCREEN_X + SCREEN_WIDTH * x)
-        py = int(SCREEN_Y + SCREEN_HEIGHT * y)
+
+    def point(x, y):
+        assert 0 <= x <= 1 and 0 <= y <= 1
+        return f"{int(SCREEN_X + SCREEN_WIDTH * x)},{int(SCREEN_Y + SCREEN_HEIGHT * y)}"
+
+    def add(time, hold, tags):
+        assert 0 <= time < shot["duration"] and hold > 0
         end = min(shot["duration"], time + hold)
         timing = f"0,{timestamp(time)},{timestamp(end)},Touch,,0,0,0,,"
-        tags = rf"{{\an5\pos({px},{py})\fad(16,140)\fscx82\fscy82\t(0,160,\fscx112\fscy112)\p1}}"
-        # The reversed inner path keeps the clicked control visible.
-        ring = ("m 0 11 l 7 11 7 4 34 4 34 11 41 11 41 34 34 34 34 41 7 41 7 34 0 34 "
-                "m 7 17 l 7 28 14 28 14 34 27 34 27 28 34 28 34 17 27 17 27 11 14 11 14 17 7 17")
         events.append(f"Dialogue: {timing}{tags}{ring}")
+
+    for time, x, y, hold in shot.get("touches", []):
+        add(time, hold, rf"{{\an5\pos({point(x, y)})\fad(16,140)\fscx82\fscy82\t(0,160,\fscx112\fscy112)\p1}}")
+    for time, start_x, start_y, end_x, end_y, hold in shot.get("swipes", []):
+        path = f"{point(start_x, start_y)},{point(end_x, end_y)},0,{round(hold * 1000)}"
+        add(time, hold + .10, rf"{{\an5\move({path})\fad(16,110)\p1}}")
     file.write_text(header + "\n".join(events) + "\n")
 
 

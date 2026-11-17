@@ -71,6 +71,25 @@ class VerticalFilmTests(unittest.TestCase):
         for fact in ("1 XP", "100 XP", "Lv.3 起", "3 颗心", "少 1 颗心", "首个完整日", "北京时间", "离世"):
             self.assertTrue(any(fact in line for line in lines), fact)
 
+    def test_habitat_demo_has_time_for_entry_pet_reaction_guided_walk_and_return(self):
+        timeline = json.loads(Path(__file__).with_name("timeline.json").read_text())
+        habitat, *other_shots = timeline["shots"]
+        self.assertEqual(habitat["flow"], "habitat")
+        self.assertEqual(other_shots[0]["flow"], "reschedule")
+        for instruction in ("「今天」", "全屏栖息地", "点猫", "点草地", "上滑返回"):
+            self.assertIn(instruction, habitat["caption"])
+        self.assertLess(title_cards.font(38, bold=False).getlength(habitat["caption"]), WIDTH - 2 * 79)
+        entry, pet, destination = habitat["touches"]
+        (returning,) = habitat["swipes"]
+        self.assertGreater(entry[0], .4)
+        self.assertTrue(.15 < entry[1] < .85 and .17 < entry[2] < .45)
+        self.assertGreater(pet[0] - entry[0], 1)
+        self.assertGreater(destination[0] - pet[0], 1)
+        self.assertGreater(abs(destination[1] - pet[1]), .15)
+        self.assertGreater(returning[0] - destination[0], 1.5)
+        self.assertGreater(returning[2] - returning[4], .2)
+        self.assertGreater(habitat["duration"] - returning[0] - returning[5], .6)
+
     def test_touches_track_the_screen_and_end_at_cut(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "touches.ass"
@@ -81,6 +100,17 @@ class VerticalFilmTests(unittest.TestCase):
             self.assertIn(r"\pos" + f"({x},{y})", script)
             self.assertIn("0:00:01.85,0:00:02.00", script)
             self.assertEqual(script.count("Dialogue:"), 1)
+
+    def test_swipe_cue_moves_up_the_screen(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "swipe.ass"
+            assemble.touches(path, {"duration": 2, "swipes": [[1, .5, .75, .5, .25, .45]]})
+            script = path.read_text()
+            x = assemble.SCREEN_X + assemble.SCREEN_WIDTH // 2
+            start_y = assemble.SCREEN_Y + int(assemble.SCREEN_HEIGHT * .75)
+            end_y = assemble.SCREEN_Y + assemble.SCREEN_HEIGHT // 4
+            self.assertIn(r"\move" + f"({x},{start_y},{x},{end_y},0,450)", script)
+            self.assertIn("0:00:01.00,0:00:01.55", script)
 
     def test_score_has_stereo_music_and_separate_clicks(self):
         def read(path):
