@@ -408,27 +408,33 @@ struct PlansView: View {
 
     private var summary: some View {
         VStack(spacing: 12) {
-            HStack {
+            HStack(spacing: 0) {
                 Button { selected = TrainingCalendar.addingDays(-7, to: selected) } label: {
-                    Image(systemName: "chevron.left").frame(minWidth: 34, minHeight: 39)
+                    Image(systemName: "chevron.left").frame(width: 44, height: 44)
+                        .contentShape(.rect)
                 }.accessibilityLabel("上一周")
-                Spacer()
                 Button { showPicker = true } label: {
                     VStack(spacing: 2) {
-                        Label("\(calendar.component(.yearForWeekOfYear, from: week)) 年第 \(calendar.component(.weekOfYear, from: week)) 周",
-                              systemImage: "chevron.down").font(.headline)
+                        let year = calendar.component(.yearForWeekOfYear, from: week)
+                        let number = calendar.component(.weekOfYear, from: week)
+                        Text("\(year, format: .number.grouping(.never)) 年第 \(number) 周").font(.headline)
                         Text(DisplayDate.day(week) + "–" + DisplayDate.day(TrainingCalendar.addingDays(6, to: week)))
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(.rect)
                 }
-                Spacer()
+                .accessibilityHint("打开日历选择日期")
                 Button { selected = TrainingCalendar.addingDays(7, to: selected) } label: {
-                    Image(systemName: "chevron.right").frame(minWidth: 34, minHeight: 39)
+                    Image(systemName: "chevron.right").frame(width: 44, height: 44)
+                        .contentShape(.rect)
                 }.accessibilityLabel("下一周")
             }.buttonStyle(.plain)
             HStack(spacing: 2) {
                 ForEach(0..<7) { offset in
                     let day = TrainingCalendar.addingDays(offset, to: week)
+                    let isSelected = TrainingCalendar.day(selected) == day
                     Button {
                         selected = day
                         showWeek = false
@@ -436,13 +442,15 @@ struct PlansView: View {
                         VStack(spacing: 4) {
                             Text(["一", "二", "三", "四", "五", "六", "日"][offset]).font(.caption2)
                             Text("\(calendar.component(.day, from: day))").font(.headline)
-                                .underline(TrainingCalendar.day(selected) == day)
                             Circle().fill(.primary.opacity(weekPlans.contains { $0.day == day } ? 0.6 : 0)).frame(width: 4, height: 4)
-                        }.frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .background(isSelected ? Color.primary.opacity(0.08) : .clear, in: .rect(cornerRadius: 12))
+                        .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(DisplayDate.day(day))
-                    .accessibilityAddTraits(TrainingCalendar.day(selected) == day ? .isSelected : [])
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
             HStack {

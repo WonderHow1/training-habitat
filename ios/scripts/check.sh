@@ -49,6 +49,13 @@ settings_button = today_header.split('Button { open(.settings) }', 1)[1]
 assert 'Image(systemName: "gearshape")' in settings_button
 assert '.accessibilityLabel("设置")' in settings_button
 print('PASS  Today settings gear and accessibility label')
+plan_summary = (root / 'TrainingHabitat/RoutineViews.swift').read_text().split('private var summary: some View {', 1)[1].split('struct ReviewView', 1)[0]
+assert 'Button { showPicker = true }' in plan_summary
+assert '.multilineTextAlignment(.center)' in plan_summary
+assert '.number.grouping(.never)' in plan_summary and 'chevron.down' not in plan_summary
+assert '.background(isSelected ? Color.primary.opacity(0.08) : .clear' in plan_summary
+assert '.underline(' not in plan_summary
+print('PASS  Plan calendar title and selected date treatment')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}
