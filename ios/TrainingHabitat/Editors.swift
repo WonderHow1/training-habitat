@@ -8,7 +8,8 @@ struct PlanEditor: View {
     @State private var day: Date
     @State private var time: Date
     @State private var hasTime: Bool
-    @State private var minutes: String
+    @State private var minutes: Int?
+    @State private var showDuration = false
 
     init(model: AppModel, day: Date, plan: TrainingPlan? = nil) {
         self.model = model
@@ -17,7 +18,7 @@ struct PlanEditor: View {
         _day = State(initialValue: plan?.day ?? day)
         _time = State(initialValue: plan?.scheduledAt ?? Date())
         _hasTime = State(initialValue: plan?.scheduledAt != nil)
-        _minutes = State(initialValue: String(plan?.minutes ?? 20))
+        _minutes = State(initialValue: plan?.minutes)
     }
 
     var body: some View {
@@ -34,24 +35,83 @@ struct PlanEditor: View {
                 DatePicker("计划日期", selection: $day, displayedComponents: .date)
                 Toggle("指定开始时间", isOn: $hasTime)
                 if hasTime { DatePicker("开始时间", selection: $time, displayedComponents: .hourAndMinute) }
-                TextField("目标时长（分钟）", text: $minutes).digitsKeyboard()
-                    .accessibilityLabel("目标时长（分钟）")
+                Button { showDuration = true } label: {
+                    HStack {
+                        Text("目标时长")
+                        Spacer()
+                        if let minutes { Text("\(minutes) 分钟").foregroundStyle(.secondary) }
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("目标时长")
+                .accessibilityValue(minutes.map { "\($0) 分钟" } ?? "未设置")
             } footer: {
                 Text("日期与训练截止时间按北京时间计算。")
             }
         }
         .navigationTitle(plan == nil ? "新增计划" : "编辑训练计划")
         .compactNavigationTitle()
+        .sheet(isPresented: $showDuration) {
+            PlanDurationPicker(minutes: minutes) { minutes = $0 }
+                .presentationDetents([.medium, .large])
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") {
+                    guard let minutes else { return }
                     if model.change({ state, now in
                         try state.savePlan(id: plan?.id, title: title, day: day, time: hasTime ? time : nil,
-                                           minutes: Int(minutes) ?? 0, at: now)
+                                           minutes: minutes, at: now)
                     }) { dismiss() }
                 }
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !(1...1439).contains(Int(minutes) ?? 0))
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || minutes == nil)
+            }
+        }
+    }
+}
+
+private struct PlanDurationPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var hours: Int
+    @State private var minutes: Int
+    let select: (Int) -> Void
+
+    init(minutes current: Int?, select: @escaping (Int) -> Void) {
+        let duration = current ?? 0
+        _hours = State(initialValue: duration / 60)
+        _minutes = State(initialValue: duration % 60)
+        self.select = select
+    }
+
+    var body: some View {
+        NavigationStack {
+            HStack(spacing: 0) {
+                Picker("小时", selection: $hours) {
+                    ForEach(0..<24) { Text("\($0) 小时").tag($0) }
+                }
+                Picker("分钟", selection: $minutes) {
+                    ForEach(0..<60) { Text("\($0) 分钟").tag($0) }
+                }
+            }
+            .labelsHidden()
+            #if os(iOS)
+            .pickerStyle(.wheel)
+            #endif
+            .navigationTitle("目标时长")
+            .compactNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        select(hours * 60 + minutes)
+                        dismiss()
+                    }
+                    .disabled(hours == 0 && minutes == 0)
+                }
             }
         }
     }

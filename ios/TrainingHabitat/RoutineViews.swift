@@ -103,7 +103,7 @@ struct TodayView: View {
                     HStack {
                         Text("今天无计划训练").foregroundStyle(.secondary)
                         Spacer()
-                        Button("新增计划") { open(.addPlan(model.today)) }.buttonStyle(.bordered)
+                        AddPlanButton { open(.addPlan(model.today)) }
                     }
                     .listRowSeparator(.hidden)
                 }
@@ -339,6 +339,14 @@ extension View {
     }
 }
 
+private struct AddPlanButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button("新增计划", action: action).buttonStyle(.glass)
+    }
+}
+
 struct PlansView: View {
     let model: AppModel
     let open: (SheetRoute) -> Void
@@ -376,8 +384,8 @@ struct PlansView: View {
                     .buttonStyle(.plain).listRowSeparator(.hidden)
                     .planRowActions(model: model, plan: plan, open: open)
                 }
-                Button("新增计划") { open(.addPlan(max(selected, model.today))) }
-                    .buttonStyle(.borderedProminent).listRowSeparator(.hidden)
+                AddPlanButton { open(.addPlan(max(selected, model.today))) }
+                    .listRowSeparator(.hidden)
                     .frame(maxWidth: .infinity)
             } header: {
                 HStack {

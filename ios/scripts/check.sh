@@ -44,18 +44,25 @@ for name, (key, target) in targets.items():
     assert all(buildable.get('BlueprintIdentifier') == key for buildable in scheme.iter('BuildableReference'))
 entitlements = plistlib.loads((root / 'HealthCheck/HealthCheck.entitlements').read_bytes())
 assert entitlements == {'com.apple.developer.healthkit': True}
-today_header = (root / 'TrainingHabitat/RoutineViews.swift').read_text().split('private var header: some View {', 1)[1].split('private func habitatGesture', 1)[0]
+routine_views = (root / 'TrainingHabitat/RoutineViews.swift').read_text()
+today_header = routine_views.split('private var header: some View {', 1)[1].split('private func habitatGesture', 1)[0]
 settings_button = today_header.split('Button { open(.settings) }', 1)[1]
 assert 'Image(systemName: "gearshape")' in settings_button
 assert '.accessibilityLabel("设置")' in settings_button
 print('PASS  Today settings gear and accessibility label')
-plan_summary = (root / 'TrainingHabitat/RoutineViews.swift').read_text().split('private var summary: some View {', 1)[1].split('struct ReviewView', 1)[0]
+plan_summary = routine_views.split('private var summary: some View {', 1)[1].split('struct ReviewView', 1)[0]
 assert 'Button { showPicker = true }' in plan_summary
 assert '.multilineTextAlignment(.center)' in plan_summary
 assert '.number.grouping(.never)' in plan_summary and 'chevron.down' not in plan_summary
 assert '.background(isSelected ? Color.primary.opacity(0.08) : .clear' in plan_summary
 assert '.underline(' not in plan_summary
 print('PASS  Plan calendar title and selected date treatment')
+plan_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[0]
+assert '_minutes = State(initialValue: plan?.minutes)' in plan_editor
+assert '.pickerStyle(.wheel)' in plan_editor and 'plan?.minutes ??' not in plan_editor
+assert '.disabled(hours == 0 && minutes == 0)' in plan_editor
+assert routine_views.count('AddPlanButton { open(.addPlan(') == 2
+print('PASS  Empty new plan duration, wheel confirmation and shared add plan button')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}
