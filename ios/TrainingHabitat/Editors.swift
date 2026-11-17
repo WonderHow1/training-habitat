@@ -35,19 +35,9 @@ struct PlanEditor: View {
                 DatePicker("计划日期", selection: $day, displayedComponents: .date)
                 Toggle("指定开始时间", isOn: $hasTime)
                 if hasTime { DatePicker("开始时间", selection: $time, displayedComponents: .hourAndMinute) }
-                Button { showDuration = true } label: {
-                    HStack {
-                        Text("目标时长")
-                        Spacer()
-                        if let minutes { Text("\(minutes) 分钟").foregroundStyle(.secondary) }
-                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .contentShape(.rect)
+                EditorValueButton(title: "目标时长", value: minutes.map { "\($0) 分钟" }) {
+                    showDuration = true
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("目标时长")
-                .accessibilityValue(minutes.map { "\($0) 分钟" } ?? "未设置")
             } footer: {
                 Text("日期与训练截止时间按北京时间计算。")
             }
@@ -89,18 +79,7 @@ private struct PlanDurationPicker: View {
 
     var body: some View {
         NavigationStack {
-            HStack(spacing: 0) {
-                Picker("小时", selection: $hours) {
-                    ForEach(0..<24) { Text("\($0) 小时").tag($0) }
-                }
-                Picker("分钟", selection: $minutes) {
-                    ForEach(0..<60) { Text("\($0) 分钟").tag($0) }
-                }
-            }
-            .labelsHidden()
-            #if os(iOS)
-            .pickerStyle(.wheel)
-            #endif
+            HourMinuteWheel(hours: $hours, minutes: $minutes)
             .navigationTitle("目标时长")
             .compactNavigationTitle()
             .toolbar {
@@ -118,29 +97,37 @@ private struct PlanDurationPicker: View {
 }
 
 struct WorkoutEditor: View {
+    private enum TimeField: String, Identifiable {
+        case start = "开始时间"
+        case end = "结束时间"
+        var id: String { rawValue }
+    }
+
     let model: AppModel
     let plan: TrainingPlan?
     let existing: Workout?
     @Environment(\.dismiss) private var dismiss
     @State private var title: String
-    @State private var start: Date
-    @State private var minutes: String
+    @State private var timing: WorkoutTiming
+    @State private var timeField: TimeField?
 
     init(model: AppModel, plan: TrainingPlan?, existing: Workout?) {
         self.model = model
         self.plan = plan
         self.existing = existing
         _title = State(initialValue: existing?.title ?? plan?.title ?? "")
-        let length = existing?.minutes ?? plan?.minutes ?? 20
-        let latest = model.now.addingTimeInterval(-Double(length * 60))
+        let seconds = Double((plan?.minutes ?? 20) * 60)
+        let latest = model.now.addingTimeInterval(-seconds)
         let suggestion = plan.flatMap { entry in
             entry.scheduledAt ?? (entry.day < model.today ? entry.day.addingTimeInterval(18.5 * 3600) : nil)
         } ?? latest
-        _start = State(initialValue: existing?.start ?? min(suggestion, latest))
-        _minutes = State(initialValue: String(length))
+        let suggestedStart = min(suggestion, latest)
+        let start = existing?.start ?? TrainingCalendar.combining(day: suggestedStart, time: suggestedStart)
+        _timing = State(initialValue: WorkoutTiming(start: start, end: existing?.end ?? start.addingTimeInterval(seconds)))
     }
 
     private var editing: Bool { existing.map { item in model.state.workouts.contains { $0.id == item.id } } ?? false }
+    private var draft: Workout? { timing.entry(title: title, existing: existing, at: Date()) }
 
     var body: some View {
         Form {
@@ -152,36 +139,144 @@ struct WorkoutEditor: View {
                     }
                 }
             }
-            DatePicker("实际日期", selection: $start, in: ...model.now, displayedComponents: .date)
-            DatePicker("开始时间", selection: $start, displayedComponents: .hourAndMinute)
-            TextField("实际时长（分钟）", text: $minutes)
-                .digitsKeyboard().accessibilityLabel("实际时长（分钟）")
+            DatePicker("实际日期", selection: Binding(get: { timing.start }, set: { timing.moveStartDay(to: $0) }),
+                       in: ...model.now, displayedComponents: .date)
+            EditorValueButton(title: TimeField.start.rawValue, value: DisplayDate.clock(timing.start)) {
+                timeField = .start
+            }
+            EditorValueButton(title: TimeField.end.rawValue,
+                              value: TrainingCalendar.day(timing.start) == TrainingCalendar.day(timing.end)
+                              ? DisplayDate.clock(timing.end) : DisplayDate.dateTime(timing.end)) {
+                timeField = .end
+            }
+            if draft == nil {
+                Text("请选择已结束的训练，时长须在 1 分钟到 24 小时之间。")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
             if let plan {
                 Text("达标时关联「\(plan.title)」。").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .navigationTitle(editing ? "编辑训练记录" : "手动记录")
         .compactNavigationTitle()
+        .sheet(item: $timeField) { field in
+            WorkoutTimePicker(
+                title: field.rawValue,
+                value: field == .start ? timing.start : timing.end,
+                includesDate: field == .end
+            ) { date in
+                if field == .start {
+                    timing.start = date
+                } else {
+                    timing.end = date
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") {
-                    let length = Int(minutes) ?? 0
-                    var record = existing ?? Workout(title: title, start: start, end: start, seconds: 0)
-                    record.title = title
-                    if existing?.start != start || existing?.minutes != length {
-                        record.start = start
-                        record.end = start.addingTimeInterval(Double(length * 60))
-                        record.seconds = length * 60
-                    }
+                    guard let record = draft else { return }
                     if model.change({ state, now in
                         try state.saveWorkout(record, for: plan?.id, at: now)
                         if state.timer?.planID == plan?.id { state.clearTimer() }
                     }) { dismiss() }
                 }
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !(1...1440).contains(Int(minutes) ?? 0))
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft == nil)
             }
         }
+    }
+}
+
+private struct EditorValueButton: View {
+    let title: String
+    let value: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer()
+                if let value { Text(value).foregroundStyle(.secondary) }
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(value ?? "未设置")
+    }
+}
+
+private struct WorkoutTimePicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var day: Date
+    @State private var hours: Int
+    @State private var minutes: Int
+    let title: String
+    let value: Date
+    let includesDate: Bool
+    let select: (Date) -> Void
+
+    init(title: String, value: Date, includesDate: Bool, select: @escaping (Date) -> Void) {
+        self.title = title
+        self.value = value
+        self.includesDate = includesDate
+        self.select = select
+        let parts = TrainingCalendar.calendar.dateComponents([.hour, .minute], from: value)
+        _day = State(initialValue: TrainingCalendar.day(value))
+        _hours = State(initialValue: parts.hour ?? 0)
+        _minutes = State(initialValue: parts.minute ?? 0)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack {
+                if includesDate {
+                    DatePicker("结束日期", selection: $day, displayedComponents: .date)
+                        .padding(.horizontal, 20)
+                }
+                HourMinuteWheel(hours: $hours, minutes: $minutes)
+            }
+            .navigationTitle(title)
+            .compactNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        let calendar = TrainingCalendar.calendar
+                        if let date = calendar.date(bySettingHour: hours, minute: minutes, second: 0, of: day),
+                           !calendar.isDate(date, equalTo: value, toGranularity: .minute) {
+                            select(date)
+                        }
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct HourMinuteWheel: View {
+    @Binding var hours: Int
+    @Binding var minutes: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Picker("小时", selection: $hours) {
+                ForEach(0..<24) { Text("\($0) 小时").tag($0) }
+            }
+            Picker("分钟", selection: $minutes) {
+                ForEach(0..<60) { Text("\($0) 分钟").tag($0) }
+            }
+        }
+        .labelsHidden()
+        #if os(iOS)
+        .pickerStyle(.wheel)
+        #endif
     }
 }
 

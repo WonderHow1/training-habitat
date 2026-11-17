@@ -113,6 +113,36 @@ struct Workout: Identifiable, Codable, Equatable {
 
     var minutes: Int { seconds / 60 }
     var day: Date { TrainingCalendar.day(start) }
+
+    func hasValidTiming(at now: Date) -> Bool {
+        (60...86_400).contains(seconds) && end <= now && end.timeIntervalSince(start) >= Double(seconds)
+    }
+}
+
+struct WorkoutTiming {
+    var start: Date
+    var end: Date
+
+    mutating func moveStartDay(to date: Date) {
+        let calendar = TrainingCalendar.calendar
+        let days = calendar.dateComponents([.day], from: TrainingCalendar.day(start),
+                                           to: TrainingCalendar.day(date)).day ?? 0
+        start = TrainingCalendar.addingDays(days, to: start)
+        end = TrainingCalendar.addingDays(days, to: end)
+    }
+
+    func entry(title: String, existing: Workout?, at now: Date) -> Workout? {
+        var workout = existing ?? Workout(title: title, start: start, end: end, seconds: 0)
+        if existing?.start != start || existing?.end != end {
+            let seconds = end.timeIntervalSince(start).rounded(.down)
+            guard (60...86_400).contains(seconds) else { return nil }
+            workout.start = start
+            workout.end = end
+            workout.seconds = Int(seconds)
+        }
+        workout.title = title
+        return workout.hasValidTiming(at: now) ? workout : nil
+    }
 }
 
 struct Pet: Identifiable, Codable, Equatable {

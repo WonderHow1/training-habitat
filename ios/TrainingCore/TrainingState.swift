@@ -130,8 +130,7 @@ struct TrainingState: Codable, Equatable {
         var record = entry
         record.title = record.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !record.title.isEmpty else { throw TrainingError.name }
-        guard (60...86_400).contains(record.seconds), record.start < record.end, record.end <= now,
-              record.end.timeIntervalSince(record.start) >= Double(record.seconds) else { throw TrainingError.workout }
+        guard record.hasValidTiming(at: now) else { throw TrainingError.workout }
         if let key = record.externalID, let existing = workouts.first(where: { $0.externalID == key && $0.id != record.id }) {
             if let planID, existing.planID == nil { try link(existing.id, to: planID, at: now) }
             return

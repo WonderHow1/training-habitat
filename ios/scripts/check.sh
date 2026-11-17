@@ -59,10 +59,15 @@ assert '.underline(' not in plan_summary
 print('PASS  Plan calendar title and selected date treatment')
 plan_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[0]
 assert '_minutes = State(initialValue: plan?.minutes)' in plan_editor
-assert '.pickerStyle(.wheel)' in plan_editor and 'plan?.minutes ??' not in plan_editor
+assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in plan_editor and 'plan?.minutes ??' not in plan_editor
 assert '.disabled(hours == 0 && minutes == 0)' in plan_editor
 assert routine_views.count('AddPlanButton { open(.addPlan(') == 2
 print('PASS  Empty new plan duration, wheel confirmation and shared add plan button')
+workout_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[1].split('struct PlanDetails', 1)[0]
+assert 'case start = "开始时间"' in workout_editor and 'case end = "结束时间"' in workout_editor
+assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in workout_editor and '.pickerStyle(.wheel)' in workout_editor
+assert '实际时长（分钟）' not in workout_editor and 'timing.entry(' in workout_editor
+print('PASS  Workout editor uses start and end wheel pickers')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}

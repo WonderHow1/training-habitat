@@ -183,6 +183,32 @@ private func habitatPullConsumesScrollBeforeZoomAndReverses() throws {
     try check(horizontal.distance(translation: CGSize(width: 40, height: 80), expanded: false, scrollOffset: 0) == nil)
 }
 
+private func workoutWheelsDeriveDurationAndPreserveExistingTiming() throws {
+    var timing = WorkoutTiming(start: time(0, 23, 50), end: time(1, 0, 10))
+    let now = time(2, 12)
+    let record = try require(timing.entry(title: "跑步", existing: nil, at: now))
+    try check(record.seconds == 1_200 && record.day == day)
+    try check(timing.entry(title: "跑步", existing: nil, at: time(1)) == nil)
+
+    timing.moveStartDay(to: time(1, 8))
+    try check(timing.start == time(1, 23, 50) && timing.end == time(2, 0, 10))
+    timing.end = timing.start
+    try check(timing.entry(title: "跑步", existing: nil, at: now) == nil)
+    timing.end = timing.start.addingTimeInterval(59)
+    try check(timing.entry(title: "跑步", existing: nil, at: now) == nil)
+
+    var imported = record
+    imported.source = .healthAutomatic
+    imported.externalID = UUID()
+    imported.seconds = 840
+    let original = WorkoutTiming(start: imported.start, end: imported.end)
+    let renamed = try require(original.entry(title: "夜跑", existing: imported, at: now))
+    try check(renamed.title == "夜跑" && renamed.seconds == 840 && renamed.externalID == imported.externalID)
+    let changed = WorkoutTiming(start: imported.start, end: time(1, 0, 15))
+    let edited = try require(changed.entry(title: "夜跑", existing: imported, at: now))
+    try check(edited.seconds == 1_500 && edited.id == imported.id)
+}
+
 private struct Failure: Error, CustomStringConvertible {
     let description: String
 }
@@ -213,7 +239,8 @@ struct TrainingChecks {
             ("delayed settlement and pet recovery", delayedSettlementAndRecoveryLeaveNewPetUntouched),
             ("walkable terrain", terrainRejectsWallsAndShoreAndKeepsRouteInView),
             ("habitat zoom follows the card and screen edges", habitatZoomMovesBetweenCardAndFullViewport),
-            ("habitat pull respects scroll, axis and reversal", habitatPullConsumesScrollBeforeZoomAndReverses)
+            ("habitat pull respects scroll, axis and reversal", habitatPullConsumesScrollBeforeZoomAndReverses),
+            ("workout time wheels derive and preserve duration", workoutWheelsDeriveDurationAndPreserveExistingTiming)
         ]
         var failures: [String] = []
         for (name, run) in tests {
