@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>训练栖地 · iOS 产品介绍片</title>
+<style>
+:root{color-scheme:dark;font-family:"PingFang SC","Hiragino Sans GB",sans-serif}
+body{margin:0;display:grid;align-content:center;justify-items:center;gap:12px;min-height:100dvh;background:#132720;color:#f4f6e9}
+canvas{display:block;width:min(100%,calc((100dvh - 68px) * 16 / 9));aspect-ratio:16/9;background:#e8f0d9}
+nav{width:min(92%,700px);display:flex;gap:14px;align-items:center}
+button{font:inherit;border:0;border-radius:6px;padding:5px 12px;background:#cfe1ae;color:#192e25;cursor:pointer}
+input{flex:1;accent-color:#cfe1ae}
+output{min-width:104px;font-variant-numeric:tabular-nums;text-align:right}
+</style>
+</head>
+<body>
+<canvas width="1920" height="1080" aria-label="训练栖地产品介绍动画画面"></canvas>
+<nav aria-label="动画画面预览">
+<button type="button" id="play">播放画面</button>
+<input type="range" id="seek" aria-label="预览进度" min="0" max="74" step="0.0333333" value="0">
+<output id="progress" for="seek"></output>
+</nav>
+<script src="film-assets.js"></script>
+<script src="film.js"></script>
+</body>
+</html>
