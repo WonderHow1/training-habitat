@@ -36,6 +36,7 @@ struct TodayView: View {
     @State private var cardFrame: CGRect = .zero
     @State private var transitionSource: CGRect?
     @State private var recordOptions: UUID?
+    @State private var recordOptionsFrame: CGRect = .zero
     @State private var screenCorners: RectangleCornerRadii?
 
     private var todayPlans: [TrainingPlan] {
@@ -79,6 +80,7 @@ struct TodayView: View {
             if dragProgress != nil { setExpanded(expanded) }
             resetDrag()
         }
+        .onDisappear { setRecordOptions(nil) }
     }
 
     private var dailyList: some View {
@@ -103,7 +105,7 @@ struct TodayView: View {
                     HStack {
                         Text("今天无计划训练").foregroundStyle(.secondary)
                         Spacer()
-                        AddPlanButton { open(.addPlan(model.today)) }
+                        AddPlanButton { openFromToday(.addPlan(model.today)) }
                     }
                     .listRowSeparator(.hidden)
                 }
@@ -114,7 +116,7 @@ struct TodayView: View {
                 Text("今日训练").font(.title3.bold()).foregroundStyle(.primary)
             }
             ForEach(model.state.plans.filter { model.state.status(of: $0, at: model.now) == .grace }) { plan in
-                Button { open(.plan(plan)) } label: {
+                Button { openFromToday(.plan(plan)) } label: {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(plan.title + "待补记").font(.headline)
                         Text("最晚 " + DisplayDate.dateTime(plan.graceEnds)).font(.caption).foregroundStyle(.secondary)
@@ -123,10 +125,16 @@ struct TodayView: View {
                     .background(.quaternary.opacity(0.53), in: .rect(cornerRadius: 18))
                 }
                 .buttonStyle(.plain).listRowSeparator(.hidden)
-                .planRowActions(model: model, plan: plan, open: open)
+                .planRowActions(model: model, plan: plan, open: openFromToday)
             }
         }
         .listStyle(.plain)
+        .contentShape(.interaction, Rectangle())
+        .simultaneousGesture(SpatialTapGesture(coordinateSpace: .global).onEnded { [recordOptions] tap in
+            if let recordOptions, self.recordOptions == recordOptions, !recordOptionsFrame.contains(tap.location) {
+                setRecordOptions(nil)
+            }
+        })
         .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) {
             _, offset in scrollOffset = offset
         }
@@ -145,7 +153,7 @@ struct TodayView: View {
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
-            Button { open(.settings) } label: { Image(systemName: "gearshape").frame(width: 36, height: 36) }
+            Button { openFromToday(.settings) } label: { Image(systemName: "gearshape").frame(width: 36, height: 36) }
                 .buttonStyle(.glass)
                 .accessibilityLabel("设置")
         }
@@ -182,29 +190,68 @@ struct TodayView: View {
 
     private func todayRow(_ plan: TrainingPlan) -> some View {
         HStack {
-            Button { open(.plan(plan)) } label: { PlanLabel(plan: plan, showsDay: false) }
+            Button { openFromToday(.plan(plan)) } label: { PlanLabel(plan: plan, showsDay: false) }
                 .buttonStyle(.plain)
             Spacer(minLength: 8)
             if model.state.status(of: plan, at: model.now) == .done {
                 Image(systemName: "checkmark.circle.fill").accessibilityLabel("已完成")
-            } else if recordOptions == plan.id {
-                Button { startTimer(plan) } label: { Image(systemName: "timer").frame(minWidth: 32, minHeight: 32) }
-                    .buttonStyle(.glass).accessibilityLabel("计时")
-                Button { open(.manual(plan, nil)) } label: { Image(systemName: "square.and.pencil").frame(minWidth: 32, minHeight: 32) }
-                    .buttonStyle(.glass).accessibilityLabel("直接记录")
             } else {
-                Button(model.state.timer?.planID == plan.id ? "计时中" : "记录") {
-                    if model.state.timer?.planID == plan.id { openTimer(plan) }
-                    else { withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { recordOptions = plan.id } }
-                }
-                .buttonStyle(.glass).font(.subheadline.weight(.semibold))
+                recordControl(for: plan)
             }
         }
-        .padding(.vertical, 6).listRowSeparator(.hidden)
-        .planRowActions(model: model, plan: plan, open: open)
+        .padding(.vertical, 6)
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 14))
+        .listRowSeparator(.hidden)
+        .planRowActions(model: model, plan: plan, open: openFromToday)
+    }
+
+    private func recordControl(for plan: TrainingPlan) -> some View {
+        let isTiming = model.state.timer?.planID == plan.id
+        let showOptions = recordOptions == plan.id && !isTiming
+        let transition = AnyTransition.scale(scale: 0.72, anchor: .trailing).combined(with: .opacity)
+        return ZStack(alignment: .trailing) {
+            if showOptions {
+                HStack {
+                    Button { startTimer(plan) } label: { Image(systemName: "timer").frame(minWidth: 32, minHeight: 32) }
+                        .buttonStyle(.glass).accessibilityLabel("计时")
+                    Button { openFromToday(.manual(plan, nil)) } label: {
+                        Image(systemName: "square.and.pencil").frame(minWidth: 32, minHeight: 32)
+                    }
+                    .buttonStyle(.glass).accessibilityLabel("直接记录")
+                }
+                .transition(transition)
+            } else {
+                Button(isTiming ? "计时中" : "记录") {
+                    if isTiming {
+                        setRecordOptions(nil)
+                        openTimer(plan)
+                    } else {
+                        setRecordOptions(plan.id)
+                    }
+                }
+                .buttonStyle(.glass).font(.subheadline.weight(.semibold))
+                .transition(transition)
+            }
+        }
+        .onGeometryChange(for: CGRect?.self, of: { showOptions ? $0.frame(in: .global) : nil }) { frame in
+            if let frame, recordOptions == plan.id { recordOptionsFrame = frame }
+        }
+    }
+
+    private func setRecordOptions(_ planID: UUID?) {
+        guard recordOptions != planID else { return }
+        withAnimation(reduceMotion ? nil : .snappy(duration: 0.28, extraBounce: 0)) {
+            recordOptions = planID
+        }
+    }
+
+    private func openFromToday(_ route: SheetRoute) {
+        setRecordOptions(nil)
+        open(route)
     }
 
     private func setExpanded(_ value: Bool) {
+        if value { setRecordOptions(nil) }
         withAnimation(reduceMotion ? nil : .snappy(duration: 0.42, extraBounce: 0)) {
             expanded = value
             dragProgress = nil
@@ -212,6 +259,7 @@ struct TodayView: View {
     }
 
     private func startTimer(_ plan: TrainingPlan) {
+        setRecordOptions(nil)
         if model.state.timer?.planID == plan.id || model.change({ state, now in
             try state.startTimer(for: plan.id, at: now)
         }) {

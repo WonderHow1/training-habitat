@@ -67,7 +67,7 @@ for corner in ('topLeading', 'topTrailing', 'bottomLeading', 'bottomTrailing'):
     assert f'geometry.cornerRadius(toward: screenCorners.{corner}, at: fraction)' in habitat_zoom
 print('PASS  Today habitat zoom interpolates each card corner to the display corner')
 today_header = routine_views.split('private var header: some View {', 1)[1].split('private func habitatGesture', 1)[0]
-settings_button = today_header.split('Button { open(.settings) }', 1)[1]
+settings_button = today_header.split('Button { openFromToday(.settings) }', 1)[1]
 assert 'Image(systemName: "gearshape")' in settings_button
 assert '.accessibilityLabel("设置")' in settings_button
 print('PASS  Today settings gear and accessibility label')
@@ -82,7 +82,8 @@ plan_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct
 assert '_minutes = State(initialValue: plan?.minutes)' in plan_editor
 assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in plan_editor and 'plan?.minutes ??' not in plan_editor
 assert '.disabled(hours == 0 && minutes == 0)' in plan_editor
-assert routine_views.count('AddPlanButton { open(.addPlan(') == 2
+assert 'AddPlanButton { openFromToday(.addPlan(model.today)) }' in routine_views
+assert 'AddPlanButton { open(.addPlan(' in routine_views
 print('PASS  Empty new plan duration, wheel confirmation and shared add plan button')
 row_actions = routine_views.split('func trainingRowActions(', 1)[1].split('private struct AddPlanButton', 1)[0]
 assert '.swipeActions(' in row_actions and '.contextMenu {' in row_actions
@@ -90,6 +91,14 @@ assert row_actions.count('action: edit') == row_actions.count('action: delete') 
 assert routine_views.count('.planRowActions(') == 3
 assert '.trainingRowActions(edit: { open(.manual(nil, workout)) })' in routine_views
 print('PASS  Today, Plan and Review share long-press and swipe actions')
+today_row = routine_views.split('private func todayRow(', 1)[1].split('private func recordControl(', 1)[0]
+assert today_row.index('.contentShape(.contextMenuPreview,') < today_row.index('.planRowActions(')
+record_control = routine_views.split('private func recordControl(', 1)[1].split('private func setExpanded(', 1)[0]
+assert record_control.count('.transition(transition)') == 2
+assert 'setRecordOptions(plan.id)' in record_control and 'withAnimation(reduceMotion ? nil' in record_control
+assert 'self.recordOptions == recordOptions, !recordOptionsFrame.contains(tap.location)' in routine_views
+assert 'openFromToday(.manual(plan, nil))' in record_control
+print('PASS  Today row preview and animated record choices')
 workout_editor = (root / 'TrainingHabitat/Editors.swift').read_text().split('struct WorkoutEditor', 1)[1].split('struct PlanDetails', 1)[0]
 assert 'case start = "开始时间"' in workout_editor and 'case end = "结束时间"' in workout_editor
 assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in workout_editor and '.pickerStyle(.wheel)' in workout_editor
