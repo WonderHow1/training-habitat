@@ -59,9 +59,13 @@ entitlements = plistlib.loads((root / 'HealthCheck/HealthCheck.entitlements').re
 assert entitlements == {'com.apple.developer.healthkit': True}
 routine_views = (root / 'TrainingHabitat/RoutineViews.swift').read_text()
 habitat_zoom = routine_views.split('private struct TodayHabitatZoom', 1)[1].split('struct PlanLabel', 1)[0]
-assert '.clipShape(ConcentricRectangle(corners: .concentric(' in habitat_zoom
-assert 'geometry.minimumCornerRadius(at: fraction)' in habitat_zoom
-print('PASS  Today habitat zoom uses the system display corners')
+assert 'view.cornerConfiguration = .corners(radius: .containerConcentric())' in routine_views
+assert routine_views.count('effectiveRadius(corner:') == 4
+assert 'HabitatDisplayCorners { screenCorners = $0 }' in routine_views
+assert '.clipShape(cornerShape(at: fraction))' in habitat_zoom
+for corner in ('topLeading', 'topTrailing', 'bottomLeading', 'bottomTrailing'):
+    assert f'geometry.cornerRadius(toward: screenCorners.{corner}, at: fraction)' in habitat_zoom
+print('PASS  Today habitat zoom interpolates each card corner to the display corner')
 today_header = routine_views.split('private var header: some View {', 1)[1].split('private func habitatGesture', 1)[0]
 settings_button = today_header.split('Button { open(.settings) }', 1)[1]
 assert 'Image(systemName: "gearshape")' in settings_button

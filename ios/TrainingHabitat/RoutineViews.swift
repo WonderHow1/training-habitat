@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @MainActor
 enum DisplayDate {
@@ -35,6 +36,7 @@ struct TodayView: View {
     @State private var cardFrame: CGRect = .zero
     @State private var transitionSource: CGRect?
     @State private var recordOptions: UUID?
+    @State private var screenCorners: RectangleCornerRadii?
 
     private var todayPlans: [TrainingPlan] {
         model.state.plans.filter { $0.day == model.today }
@@ -53,6 +55,7 @@ struct TodayView: View {
                     TodayHabitatZoom(
                         model: model,
                         geometry: .init(card: transitionSource ?? cardFrame, viewport: screen.frame(in: .global)),
+                        screenCorners: screenCorners,
                         insets: safeArea.safeAreaInsets,
                         progress: progress,
                         expanded: expanded,
@@ -60,6 +63,11 @@ struct TodayView: View {
                     )
                     .allowsHitTesting(expanded)
                     .accessibilityHidden(!expanded)
+                }
+                .background {
+                    HabitatDisplayCorners { screenCorners = $0 }
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
                 .ignoresSafeArea(.container)
             }
@@ -242,9 +250,47 @@ private struct TodayHabitatCard: View {
     }
 }
 
+private struct HabitatDisplayCorners: UIViewRepresentable {
+    let onChange: (RectangleCornerRadii) -> Void
+
+    func makeUIView(context: Context) -> CornerView {
+        let view = CornerView()
+        view.cornerConfiguration = .corners(radius: .containerConcentric())
+        return view
+    }
+
+    func updateUIView(_ view: CornerView, context: Context) {
+        view.onChange = onChange
+    }
+
+    final class CornerView: UIView {
+        var onChange: ((RectangleCornerRadii) -> Void)?
+        private var lastRadii: RectangleCornerRadii?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            guard window != nil, !bounds.isEmpty else { return }
+            let rtl = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            let radii = RectangleCornerRadii(
+                topLeading: effectiveRadius(corner: rtl ? .topRight : .topLeft),
+                bottomLeading: effectiveRadius(corner: rtl ? .bottomRight : .bottomLeft),
+                bottomTrailing: effectiveRadius(corner: rtl ? .bottomLeft : .bottomRight),
+                topTrailing: effectiveRadius(corner: rtl ? .topLeft : .topRight)
+            )
+            guard radii != lastRadii else { return }
+            lastRadii = radii
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let lastRadii else { return }
+                onChange?(lastRadii)
+            }
+        }
+    }
+}
+
 private struct TodayHabitatZoom: View, Animatable {
     let model: AppModel
     let geometry: HabitatZoomGeometry
+    let screenCorners: RectangleCornerRadii?
     let insets: EdgeInsets
     nonisolated var progress: CGFloat
     let expanded: Bool
@@ -291,9 +337,21 @@ private struct TodayHabitatZoom: View, Animatable {
             .opacity(max(0, (fraction - 0.6) / 0.4))
             .allowsHitTesting(fraction >= 0.99)
         }
-        .clipShape(ConcentricRectangle(corners: .concentric(minimum: .fixed(geometry.minimumCornerRadius(at: fraction)))))
+        .clipShape(cornerShape(at: fraction))
         .opacity(fraction > 0 ? 1 : 0)
         .position(x: frame.midX - viewport.minX, y: frame.midY - viewport.minY)
+    }
+
+    private func cornerShape(at fraction: CGFloat) -> ConcentricRectangle {
+        guard let screenCorners else {
+            return ConcentricRectangle(corners: .concentric(minimum: .fixed(HabitatZoomGeometry.cardRadius)))
+        }
+        return ConcentricRectangle(
+            topLeadingCorner: .fixed(geometry.cornerRadius(toward: screenCorners.topLeading, at: fraction)),
+            topTrailingCorner: .fixed(geometry.cornerRadius(toward: screenCorners.topTrailing, at: fraction)),
+            bottomLeadingCorner: .fixed(geometry.cornerRadius(toward: screenCorners.bottomLeading, at: fraction)),
+            bottomTrailingCorner: .fixed(geometry.cornerRadius(toward: screenCorners.bottomTrailing, at: fraction))
+        )
     }
 }
 
