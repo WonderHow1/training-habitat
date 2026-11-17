@@ -131,13 +131,29 @@ assert '实际时长（分钟）' not in workout_editor and 'timing.entry(' in w
 print('PASS  Workout editor uses start and end wheel pickers')
 onboarding = (root / 'TrainingHabitat/Onboarding.swift').read_text()
 assert 'SpeciesPicker(selection: $species, isOnboarding: true)' in onboarding
-assert '.id(species)\n                    .padding(.bottom, 10)' in onboarding
+assert '.offset(y: -portraitLift)' in onboarding and 'portraitLift: 0' in onboarding
+assert '.padding(.bottom, 10)\n                SpeciesPicker(' in onboarding
 picker = onboarding.split('struct SpeciesPicker:', 1)[1]
-assert 'ViewThatFits(in: .horizontal)' in picker and 'PetPortrait(species: species, size: 54)' in picker
+assert 'image.cropping(to: artwork.visibleBounds(for: sprite, image: image))' in picker
+assert '.frame(width: 38, height: 38)' in picker and 'isOnboarding ? Font.subheadline : .caption2' in picker
 assert '.underline(!isOnboarding && isSelected)' in picker
-assert '.background(isOnboarding && isSelected ? Color.black.opacity(0.16) : .clear,' in picker
+assert '.background(isOnboarding && isSelected ? Color.black.opacity(0.13) : .clear,' in picker
+assert picker.index('.background(isOnboarding && isSelected') < picker.index('.frame(maxWidth: .infinity, minHeight: 49)')
 assert '.accessibilityAddTraits(isSelected ? .isSelected : [])' in picker
 print('PASS  Onboarding uses larger pet choices and a filled selected tile')
+habitat_step = onboarding.split('private func habitatStep(', 1)[1].split('private var title:', 1)[0]
+assert 'VStack(spacing: 6) {\n                Text("栖息地背景")' in habitat_step
+assert 'Picker("栖息地背景", selection: $habitat)' in habitat_step
+assert '.frame(maxWidth: .infinity, alignment: .center)\n            .padding(.bottom, 32)\n            controls' in habitat_step
+print('PASS  Onboarding habitat selector is centered above the footer controls')
+assert 'onInteraction: dismissPetHint' in onboarding and 'onInteraction?()' in portrait_view
+assert 'Text("点我试试！")' in onboarding and 'guard step == .pet, !didInteractWithPet else' in onboarding
+assert 'didInteractWithPet = true' in onboarding and 'showsPetHint = false' in onboarding
+assert 'guard !reduceMotion else { return .identity }' in onboarding
+assert '.offset(x: goingBack ? -56 : 56, y: 10)' in onboarding and '.transition(pageTransition)' in onboarding
+assert 'habitatBackground\n                        .transition(.opacity)' in onboarding
+assert '.snappy(duration: 0.44, extraBounce: 0.12)' in onboarding
+print('PASS  Onboarding pet tap hint, directional spring transition and reduced motion')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}

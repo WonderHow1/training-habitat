@@ -114,6 +114,7 @@ struct PetPortrait: View {
     var stage = 1
     var size: CGFloat
     var interactive = false
+    var onInteraction: (() -> Void)?
     var animatePreview = false
     var walksHorizontally = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -206,6 +207,7 @@ struct PetPortrait: View {
     private func react() {
         if walksHorizontally { stroll.stop(at: .now) }
         playback = .reaction(UUID())
+        onInteraction?()
     }
 
     private func strollingPortrait(resting: String, steps: [String], image: CGImage) -> some View {
