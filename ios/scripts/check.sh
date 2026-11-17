@@ -129,6 +129,15 @@ assert 'case start = "开始时间"' in workout_editor and 'case end = "结束�
 assert 'HourMinuteWheel(hours: $hours, minutes: $minutes)' in workout_editor and '.pickerStyle(.wheel)' in workout_editor
 assert '实际时长（分钟）' not in workout_editor and 'timing.entry(' in workout_editor
 print('PASS  Workout editor uses start and end wheel pickers')
+onboarding = (root / 'TrainingHabitat/Onboarding.swift').read_text()
+assert 'SpeciesPicker(selection: $species, isOnboarding: true)' in onboarding
+assert '.id(species)\n                    .padding(.bottom, 10)' in onboarding
+picker = onboarding.split('struct SpeciesPicker:', 1)[1]
+assert 'ViewThatFits(in: .horizontal)' in picker and 'PetPortrait(species: species, size: 54)' in picker
+assert '.underline(!isOnboarding && isSelected)' in picker
+assert '.background(isOnboarding && isSelected ? Color.black.opacity(0.16) : .clear,' in picker
+assert '.accessibilityAddTraits(isSelected ? .isSelected : [])' in picker
+print('PASS  Onboarding uses larger pet choices and a filled selected tile')
 art = json.loads((root / 'TrainingHabitat/PixelArtwork.json').read_text())
 assert art['source'] == 'prototype-v1.2'
 assert set(art['habitats']) == {'garden', 'gym', 'living', 'bedroom', 'running-track'}

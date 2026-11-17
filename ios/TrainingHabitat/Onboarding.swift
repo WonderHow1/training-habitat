@@ -88,8 +88,10 @@ struct Onboarding: View {
             }
         } else {
             VStack(spacing: 4) {
-                PetPortrait(species: species, size: previewSize, interactive: true).id(species)
-                SpeciesPicker(selection: $species)
+                PetPortrait(species: species, size: previewSize, interactive: true)
+                    .id(species)
+                    .padding(.bottom, 10)
+                SpeciesPicker(selection: $species, isOnboarding: true)
                 Text("宠物名字").font(.footnote)
                 TextField("团团", text: $name)
                     .font(.title3.weight(.semibold))
@@ -170,22 +172,34 @@ struct Onboarding: View {
 
 struct SpeciesPicker: View {
     @Binding var selection: Species
+    var isOnboarding = false
 
     var body: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 5), spacing: 8) {
             ForEach(Species.allCases) { species in
+                let isSelected = selection == species
                 Button { selection = species } label: {
                     VStack(spacing: 2) {
-                        PetPortrait(species: species, size: 33)
-                        Text(species.name).font(.caption2.weight(selection == species ? .bold : .regular))
-                            .underline(selection == species)
+                        if isOnboarding {
+                            ViewThatFits(in: .horizontal) {
+                                PetPortrait(species: species, size: 54)
+                                PetPortrait(species: species, size: 44)
+                            }
+                        } else {
+                            PetPortrait(species: species, size: 33)
+                        }
+                        Text(species.name).font(.caption2.weight(isSelected ? .bold : .regular))
+                            .underline(!isOnboarding && isSelected)
                             .lineLimit(1).minimumScaleFactor(0.75)
                     }
                     .frame(maxWidth: .infinity, minHeight: 49)
+                    .padding(.vertical, isOnboarding ? 4 : 0)
+                    .background(isOnboarding && isSelected ? Color.black.opacity(0.16) : .clear,
+                                in: .rect(cornerRadius: 10))
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .accessibilityAddTraits(selection == species ? .isSelected : [])
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
     }
