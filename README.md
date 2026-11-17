@@ -6,7 +6,7 @@
 
 | 交付内容 | 入口 | 内容与验收方式 |
 | --- | --- | --- |
-| 需求确定 | [需求与交付范围](docs/delivery-requirements.md) | 汇总目标用户、已选设计方向、当前 MVP 规则和边界；保留早期方案与实现之间的变化。 |
+| 需求确定 | [需求评估工作与结论](docs/delivery-requirements.md#requirements-assessment) | 说明竞品评估、横向人群分析、纵向场景、JTBD、痛点清单、MVP 决策与首测设计，并对照当前实现范围。 |
 | 产品原型 | [原型说明](design-demos/README.md) · [日常使用](design-demos/ios-prototype.html) · [新用户引导](design-demos/new-user.html) | 两个可离线交互的 HTML 原型，覆盖训练闭环、领养、成长和栖息地；定稿标签为 `prototype-v1.2`。 |
 | MVP | [iPhone 安装与使用](ios/README.md) · [Xcode 工程](ios/TrainingHabitat.xcodeproj/project.pbxproj) | SwiftUI、SpriteKit 原生 iOS 个人版，支持训练计划、计时、记录、回顾、宠物成长、本机存储和提醒。 |
 | 产品介绍视频 | [观看或下载成片](design-demos/product-film/vertical/训练栖地-竖屏短片.mp4) · [视频说明与时码](design-demos/product-film/vertical/README.md) | 约 81 秒，1080×1920、60 fps；包含像素新手引导、iPhone 实机操作、中文字幕、配乐和触点音效。 |

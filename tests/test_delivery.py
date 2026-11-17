@@ -25,6 +25,22 @@ class DeliveryTests(unittest.TestCase):
                     self.assertTrue(target.is_relative_to(ROOT), "Link leaves repository")
                     self.assertTrue(target.is_file(), f"Missing delivery: {target}")
                     self.assertGreater(target.stat().st_size, 0, "Empty delivery")
+                    if parsed.fragment:
+                        anchors = re.findall(r'\bid=["\']([^"\']+)["\']', target.read_text())
+                        self.assertIn(unquote(parsed.fragment), anchors, "Missing delivery section anchor")
+
+    def test_delivery_tables_have_consistent_columns(self):
+        for relative in ("README.md", "docs/delivery-requirements.md"):
+            table = []
+            for line in (ROOT / relative).read_text().splitlines() + [""]:
+                if line.startswith("|"):
+                    table.append(line)
+                elif table:
+                    with self.subTest(document=relative, table=table[0]):
+                        self.assertGreaterEqual(len(table), 3)
+                        self.assertEqual(len({row.count("|") for row in table}), 1)
+                        self.assertRegex(table[1], r'^\|(?:\s*:?-+:?\s*\|)+$')
+                    table = []
 
     def test_offline_prototypes_match_their_sources(self):
         spec = importlib.util.spec_from_file_location("prototype_build", ROOT / "design-demos/build.py")
