@@ -1,5 +1,28 @@
 import Foundation
 
+struct HorizontalPetStroll {
+    let offset: CGFloat
+    let movingLeft: Bool
+    let step: Int?
+
+    init(elapsed: TimeInterval, distance: CGFloat) {
+        guard distance > 0 else {
+            offset = 0
+            movingLeft = false
+            step = nil
+            return
+        }
+        let crossing = Double(distance) / 26
+        let leg = crossing + 0.5
+        let phase = max(0, elapsed).truncatingRemainder(dividingBy: 2 * leg)
+        movingLeft = phase >= leg
+        let timeInLeg = movingLeft ? phase - leg : phase
+        let fraction = min(1, timeInLeg / crossing)
+        offset = distance * (movingLeft ? 1 - fraction : fraction)
+        step = timeInLeg < crossing ? Int(timeInLeg / 0.135) : nil
+    }
+}
+
 struct WalkTerrain {
     let habitat: Habitat
     var visibleWidth: CGFloat = 88

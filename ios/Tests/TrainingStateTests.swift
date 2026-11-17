@@ -138,6 +138,21 @@ private func delayedSettlementAndRecoveryLeaveNewPetUntouched() throws {
     try check(state.experience(of: new, at: time(5, 1)) == 0)
 }
 
+private func headingPetTurnsAndPausesAtTheEndsOfItsLane() throws {
+    let outbound = HorizontalPetStroll(elapsed: 1, distance: 52)
+    let rightEdge = HorizontalPetStroll(elapsed: 2.25, distance: 52)
+    let inbound = HorizontalPetStroll(elapsed: 3.5, distance: 52)
+    let leftEdge = HorizontalPetStroll(elapsed: 4.75, distance: 52)
+    let nextLoop = HorizontalPetStroll(elapsed: 5, distance: 52)
+    let stationary = HorizontalPetStroll(elapsed: 3, distance: 0)
+    try check(outbound.offset == 26 && !outbound.movingLeft && outbound.step != nil)
+    try check(rightEdge.offset == 52 && !rightEdge.movingLeft && rightEdge.step == nil)
+    try check(inbound.offset == 26 && inbound.movingLeft && inbound.step != nil)
+    try check(leftEdge.offset == 0 && leftEdge.movingLeft && leftEdge.step == nil)
+    try check(nextLoop.offset == 0 && !nextLoop.movingLeft && nextLoop.step == 0)
+    try check(stationary.offset == 0 && stationary.step == nil)
+}
+
 private func terrainRejectsWallsAndShoreAndKeepsRouteInView() throws {
     for habitat in Habitat.allCases {
         let terrain = WalkTerrain(habitat: habitat, visibleWidth: 82)
@@ -288,6 +303,7 @@ struct TrainingChecks {
             ("midnight, grace and device correction", midnightGraceDeviceCorrectionAndDuplicate),
             ("delayed settlement and pet recovery", delayedSettlementAndRecoveryLeaveNewPetUntouched),
             ("walkable terrain", terrainRejectsWallsAndShoreAndKeepsRouteInView),
+            ("heading pet walks, turns, and pauses within its lane", headingPetTurnsAndPausesAtTheEndsOfItsLane),
             ("habitat zoom follows the card and screen edges", habitatZoomMovesBetweenCardAndFullViewport),
             ("habitat pull respects scroll, axis and reversal", habitatPullConsumesScrollBeforeZoomAndReverses),
             ("workout time wheels derive and preserve duration", workoutWheelsDeriveDurationAndPreserveExistingTiming),

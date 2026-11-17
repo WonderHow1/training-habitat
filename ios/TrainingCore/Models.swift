@@ -28,6 +28,13 @@ enum Species: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var walkingSpriteFacesLeft: Bool {
+        switch self {
+        case .cat, .dog, .rabbit, .chinchilla: true
+        default: false
+        }
+    }
+
     var name: String {
         switch self {
         case .cat: "猫"

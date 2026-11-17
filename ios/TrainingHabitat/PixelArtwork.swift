@@ -119,10 +119,12 @@ struct PetPortrait: View {
     var size: CGFloat
     var interactive = false
     var animatePreview = false
-    var trimsTransparentPadding = false
+    var walksHorizontally = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @State private var pose: String?
     @State private var playback: Playback?
+    @State private var strollStarted = Date()
 
     private var sprites: PixelArtwork.Sprites? { PixelArtwork.shared.pet(species) }
 
@@ -179,11 +181,34 @@ struct PetPortrait: View {
 
     @ViewBuilder private var portrait: some View {
         let art = pose ?? sprites?.resting[stage - 1]
-        if trimsTransparentPadding {
-            PixelImage(art: art, visibleHeight: size)
+        if walksHorizontally, let sprites {
+            strollingPortrait(resting: sprites.resting[stage - 1], steps: sprites.walk[stage - 1])
         } else {
             PixelImage(art: art)
                 .frame(width: size, height: size)
         }
+    }
+
+    private func strollingPortrait(resting: String, steps: [String]) -> some View {
+        let walkingFrames = species == .goldfish ? [] : steps
+        let frames = [resting] + walkingFrames + (pose.map { [$0] } ?? [])
+        let width = frames.compactMap { key -> CGFloat? in
+            guard let image = PixelArtwork.shared.croppedImage(key) else { return nil }
+            return size * CGFloat(image.width) / CGFloat(image.height)
+        }.max() ?? size
+
+        return GeometryReader { lane in
+            let slot = min(width, lane.size.width)
+            let distance = reduceMotion ? 0 : min(54, lane.size.width - slot)
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: distance == 0 || scenePhase != .active)) { clock in
+                let stroll = HorizontalPetStroll(elapsed: clock.date.timeIntervalSince(strollStarted), distance: distance)
+                let step = stroll.step.flatMap { walkingFrames.isEmpty ? nil : walkingFrames[$0 % walkingFrames.count] }
+                let scale: CGFloat = distance == 0 || stroll.movingLeft == species.walkingSpriteFacesLeft ? 1 : -1
+                PixelImage(art: pose ?? step ?? resting, visibleHeight: size * slot / width)
+                    .scaleEffect(x: scale, y: 1)
+                    .position(x: slot / 2 + stroll.offset, y: size / 2)
+            }
+        }
+        .frame(height: size)
     }
 }

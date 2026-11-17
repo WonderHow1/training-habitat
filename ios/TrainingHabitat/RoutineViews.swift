@@ -505,9 +505,10 @@ private struct TrainingPageTitle: View {
             Text(title)
                 .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
+                .layoutPriority(1)
             if let pet = model.state.displayedPet {
                 PetPortrait(species: pet.species, stage: model.stage(of: pet), size: petHeight,
-                            trimsTransparentPadding: true)
+                            walksHorizontally: true)
                     .id(pet.id)
                     .accessibilityHidden(true)
             }

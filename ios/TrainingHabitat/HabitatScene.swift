@@ -193,11 +193,10 @@ final class HabitatScene: SKScene {
             let dx = point.x - previous.x
             let distance = hypot(dx, point.y - previous.y)
             previous = point
-            let normallyLeft = [Species.cat, .dog, .rabbit, .chinchilla].contains(species)
             let move = SKAction.move(to: point, duration: reduced ? 0 : Double(distance) * 0.035)
             guard abs(dx) >= 1 else { return [move] }
             let face = SKAction.run { [weak self] in
-                self?.sprite.xScale = (dx < 0) == normallyLeft ? 1 : -1
+                self?.sprite.xScale = (dx < 0) == species.walkingSpriteFacesLeft ? 1 : -1
             }
             return [face, move]
         }
