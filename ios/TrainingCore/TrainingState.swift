@@ -75,11 +75,7 @@ struct TrainingState: Codable, Equatable {
     }
 
     func experienceEntries(of petID: UUID, at now: Date) -> [Workout] {
-        let byDay = Dictionary(grouping: workouts.filter { $0.end <= now }, by: \.day)
-        return byDay.values.flatMap { day -> [Workout] in
-            guard day.reduce(0, { $0 + $1.minutes }) >= goalMinutes else { return [] }
-            return day.filter { owner(at: $0.end) == petID }
-        }
+        workouts.filter { $0.end <= now && owner(at: $0.end) == petID }
     }
 
     mutating func savePlan(id: UUID? = nil, title: String, day: Date, time: Date?, minutes: Int, at now: Date) throws {

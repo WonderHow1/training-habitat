@@ -50,21 +50,26 @@ private func damagedStoreSurfacesErrorAndKeepsFile() throws {
     try check(try Data(contentsOf: file) == data)
 }
 
-private func goalAndIndividualPlanAreIndependentAndRecalculated() throws {
+private func workoutMinutesEarnExperienceRegardlessOfDailyGoal() throws {
     var state = try adopted()
-    try state.savePlan(title: "跑步", day: day, time: nil, minutes: 20, at: time(0))
+    try state.savePlan(title: "跑步", day: day, time: nil, minutes: 17, at: time(0))
     let plan = try require(state.plans.first)
     let pet = try require(state.activePetID)
-    let first = workout(0, 10, 20)
-    let second = workout(0, 11, 10)
+    let first = workout(0, 10, 17)
+    let second = workout(1, 11, 10)
     try state.saveWorkout(first, for: plan.id, at: time(0, 11))
     try check(state.status(of: plan, at: time(0, 11)) == .done)
-    try check(state.experience(of: pet, at: time(0, 11)) == 0)
-    try state.saveWorkout(second, at: time(0, 12))
-    try check(state.experience(of: pet, at: time(0, 12)) == 30)
-    state.deleteWorkout(second.id, at: time(0, 13))
-    try check(state.experience(of: pet, at: time(0, 13)) == 0)
-    try check(state.status(of: plan, at: time(0, 13)) == .done)
+    try check(state.experience(of: pet, at: time(0, 11)) == 17)
+    try state.saveWorkout(second, at: time(1, 12))
+    try check(state.experience(of: pet, at: time(1, 12)) == 27)
+    try check(state.experience(of: pet, at: time(0, 11)) == 17)
+    var shortened = second
+    shortened.seconds = 6 * 60 + 30
+    try state.saveWorkout(shortened, at: time(1, 12))
+    try check(state.experience(of: pet, at: time(1, 12)) == 23)
+    state.deleteWorkout(second.id, at: time(1, 13))
+    try check(state.experience(of: pet, at: time(1, 13)) == 17)
+    try check(state.status(of: plan, at: time(1, 13)) == .done)
     state.deletePlan(plan.id)
     try check(state.workouts.count == 1)
     try check(state.workouts.first?.planID == nil)
@@ -278,7 +283,7 @@ struct TrainingChecks {
         let tests: [(String, () throws -> Void)] = [
             ("onboarding and persistent data", onboardingAndPersistentDataUsedAfterSecondOpen),
             ("damaged store is preserved", damagedStoreSurfacesErrorAndKeepsFile),
-            ("plan completion and daily XP", goalAndIndividualPlanAreIndependentAndRecalculated),
+            ("one XP per recorded minute regardless of daily goal", workoutMinutesEarnExperienceRegardlessOfDailyGoal),
             ("rescheduling keeps identity", reschedulingRetainsIdentityAndRejectsCrossWeek),
             ("midnight, grace and device correction", midnightGraceDeviceCorrectionAndDuplicate),
             ("delayed settlement and pet recovery", delayedSettlementAndRecoveryLeaveNewPetUntouched),
