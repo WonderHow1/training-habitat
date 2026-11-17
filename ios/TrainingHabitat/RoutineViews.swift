@@ -498,6 +498,7 @@ private struct AddPlanButton: View {
 private struct TrainingPageTitle: View {
     let title: LocalizedStringKey
     let model: AppModel
+    @ScaledMetric(relativeTo: .largeTitle) private var petHeight: CGFloat = 30
 
     var body: some View {
         HStack(spacing: 10) {
@@ -505,7 +506,8 @@ private struct TrainingPageTitle: View {
                 .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
             if let pet = model.state.displayedPet {
-                PetPortrait(species: pet.species, stage: model.stage(of: pet), size: 38)
+                PetPortrait(species: pet.species, stage: model.stage(of: pet), size: petHeight,
+                            trimsTransparentPadding: true)
                     .id(pet.id)
                     .accessibilityHidden(true)
             }

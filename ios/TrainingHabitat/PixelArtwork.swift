@@ -25,6 +25,7 @@ final class PixelArtwork {
     static let shared = PixelArtwork()
     private let content: Content?
     private var images: [String: CGImage] = [:]
+    private var croppedImages: [String: CGImage] = [:]
     private var textures: [String: SKTexture] = [:]
 
     private init() {
@@ -46,6 +47,40 @@ final class PixelArtwork {
         return image
     }
 
+    func croppedImage(_ key: String?) -> CGImage? {
+        guard let key else { return nil }
+        if let cached = croppedImages[key] { return cached }
+        guard let image = image(key) else { return nil }
+
+        let width = image.width
+        let height = image.height
+        let bytesPerRow = width * 4
+        let rgba = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: rgba),
+              let pixels = context.data?.assumingMemoryBound(to: UInt8.self) else { return image }
+        context.setBlendMode(.copy)
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var left = width
+        var top = height
+        var right = -1
+        var bottom = -1
+        for y in 0..<height {
+            for x in 0..<width where pixels[y * bytesPerRow + x * 4 + 3] > 0 {
+                left = min(left, x)
+                top = min(top, y)
+                right = max(right, x)
+                bottom = max(bottom, y)
+            }
+        }
+        guard left <= right, top <= bottom else { return image }
+        let bounds = CGRect(x: left, y: top, width: right - left + 1, height: bottom - top + 1)
+        let cropped = image.cropping(to: bounds) ?? image
+        croppedImages[key] = cropped
+        return cropped
+    }
+
     func texture(_ key: String?) -> SKTexture? {
         guard let key else { return nil }
         if let cached = textures[key] { return cached }
@@ -59,9 +94,13 @@ final class PixelArtwork {
 
 struct PixelImage: View {
     let art: String?
+    var visibleHeight: CGFloat?
 
     var body: some View {
-        if let image = PixelArtwork.shared.image(art) {
+        if let visibleHeight, let image = PixelArtwork.shared.croppedImage(art) {
+            Image(decorative: image, scale: 1).resizable().interpolation(.none)
+                .frame(width: visibleHeight * CGFloat(image.width) / CGFloat(image.height), height: visibleHeight)
+        } else if let image = PixelArtwork.shared.image(art) {
             Image(decorative: image, scale: 1).resizable().interpolation(.none)
         } else {
             Color.clear
@@ -80,6 +119,7 @@ struct PetPortrait: View {
     var size: CGFloat
     var interactive = false
     var animatePreview = false
+    var trimsTransparentPadding = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pose: String?
     @State private var playback: Playback?
@@ -137,8 +177,13 @@ struct PetPortrait: View {
         }
     }
 
-    private var portrait: some View {
-        PixelImage(art: pose ?? sprites?.resting[stage - 1])
-            .frame(width: size, height: size)
+    @ViewBuilder private var portrait: some View {
+        let art = pose ?? sprites?.resting[stage - 1]
+        if trimsTransparentPadding {
+            PixelImage(art: art, visibleHeight: size)
+        } else {
+            PixelImage(art: art)
+                .frame(width: size, height: size)
+        }
     }
 }

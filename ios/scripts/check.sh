@@ -82,6 +82,8 @@ title_view = routine_views.split('private struct TrainingPageTitle:', 1)[1].spli
 assert 'PetPortrait(species: pet.species, stage: model.stage(of: pet)' in title_view
 assert 'if let pet = model.state.displayedPet' in title_view and '.accessibilityHidden(true)' in title_view
 assert '.frame(maxWidth: .infinity, alignment: .leading)' in title_view
+assert '@ScaledMetric(relativeTo: .largeTitle)' in title_view and 'size: petHeight' in title_view
+assert 'trimsTransparentPadding: true' in title_view
 for title in ('训练计划', '训练回顾'):
     toolbar = routine_views.split(f'.navigationTitle("{title}")', 1)[1].split('.primaryAction', 1)[0]
     assert 'ToolbarItem(placement: .largeTitle)' in toolbar
