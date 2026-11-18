@@ -11,6 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class DeliveryTests(unittest.TestCase):
+    def test_homepage_embeds_a_video_attachment_and_keeps_the_download(self):
+        readme = (ROOT / "README.md").read_text()
+        self.assertRegex(readme, r"(?m)^https://github\.com/user-attachments/assets/[0-9a-f-]{36}$")
+        self.assertIn('<a id="product-video"></a>', readme)
+        self.assertIn("[在线播放](#product-video)", readme)
+        self.assertIn("[下载成片](design-demos/product-film/vertical/训练栖地-竖屏短片.mp4)", readme)
+
     def test_delivery_links_resolve_inside_repository(self):
         for relative in ("README.md", "docs/delivery-requirements.md"):
             document = ROOT / relative
